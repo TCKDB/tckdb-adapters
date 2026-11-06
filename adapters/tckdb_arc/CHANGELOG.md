@@ -41,6 +41,29 @@ of tracked releases.
 - Adapter 0.6.9: tracked TCKDB f22d3a8 (schemas 0.64.0, client 0.102.0).
 - Adapter 0.6.8: tracked TCKDB a515fb9 (schemas 0.58.0, client 0.98.0).
 
+## Unreleased (held draft, not for merge)
+
+Payload change (level-of-theory identity). A level's typed method qualifiers are sent where ARC's
+`args` state them as a whole token, so a level that carries one has a new `lot_hash`, and a
+re-upload of an affected record has a new idempotency key, so TCKDB records it as a new deposit.
+No version is claimed: this draft stays unmerged until ARC exports the effective per-job keyword
+line.
+
+- New `tckdb_arc/level_qualifiers.py`: `relativistic_hamiltonian`, `pno_truncation`,
+  `ri_approximation` and `core_treatment: window` are read from `args.keyword.general` (and, for
+  ORCA `FC_EWIN`, `args.block`) when it holds a confirmed whole token (ORCA
+  `TightPNO`/`NormalPNO`/`LoosePNO`, `RIJCOSX`/`RIJK`/`RIJONX`,
+  `DKH2`/`DKH`/`ZORA`/`IORA`/`X2C`, `FC_EWIN`; Gaussian `Int=DKH`/`DKH2`/`DKH0`/`DKHSO`/`RESC`),
+  as the lower-case value. Nothing is sent from absence or defaults, and `none` never.
+  `_arc_level_to_tckdb_lot` calls it, so a level carries qualifiers wherever the level handed to
+  that function has both `args` and `software`.
+- Held, with known problems (`docs/contract/ARC_MAPPING.md`, "Levels of theory"): output.yml 1.3
+  per-record levels carry `args` but no `software`, so the same level gets qualifiers in one
+  projection and none in another (a spurious `freq_scale_factor_fitted_for_other_level`, conformers
+  not filed, differing identities for the same opt level, the one-electron Hartree-Fock exemption
+  no longer matching); ARC's `args` do not reliably describe the deck a job ran with; no test
+  covers a 1.3 level without `software`.
+
 ## 0.15.21
 
 No payload change. The package moved from `tckdb_arc/` to `adapters/tckdb_arc/` in the

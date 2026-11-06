@@ -148,12 +148,69 @@ contract defines the climbing-image flag for NEB.
 - A level is ARC's `method`, `basis`, `auxiliary_basis` (TCKDB `aux_basis`), `cabs`
   (`cabs_basis`), `dispersion`, `solvent` and `solvation_method` (`solvent_model`), with
   `spin_treatment` from the job's `scf_reference`. The program belongs to the calculation's
-  `software_release` and is not part of the level.
+  `software_release` and is not part of the level's identity; it is read only to decide which
+  spellings of a level's `args` name a typed qualifier (next item).
 - No level carries `keywords`; TCKDB removed that field. The typed qualifiers that replaced
   it (`relativistic_hamiltonian`, `pno_truncation`, `ri_approximation`,
-  `core_treatment: window`) are not sent. ARC's `args` do not reliably describe the deck a
-  job ran with, and a qualifier stated from them could contradict the deck without TCKDB
-  noticing. TCKDB reads these settings from the uploaded deck and log instead.
+  `core_treatment: window`) are sent only when the level's own `args` state them as a whole
+  token (case-insensitive) of a spelling confirmed for the level's `software`, as the lower-case
+  value. Only `args.keyword.general` is read, plus `args.block` for ORCA `FC_EWIN`; a job-specific
+  option is not a statement about the level. Two different values for one field leave that field
+  out. `none` is never sent, and nothing is read from absence, a program default or a method
+  name (`RI-MP2`, `DLPNO-...`). The code is `adapters/tckdb_arc/tckdb_arc/level_qualifiers.py`,
+  called from `_arc_level_to_tckdb_lot`. It reads the dict it is given, so a level carries
+  qualifiers only where the level handed to that function has both `args` and `software` (see
+  "Known problems" below).
+
+    | Program | Spelling | Field = value | Knowledge-base source |
+    |---|---|---|---|
+    | ORCA | `TightPNO`, `NormalPNO`, `LoosePNO` | `pno_truncation` = `tight`, `normal`, `loose` | orca 6.1 manual, "Local correlation (DLPNO)": "specifying TightPNO, NormalPNO or LoosePNO keywords" (chunk 16230, 16217); curated `orca-essentials.md` coupled-cluster gotcha (chunk 274) |
+    | ORCA | `RIJCOSX`, `RIJK`, `RIJONX` | `ri_approximation` = the same, lower case | curated gotcha "DFT defaults that changed" (chunk 273: RIJCOSX, RI-J); lesson "ORCA 6: RIJK gradients are unavailable ... use RIJONX def2/J" (chunks 13057, 13058) |
+    | ORCA | `DKH2`, `DKH` | `relativistic_hamiltonian` = `dkh2` | orca 6.1 manual Table 2.54, "DKH2, DKH: Activate the second-order DKH Hamiltonian" (chunk 15777) |
+    | ORCA | `ZORA`, `IORA`, `X2C` | `relativistic_hamiltonian` = `zora`, `iora`, `x2c` | same table (chunk 15777); lesson "ORCA ZORA/DKH Hessians are analytic" (chunk 24105) |
+    | ORCA | `FC_EWIN` (`%method FrozenCore FC_EWIN end`) | `core_treatment` = `window` | orca 6 manual "Frozen Core Options" (chunk 15951), orca 5.0.4 manual (chunks 13310, 14157) |
+    | Gaussian | `Int(egral)=DKH` or `=DKH2` (also `=(DKH2,...)`, `Int(DKH2)`) | `relativistic_hamiltonian` = `dkh2` | G09 manual, Integral, "RELATIVISTIC CALCULATIONS": "DKH: second order ... DKH2 and DouglasKrollHess are synonyms" (chunk 10725); Foresman and Frisch, `Integral=DKH` (chunk 19362) |
+    | Gaussian | `Int(egral)=DKH0`, `DKHSO`, `RESC` (same option-list forms) | `relativistic_hamiltonian` = `dkh0`, `dkhso`, `resc` | same G09 chunk (10725). The KB indexes the G09 manual for this keyword; G16 is not separately indexed |
+
+    Not mapped, because the spelling is ambiguous or has no one-to-one TCKDB value: ORCA `DKH1`,
+    `DLU-X2C`, `RI`, `RI-J`, `Split-RI-J`, `NoRI`, `NoCOSX`, `NoDKH`, `NonRelativistic` and
+    `%mp2 EWin`; Gaussian `Window=(m,n)`; and any numeric PNO threshold.
+
+    Known problems (why this mapping is held):
+
+    - ARC's `args` can contradict the deck a job ran with, and TCKDB stays silent unless level
+      and deck both state a value. ARC's ORCA adapter sets a default `normalpno` for a DLPNO
+      method on the job's own copy of the args (`keyword.dlpno_threshold`), not on the level, so
+      the recorded level's `keyword.general` holds only the user's `TightPNO` and the adapter
+      sends `pno_truncation: tight` while the deck carries both tokens. ARC also drops a level's
+      `args` when a troubleshooting job carries its own options (`set_job_args`) while
+      `output.yml` still records the level with them, and a Gaussian freq job can carry a second
+      `Integral` keyword beside the user's.
+    - The lookup is keyed on the level's `software`, and `level_qualifiers` returns nothing when
+      it is absent. The `output.yml` 1.3 per-record levels (`levels.*`, `conformer_levels`,
+      `conformer_energy_level`) carry `args` but no `software`, while the header levels
+      (`opt_level`, `freq_level`, `sp_level`, the conformer header levels) and
+      `atom_corrections_level` keep it. The same level therefore gets qualifiers in one
+      projection and none in another. With a mapped token in the `args` of 1.3 output this:
+        - draws a spurious `freq_scale_factor_fitted_for_other_level` (the record's `levels.freq`
+          against the header `freq_level`);
+        - fails the job-level comparison (`_same_arc_job_level`) between a per-record level and a
+          header level, so a conformer whose program is taken from the header
+          (`_stated_conformer_level`) is not filed and a conformer single point
+          (`_stated_conformer_sp`) is not built;
+        - gives a screened conformer's opt calculation (its level is given a program) and the
+          species' own opt calculation (its 1.3 level has none) different level identities at the
+          same level;
+        - stops `_one_electron_hf_substitution` matching (the energy level has no `software`, the
+          atom-corrections level has), so a hydrogen, deuterium or tritium atom's formation
+          enthalpy is refused with `enthalpy_atom_corrections_level_mismatch`.
+    - On output before 1.3 the requested (header) level is projected, and its `software` is the
+      requested program, while the calculation's program is the one ARC's banner identification
+      names. A requested ORCA level that ARC re-ran in another program therefore carries the ORCA
+      qualifiers of its `args` on a calculation that did not run in ORCA.
+    - No test sends a 1.3 level without `software` through these projections; the only
+      `software`-less case checks that `level_qualifiers` returns nothing.
+
 - A method containing `//` names two levels. It is never sent, and a calculation at such a
   level is not built (`level_method_is_compound`).
 - An Arkane level that is the name of a correction table (`cbs-qb3-paraskevas`) is sent as
@@ -382,7 +439,7 @@ key built from the calculation ref, the kind and the file's SHA-256.
 | Dipole moment and polarizability | The routes this adapter uses have no field for them. |
 | TS `statmech` on the reaction bundle | ARC's TS statmech record has not been mapped. |
 | `tunneling_application`, `interpretation_assignments`, `network_kinetics_ref` | Each cites a record deposited earlier, and a bundle cannot cite what it is creating. |
-| Typed level-of-theory qualifiers | ARC does not export the effective keyword line per job. See "Levels of theory". |
+| Typed level-of-theory qualifiers outside the mapped spellings | The spelling is ambiguous, has no one-to-one TCKDB value, or ARC does not export the effective keyword line per job. See "Levels of theory". |
 | Literature on correction schemes | ARC records no citation. |
 | `scale_kind`, `electronic_state_kind` | ARC does not state them. |
 | GSM `converged` and `is_climbing_image`; the geometries of NEB images other than the climbing image; the NEB-TS saddle point's energy and forces | The files ARC keeps do not hold them, or the contract has no field. See "Path-search points". |

@@ -10,6 +10,7 @@ from typing import Any
 
 from tckdb_schemas.fragments.refs import correction_table_method_stem
 from tckdb_arc.warning_codes import ArcWarning
+from tckdb_arc.level_qualifiers import level_qualifiers
 from tckdb_core import rules as _rules
 from tckdb_arc.levels import _canonical_level_args, _describe_level
 from tckdb_arc.calculations import (
@@ -94,7 +95,9 @@ def _arc_level_to_tckdb_lot(
     """Project ARC's per-job level dict (output.yml shape) onto TCKDB's
     ``LevelOfTheoryRef`` shape, applying field-name translation. ARC's ``args``
     are not sent: ``LevelOfTheoryRef`` has no free-text ``keywords`` since
-    tckdb-schemas 0.158 (the input deck and log carry the options).
+    tckdb-schemas 0.158 (the input deck and log carry the options). Only the typed
+    method qualifiers ``args`` state as a known whole token are sent
+    (:mod:`tckdb_arc.level_qualifiers`); nothing is sent from absence or defaults.
 
     A method that names a correction table (``cbs-qb3-paraskevas``, which ARC accepts as a
     composite method and runs as CBS-QB3) is sent as its stem (``cbs-qb3``): tckdb-schemas
@@ -125,6 +128,7 @@ def _arc_level_to_tckdb_lot(
         v = level.get(src)
         if v:
             out[dst] = str(v)
+    out.update(level_qualifiers(level))
     if split_table:
         stem = correction_table_method_stem(out["method"])
         if stem is not None:
