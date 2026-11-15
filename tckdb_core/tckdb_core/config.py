@@ -21,8 +21,10 @@ line still works regardless of the producer's input file.
 
 import os
 import shlex
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 
 class InputError(ValueError):
@@ -141,6 +143,9 @@ class TCKDBConfig:
     # knob yet; add one only when the TCKDB server has confirmed it
     # accepts ``transition_state=null`` payloads.
     allow_partial_uploads: bool = True
+    #: The upload's ``rights`` fragment (license, the depositor's attestation, optional source terms), sent with
+    #: every upload this configuration makes. ``None`` sends none.
+    rights: Mapping[str, Any] | None = None
 
     def resolve_api_key(self) -> str | None:
         """Resolve the API key from env or configured local files.

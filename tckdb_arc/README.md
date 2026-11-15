@@ -317,6 +317,8 @@ Adapter 0.11.0 (core extraction, batch L1; no behaviour change):
   the core config) and the CLI/sweep. Install `tckdb_core` before `tckdb_arc` when working from the checkout
   (`pip install -e tckdb_core -e tckdb_arc`).
 
+Adapter 0.15.6 (ships with core 0.5.6; needs `tckdb-adapters-core` `>=0.5.6,<0.6`): **a `rights` block in the `tckdb` block is sent as the upload's `rights` fragment** on every upload kind (conformer, computed species, computed reaction, transition state), validated against `tckdb_schemas.rights.DepositRights` when the config is read (a block it refuses is a config error). Without the block no `rights` fragment is sent, as before.
+
 Adapter 0.15.5 (tracks tckdb-schemas 0.174 / client 0.206, TCKDB c20b16a; ships with core 0.5.5) imports TCKDB's method-family classifier and method identity key from `tckdb_schemas` instead of replicating them; no behaviour change.
 
 Adapter 0.15.4 (tracks tckdb-schemas 0.173 / client 0.205, TCKDB f79e7f9; ships with core 0.5.4): **a one-electron participant's HF energy no longer blocks the kinetics energy level.** ORCA cannot run a correlated method on one electron, so ARC runs a free H atom at HF in the same basis; the block now declares the correlated level the other participants share and reports `one_electron_hf_substitution` (with `cabs_singles_correction: absent` for an F12 level). The adapter mirrors the server rule of TCKDB #915 (tckdb-schemas 0.173), which the pin now carries; against a TCKDB without it (including the mirror calvinp0/tckdbv2 until it carries f79e7f9) a live server refuses such a payload (`kinetics_energy_level_contradiction`). Releases 0.171 to 0.173 are read and judged in `docs/contract/CURRENT_ARC_INTEGRATION.md`.
