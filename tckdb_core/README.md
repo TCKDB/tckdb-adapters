@@ -102,7 +102,7 @@ them, and forwards the public names of its old modules with a `DeprecationWarnin
 
 ## What changed in 0.5.7
 
-No behaviour change in this package; released with adapter 0.15.7.
+No behaviour change in this package; released with adapter 0.15.7. The tckdb-schemas and client bounds and `TARGET_SCHEMAS_LINE` moved to 0.175 / 0.208.
 
 ## What changed in 0.5.6
 

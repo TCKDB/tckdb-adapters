@@ -7,10 +7,11 @@ written, so the block declares
 
 * ``direction: forward``;
 * ``determination``: the whole reaction, key scoped to the bundle's ``workflow_tool_release``;
-* ``applicability``: a rate coefficient, an elementary one, in the high-pressure limit, claimed by the
-  depositor's reading of ARC's contract.
+* ``applicability``: a rate coefficient, an elementary one, in the high-pressure limit, in the gas phase
+  unless a participant level states a solvent, claimed by the depositor's reading of ARC's contract.
 
-Nothing else is claimed (no phase, reaction order or ``protocol``). The selection assessment of TCKDB
+None of these is an output.yml field; the block's ``note`` and ``kinetics_declarations_interpreted`` say
+so. Nothing else is claimed (no reaction order or ``protocol``). The selection assessment of TCKDB
 is replicated for the four findings these fields clear; see ``_selection_findings``.
 """
 
@@ -44,7 +45,7 @@ DEMO_KINETICS = {
 
 
 def _doc(**kinetics):
-    doc = _doc13()
+    doc = copy.deepcopy(_doc13())
     doc["project"] = "demo_reaction"
     doc["reactions"][0]["kinetics"] = {**copy.deepcopy(DEMO_KINETICS), **kinetics}
     return doc
@@ -199,17 +200,49 @@ def test_a_rerun_with_other_sp_energies_gets_another_key(tmp_path):
     assert _key(tmp_path) != _key(tmp_path, mutate)
 
 
-def test_other_linked_calculation_keys_give_another_key(tmp_path):
+def test_renaming_the_bundle_local_calculation_keys_leaves_the_key_unchanged(tmp_path, monkeypatch):
+    before = _key_of(tmp_path, _doc())
+    original = adapter_module._calc_prefix_for_actor
+    monkeypatch.setattr(adapter_module, "_calc_prefix_for_actor",
+                        lambda *a, **k: "renamed_" + original(*a, **k))
+    payload, block = _build(tmp_path, _doc())
+    assert any(l["calculation_key"].startswith("renamed_") for l in block["source_calculations"])
+    assert block["determination"]["key"] == before
+
+
+@pytest.mark.parametrize("change", [
+    {"tunneling": "Wigner"}, {"A": 0.3}, {"n": 4.4}, {"Ea": 80.0}, {"T0_k": 300.0},
+    {"Tmin_k": 400.0}, {"Tmax_k": 2500.0}, {"n_data_points": 40}, {"A_units": "m^3/(mol*s)"},
+    {"Ea_units": "kcal/mol"}])
+def test_a_different_fit_of_the_same_energies_gets_another_key(tmp_path, change):
+    assert _key_of(tmp_path, _doc()) != _key_of(tmp_path, _doc(**change))
+
+
+def test_an_identical_doc_gets_the_same_key(tmp_path):
+    assert _key_of(tmp_path, _doc()) == _key_of(tmp_path, _doc())
+
+
+def test_a_changed_participant_level_gets_another_key(tmp_path):
     doc = _doc()
-    _, block = _build(tmp_path, doc)
-    calcs = {}
-    other = dict(block, source_calculations=[
-        {**link, "calculation_key": link["calculation_key"] + "_x"} for link in block["source_calculations"]])
-    one = adapter_module._kinetics_determination_key(
-        project="p", ts_label="TS", kinetics_block=block, calculations=calcs)
-    two = adapter_module._kinetics_determination_key(
-        project="p", ts_label="TS", kinetics_block=other, calculations=calcs)
-    assert one != two
+    for record in (*doc["species"], *doc["transition_states"]):
+        sp = (record.get("levels") or {}).get("sp")
+        if sp:
+            sp["basis"] = "other-basis"
+    assert _key_of(tmp_path, _doc()) != _key_of(tmp_path, doc)
+
+
+def _key_of(tmp_path, doc):
+    return _build(tmp_path, doc)[1]["determination"]["key"]
+
+
+def _solvate(doc, *, only_ts=False, skip_sp_software=False, key="solvation_method", value="smd"):
+    records = doc["transition_states"] if only_ts else (*doc["species"], *doc["transition_states"])
+    for record in records:
+        sp = (record.get("levels") or {}).get("sp")
+        if sp:
+            sp.update({"solvent": "water", key: value})
+        if skip_sp_software:
+            (record.get("ess_software") or {})["sp"] = None
 
 
 def test_a_solvated_participant_level_sends_no_phase(tmp_path):
@@ -227,10 +260,163 @@ def test_a_solvated_participant_level_sends_no_phase(tmp_path):
     assert block["applicability"]["pressure_dependence"] == "high_pressure_limit"
 
 
-def test_the_flag_off_declares_only_what_output_states(tmp_path, monkeypatch):
-    monkeypatch.setattr(adapter_module, "_DECLARE_ARKANE_PROVENANCE_FACTS", False)
+def _interpreted(payload_warnings):
+    return [w for w in payload_warnings if w["code"] == "kinetics_declarations_interpreted"]
+
+
+def _build_with_warnings(tmp_path, doc):
+    warnings = []
+    payload = _reaction_payload(_adapter(tmp_path), doc, warnings=warnings)
+    contract_validate(ComputedReactionUploadRequest, payload)
+    return payload, warnings
+
+
+def test_the_interpretation_is_reported_once_with_the_declared_facts(tmp_path):
+    payload, warnings = _build_with_warnings(tmp_path, _doc())
+    (found,) = _interpreted(warnings)
+    block = payload["kinetics"][0]
+    assert found["field"] == "kinetics[0]"
+    ctx = found["context"]
+    assert ctx["direction"] == "forward" and ctx["pressure_dependence"] == "high_pressure_limit"
+    assert ctx["phase"] == "gas" and ctx["determination_key"] == block["determination"]["key"]
+    assert found["message"] == NOTE_SENTENCE == adapter_module._kinetics_interpretation_sentence(block)
+
+
+def test_an_unstamped_fit_reports_no_interpretation(tmp_path):
+    payload, warnings = _build_with_warnings(tmp_path, _doc(tunneling=None))
+    assert _interpreted(warnings) == []
+    assert "output.yml states none" not in (payload["kinetics"][0].get("note") or "")
+
+
+def test_without_a_workflow_tool_the_warning_names_no_determination_key(tmp_path):
+    doc = _doc()
+    for key in ("arc_version", "arc_git_commit"):
+        doc.pop(key, None)
+    _, warnings = _build_with_warnings(tmp_path, doc)
+    (found,) = _interpreted(warnings)
+    assert "determination_key" not in found["context"]
+
+
+NOTE_SENTENCE = (
+    "Direction (forward), pressure dependence (high-pressure limit), phase (gas) and the determination "
+    "(one complete determination of the whole reaction) are the adapter's interpretation of ARC's Arkane "
+    "high-pressure-limit kinetics run; output.yml states none of them.")
+
+
+def test_the_note_carries_the_sentence_after_arkanes_own_comment(tmp_path):
     _, block = _build(tmp_path, _doc())
-    assert not {"direction", "determination"} & set(block)
-    assert block["applicability"] == {
-        "version": 1, "observable": "rate_coefficient", "coefficient_basis": "elementary_coefficient",
-        "claim_origin": "depositor_interpretation"}
+    assert block["note"].endswith(NOTE_SENTENCE)
+    assert DEMO_KINETICS["comment"] in block["note"]
+
+
+def test_a_solvated_participant_level_leaves_phase_out_of_note_and_warning(tmp_path):
+    doc = _doc()
+    for record in (*doc["species"], *doc["transition_states"]):
+        sp = (record.get("levels") or {}).get("sp")
+        if sp:
+            sp.update({"solvent": "water", "solvation_method": "cpcm"})
+    payload, warnings = _build_with_warnings(tmp_path, doc)
+    note = payload["kinetics"][0]["note"]
+    assert "phase" not in note
+    assert note.endswith(
+        "Direction (forward), pressure dependence (high-pressure limit) and the determination (one "
+        "complete determination of the whole reaction) are the adapter's interpretation of ARC's Arkane "
+        "high-pressure-limit kinetics run; output.yml states none of them.")
+    (found,) = _interpreted(warnings)
+    assert "phase" not in found["context"] and "phase" not in found["message"]
+
+
+def test_the_note_is_the_sentence_alone_when_the_run_states_no_comment(tmp_path):
+    doc = copy.deepcopy(_doc13())
+    doc["project"] = "demo_reaction"
+    doc["reactions"][0]["kinetics"] = {
+        **copy.deepcopy(DEMO_KINETICS), "comment": None, "atom_corrections_applied": None}
+    doc["reactions"][0].pop("long_kinetic_description", None)
+    _, block = _build(tmp_path, doc)
+    assert block["note"] == NOTE_SENTENCE
+
+
+def test_without_a_workflow_tool_the_sentence_omits_the_determination(tmp_path):
+    doc = _doc()
+    for key in ("arc_version", "arc_git_commit"):
+        doc.pop(key, None)
+    payload, _ = _build_with_warnings(tmp_path, doc)
+    note = payload["kinetics"][0]["note"]
+    assert "determination" not in note.splitlines()[-1]
+    assert note.splitlines()[-1].startswith("Direction (forward), pressure dependence (high-pressure limit) and phase (gas) are")
+
+
+@pytest.mark.parametrize("case", [
+    {},
+    {"key": "solvation_scheme_level", "value": "x"},
+])
+def test_a_solvated_level_whose_sp_calculation_was_skipped_still_withholds_phase(tmp_path, case):
+    doc = _doc()
+    _solvate(doc, skip_sp_software=True, **case)
+    payload, block = _build(tmp_path, doc)
+    assert "phase" not in block["applicability"]
+    assert block["applicability"]["pressure_dependence"] == "high_pressure_limit"
+
+
+def test_a_solvated_ts_level_alone_withholds_phase(tmp_path):
+    doc = _doc()
+    _solvate(doc, only_ts=True)
+    _, block = _build(tmp_path, doc)
+    assert "phase" not in block["applicability"]
+
+
+def test_a_solvated_header_level_withholds_phase(tmp_path):
+    doc = _doc()
+    doc["sp_level"] = {**(doc.get("sp_level") or {"method": "wb97xd", "basis": "def2-tzvp"}),
+                       "solvent": "water", "solvation_method": "smd"}
+    _, block = _build(tmp_path, doc)
+    assert "phase" not in block["applicability"]
+
+
+def test_a_level_asking_for_solvation_only_through_args_withholds_phase(tmp_path):
+    doc = _doc()
+    for record in (*doc["species"], *doc["transition_states"]):
+        sp = (record.get("levels") or {}).get("sp")
+        if sp:
+            sp["args"] = {"keyword": {"sp": "SCRF=(SMD,Solvent=Water)"}}
+    _, block = _build(tmp_path, doc)
+    assert "phase" not in block["applicability"]
+
+
+@pytest.mark.parametrize("args", ["cpcm(water)", {"block": {"sp": ["%CPCM"]}}, "COSMO", "pcm", "solvation"])
+def test_each_solvation_args_token_withholds_phase(tmp_path, args):
+    doc = _doc()
+    doc["sp_level"] = {**(doc.get("sp_level") or {"method": "wb97xd", "basis": "def2-tzvp"}), "args": args}
+    _, block = _build(tmp_path, doc)
+    assert "phase" not in block["applicability"]
+
+
+def test_args_without_solvation_tokens_still_send_phase(tmp_path):
+    doc = _doc()
+    for record in (*doc["species"], *doc["transition_states"]):
+        for level in (record.get("levels") or {}).values():
+            if isinstance(level, dict):
+                level["args"] = {"keyword": {"opt": "tight"}}
+    _, block = _build(tmp_path, doc)
+    assert block["applicability"]["phase"] == "gas"
+
+
+def test_a_solvated_adaptive_level_withholds_phase(tmp_path):
+    doc = _doc()
+    doc["adaptive_levels"] = [
+        {"atom_range": [1, "inf"],
+         "levels": {"sp": {"method": "wb97xd", "basis": "def2-tzvp", "solvation_method": "smd", "solvent": "water"}}}]
+    assert adapter_module._source_levels_state_solvation(doc, ())
+    doc["adaptive_levels"][0]["levels"]["sp"].pop("solvent")
+    doc["adaptive_levels"][0]["levels"]["sp"].pop("solvation_method")
+    assert not adapter_module._source_levels_state_solvation(doc, ())
+
+
+def test_a_solver_keyword_in_args_is_not_solvation(tmp_path):
+    doc = _doc()
+    for record in (*doc["species"], *doc["transition_states"]):
+        for level in (record.get("levels") or {}).values():
+            if isinstance(level, dict):
+                level["args"] = {"keyword": {"general": "solver_maxiter 100"}}
+    _, block = _build(tmp_path, doc)
+    assert block["applicability"]["phase"] == "gas"
