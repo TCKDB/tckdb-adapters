@@ -30,7 +30,7 @@ import os
 import re
 import time
 from collections import Counter
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
@@ -73,6 +73,7 @@ from tckdb_arc.idempotency import (
 from tckdb_arc.evidence import EvidenceStore
 from tckdb_core.constraints import serialize_constraints
 from tckdb_core.level_rules import method_identity_key
+from tckdb_core.method_families import ONE_ELECTRON_EXEMPT_FAMILIES, method_family
 from tckdb_core.payload_writer import (
     ArtifactSidecarMetadata,
     PayloadWriter,
@@ -1574,6 +1575,7 @@ class TCKDBAdapter(TCKDBUploaderBase):
             energy_level_unattributable=_energy_level_unattributable(output_doc, energy_level),
             energy_declaration=energy_declaration,
             legacy_cp_data=_is_output_schema_1_0(output_doc),
+            electron_count=_participant_electron_count(species_record),
         )
         # This route has no bundle-level analysis_software_release (the
         # reaction bundle does, and its thermo/statmech inherit it), so the
@@ -3057,6 +3059,24 @@ class TCKDBAdapter(TCKDBUploaderBase):
                 )
                 if declared is not None:
                     kinetics_block["energy_level_of_theory"] = declared
+                declarations = _kinetics_declarations(
+                    kinetics_payload, project=output_doc.get("project"),
+                    has_workflow_tool=_arc_workflow_tool_release(output_doc) is not None,
+                    ts_label=ts_label, kinetics_block=kinetics_block,
+                    output_doc=output_doc,
+                    source_records=[
+                        (label, species_index.get(label))
+                        for label in (*reactant_labels, *product_labels)
+                    ] + ([(ts_label, ts_index.get(ts_label))] if ts_label else []),
+                    calculations=_calculations_by_key(
+                        *(c for b in species_blocks
+                          for c in [b["conformers"][0]["calculation"], *b.get("calculations", ())]),
+                        (ts_block or {}).get("calculations") or (),
+                        *((ts_block["calculation"],) if ts_block and ts_block.get("calculation") else ())))
+                kinetics_block.update(declarations)
+                _note_kinetics_declarations_interpreted(
+                    kinetics_block, declarations, warnings=warnings,
+                    field=f"kinetics[{len(kinetics_blocks)}]")
                 kinetics_blocks.append(kinetics_block)
 
         bundle: dict[str, Any] = {
@@ -3096,15 +3116,9 @@ class TCKDBAdapter(TCKDBUploaderBase):
             # for non-canonical ones.
             bundle["reaction_family_source_note"] = "ARC-reported family"
 
-        arc_version = output_doc.get("arc_version")
-        arc_git_commit = output_doc.get("arc_git_commit")
-        if arc_version or arc_git_commit:
-            wt: dict[str, Any] = {"name": "ARC"}
-            if arc_version:
-                wt["version"] = str(arc_version)
-            if arc_git_commit:
-                wt["git_commit"] = str(arc_git_commit)
-            bundle["workflow_tool_release"] = wt
+        workflow_tool = _arc_workflow_tool_release(output_doc)
+        if workflow_tool is not None:
+            bundle["workflow_tool_release"] = workflow_tool
 
         analysis_release = _arc_analysis_software_release(output_doc)
         if analysis_release is not None:
@@ -3370,6 +3384,7 @@ class TCKDBAdapter(TCKDBUploaderBase):
             energy_level_unattributable=_energy_level_unattributable(output_doc, energy_level),
             energy_declaration=energy_declaration,
             legacy_cp_data=_is_output_schema_1_0(output_doc),
+            electron_count=_participant_electron_count(species_record),
         )
         if thermo_block is not None:
             species_block["thermo"] = thermo_block
@@ -6866,19 +6881,49 @@ def _level_field_unverifiable_error(
     return None
 
 
+def _one_electron_hf_substitution(
+    energy_level: Mapping[str, Any] | None,
+    corrections_level: Mapping[str, Any] | None,
+    electron_count: int | None,
+) -> bool:
+    """Whether a one-electron species' Hartree-Fock energy stands for the correlated corrections level.
+
+    The same exemption the kinetics energy-level rule has (``tckdb_core.rules``): the species has
+    exactly one electron (``electron_count``, ``None`` when not known, grants none), its energy
+    level's method identifies as Hartree-Fock, the atom-corrections level's method classifies as
+    ``wavefunction`` or ``multireference`` (``tckdb_core.method_families``), and every other
+    identity field of the two levels (basis, auxiliary and CABS basis, dispersion, solvent and
+    solvent model) is equal on TCKDB's projection. Every correlation term vanishes for one
+    electron, so the atom energy subtracted at the correlated level is the HF energy in the same
+    basis (an F12 level's CABS singles term aside).
+    """
+    if isinstance(electron_count, bool) or electron_count != 1:
+        return False
+    energy = _arc_level_to_tckdb_lot(energy_level)
+    corrections = _arc_level_to_tckdb_lot(corrections_level)
+    if energy is None or corrections is None or method_identity_key(energy["method"]) != "hf":
+        return False
+    if method_family(corrections.get("method")) not in ONE_ELECTRON_EXEMPT_FAMILIES:
+        return False
+    return ({k: v for k, v in energy.items() if k != "method"}
+            == {k: v for k, v in corrections.items() if k != "method"})
+
+
 def _enthalpy_validity_error(
     block: Mapping[str, Any],
     thermo_record: Mapping[str, Any],
     energy_level: Mapping[str, Any] | None,
     header_corrections_level: Any = None,
     element_symbols: Any = None,
+    electron_count: int | None = None,
 ) -> tuple[str, str, dict[str, str]] | None:
     """Return why the block's enthalpies are not formation_298k, or ``None``.
 
     Returns ``(code, message, extra warning context)``. Reads ARC's recorded
     atom-correction switch and level first. A switch that was on still
     needs ``atom_corrections_level`` to be the energy level
-    (``_level_identity``), and a match cannot be verified when either level
+    (``_level_identity``; a one-electron species at Hartree-Fock under a wavefunction or
+    multireference corrections level is accepted, ``_one_electron_hf_substitution``), and a match cannot be verified when either level
     sets a dispersion or solvation field ARC's matching ignores; the
     non-finite and magnitude checks follow.
 
@@ -6902,7 +6947,8 @@ def _enthalpy_validity_error(
     if applied is True:
         corrections_level = thermo_record.get("atom_corrections_level")
         corrections_key = _level_identity(corrections_level)
-        if corrections_key is None or corrections_key != _level_identity(energy_level):
+        if (corrections_key is None or corrections_key != _level_identity(energy_level)) \
+                and not _one_electron_hf_substitution(energy_level, corrections_level, electron_count):
             return (
                 _W_ENTHALPY_ATOM_CORRECTIONS_LEVEL_MISMATCH,
                 f"Arkane subtracted the atom energies of "
@@ -7041,6 +7087,7 @@ def _build_thermo_block(
     energy_level_unattributable: bool = False,
     energy_declaration: tuple[str, Mapping[str, Any]] | None = None,
     legacy_cp_data: bool = False,
+    electron_count: int | None = None,
 ) -> dict[str, Any] | None:
     """Build a ``target_model``-shaped thermo dict from ``output.yml`` thermo data.
 
@@ -7087,6 +7134,12 @@ def _build_thermo_block(
     finished block is checked with the shared ``enthalpy_reference_error``
     rule; a refused block is never emitted: ``None`` is returned and the
     refusal is appended to ``warnings`` with action ``thermo_omitted``.
+
+    ``electron_count`` is the species' electrons from its own composition and charge
+    (``_participant_electron_count``). A one-electron species computed at Hartree-Fock under
+    a wavefunction or multireference ``atom_corrections_level`` that otherwise equals its
+    energy level keeps its enthalpy (``_one_electron_hf_substitution``) and is reported as
+    ``one_electron_hf_substitution``; every other level mismatch is refused as before.
 
     ``calc_keys_by_role`` maps roles to the actual bundle-local keys.
     Both roots accept source links; reaction participants use their own
@@ -7187,12 +7240,21 @@ def _build_thermo_block(
             )
             if energy_level_unattributable else
             _enthalpy_validity_error(
-                block, thermo_record, energy_level, header_corrections_level, element_symbols)
+                block, thermo_record, energy_level, header_corrections_level, element_symbols,
+                electron_count)
         )
         if enthalpy_refusal is not None:
             refusals.append(enthalpy_refusal)
             _strip_enthalpy_content(block)
     keep = has_content()
+    # The enthalpy survived only because a one-electron HF energy stands for the correlated
+    # corrections level: said once the block's fate is known.
+    hf_substitution = (
+        keep and _has_enthalpy_content(block)
+        and thermo_record.get("atom_corrections_applied") is True
+        and _level_identity(thermo_record.get("atom_corrections_level")) != _level_identity(energy_level)
+        and _one_electron_hf_substitution(
+            energy_level, thermo_record.get("atom_corrections_level"), electron_count))
 
     # Why the entropy's standard state is not stated, when it is not.
     pressure_unstated: str | None = None
@@ -7245,6 +7307,22 @@ def _build_thermo_block(
             warnings.append(_self_check(
                 code, message, warning_field,
                 {"action": action, **extra_context}))
+    if keep and hf_substitution and warnings is not None:
+        corrections = _arc_level_to_tckdb_lot(thermo_record.get("atom_corrections_level")) or {}
+        context: dict[str, str] = {
+            "action": "one_electron_hf_enthalpy_accepted",
+            "energy_level": _describe_level(energy_level),
+            "atom_corrections_level": _describe_level(thermo_record.get("atom_corrections_level"))}
+        message = (
+            "This one-electron species' energy was computed at Hartree-Fock in the same basis as the "
+            "atom-corrections level, so the atom energy Arkane subtracted equals it (every correlation "
+            "term vanishes for one electron) and the enthalpy is kept as a formation enthalpy.")
+        if "f12" in method_identity_key(str(corrections.get("method") or "")):
+            context["cabs_singles_correction"] = "absent"
+            message += (" The HF energy omits the F12 CABS singles correction "
+                        "(about 0.05 to 0.1 mEh for H).")
+        warnings.append(_self_check(
+            ArcWarning.ONE_ELECTRON_HF_SUBSTITUTION.value, message, warning_field, context))
     if keep and pressure_unstated is not None:
         message = (
             "ARC did not record the standard-state pressure its entropies were "
@@ -8729,6 +8807,260 @@ def _stringify_tunneling_model(value: object) -> str | None:
 
 # ``BundleKineticsIn.t0_k``: 0 < t0_k <= 10000 K (tckdb-schemas 0.63).
 _MAX_ARRHENIUS_T0_K = 10000.0
+
+
+#: The source-scoped key prefix of the determination a fit of ARC's Arkane kinetics run is one
+#: representation of (``KineticsDeterminationDeclaration.key``); see ``_kinetics_declarations``.
+_KINETICS_DETERMINATION_KEY = "arkane_kinetics"
+
+#: Substrings of a level's free-form ``args`` (an object, a string or null) that say a solvent was
+#: requested: ``scrf`` (Gaussian), ``cpcm`` and ``smd`` (ORCA, Gaussian), ``pcm``, ``cosmo``, and
+#: ``solvent`` and ``solvation`` (not the bare ``solv``, which matches Psi4's ``solver_maxiter``). The text is lowercased first. A false positive only withholds
+#: ``phase``, the safe direction.
+_SOLVATION_ARGS_TOKENS = ("scrf", "cpcm", "smd", "pcm", "cosmo", "solvent", "solvation")
+
+
+def _level_states_solvation(level: Any) -> bool:
+    """Whether an output.yml level dict states solvation.
+
+    By ``solvent``, ``solvation_method`` or ``solvation_scheme_level``, or by a ``args`` whose
+    text (dicts and lists stringified, lowercased) contains one of ``_SOLVATION_ARGS_TOKENS``.
+    """
+    if not isinstance(level, Mapping):
+        return False
+    if any(level.get(k) for k in ("solvent", "solvation_method", "solvation_scheme_level")):
+        return True
+    args = level.get("args")
+    if args:
+        text = json.dumps(args, default=str).lower()
+        return any(token in text for token in _SOLVATION_ARGS_TOKENS)
+    return False
+
+
+def _any_level_states_solvation(node: Any) -> bool:
+    """``_level_states_solvation`` for a mapping or any level dict nested in a list or mapping."""
+    if isinstance(node, Mapping):
+        return _level_states_solvation(node) or any(
+            _any_level_states_solvation(v) for v in node.values())
+    if isinstance(node, (list, tuple)):
+        return any(_any_level_states_solvation(v) for v in node)
+    return False
+
+
+def _participant_levels_state_solvent(calculations: Iterable[Mapping[str, Any]]) -> bool:
+    """Whether any built calculation's level of theory states a ``solvent`` or ``solvent_model``."""
+    for calc in calculations:
+        level = calc.get("level_of_theory") if isinstance(calc, Mapping) else None
+        if isinstance(level, Mapping) and (level.get("solvent") or level.get("solvent_model")):
+            return True
+    return False
+
+
+def _header_levels(output_doc: Mapping[str, Any] | None) -> dict[str, Any]:
+    """output.yml's header-level dicts (``*_level`` keys and ``composite_method``), verbatim."""
+    if not isinstance(output_doc, Mapping):
+        return {}
+    return {k: v for k, v in output_doc.items()
+            if isinstance(v, Mapping) and (k == "composite_method" or str(k).endswith("_level"))}
+
+
+def _source_levels_state_solvation(
+    output_doc: Mapping[str, Any] | None, source_records: Iterable[tuple[Any, Any]],
+) -> bool:
+    """Whether output.yml states solvation for the header levels or any participant's own ``levels``.
+
+    Read from the source, not from the calculations the adapter built: a calculation skipped
+    for a missing program still had the level ARC stated for it. Read: the header levels, every
+    level dict inside ``adaptive_levels`` (a list of ``{atom_range, levels: {job types: level}}``,
+    which also covers pre-1.3 documents with no record ``levels``) and each participant's
+    ``levels``. A level states solvation as ``_level_states_solvation`` defines it.
+    """
+    if any(_level_states_solvation(v) for v in _header_levels(output_doc).values()):
+        return True
+    if isinstance(output_doc, Mapping) and _any_level_states_solvation(output_doc.get("adaptive_levels")):
+        return True
+    for _, record in source_records:
+        levels = arc13.levels_of(record)
+        if levels is not None and any(_level_states_solvation(v) for v in levels.values()):
+            return True
+    return False
+
+
+def _kinetics_determination_key(
+    *, project: Any, ts_label: Any, kinetics_record: Mapping[str, Any],
+    kinetics_block: Mapping[str, Any], output_doc: Mapping[str, Any] | None = None,
+    source_records: Iterable[tuple[Any, Any]] = (),
+) -> str:
+    """``arkane_kinetics:<project>:<ts_label>:<digest>``, scoped to the computation.
+
+    TCKDB identifies a determination by reaction entry, direction, target, source and key, and
+    fits of one determination are not independent support for each other, so two runs (a rerun
+    under the same project name and ARC release) must not share a key, and neither may two
+    different fits of the same energies. The digest (12 hex of SHA-256) covers output.yml
+    values only, not the adapter's own projections of them, so a later change to the adapter's
+    mapping, or its bundle-local calculation keys, does not give one ARC run a new key: the fit (``tunneling``, ``A``, ``A_units``,
+    ``n``, ``Ea``, ``Ea_units``, ``T0_k``, ``Tmin_k``, ``Tmax_k``, ``n_data_points``, whichever
+    the record states), the header-level dicts, and each participant's label, ``levels`` object and stated energies
+    (``sp_energy_hartree``, ``opt_final_energy_hartree``). It is deterministic for one bundle.
+    A key over 128 characters is replaced by the prefix and a digest of all its parts.
+    """
+    fit = {k: kinetics_record.get(k) for k in _KINETICS_FIT_KEYS if kinetics_record.get(k) is not None}
+    participants = [
+        {"label": str(label),
+         "levels": arc13.levels_of(record),
+         "sp_energy_hartree": record.get("sp_energy_hartree"),
+         "opt_final_energy_hartree": record.get("opt_final_energy_hartree")}
+        for label, record in source_records if isinstance(record, Mapping)]
+    digest = hashlib.sha256(json.dumps(
+        {"fit": fit, "participants": participants,
+         "header_levels": _header_levels(output_doc)},
+        sort_keys=True, default=str).encode()).hexdigest()[:12]
+    parts = [str(project).strip() if isinstance(project, str) and project.strip() else None,
+             str(ts_label) if ts_label else None]
+    key = ":".join([_KINETICS_DETERMINATION_KEY, *(p for p in parts if p), digest])
+    if len(key) > 128:
+        key = f"{_KINETICS_DETERMINATION_KEY}:" + hashlib.sha256(key.encode()).hexdigest()[:16]
+    return key
+
+
+#: The kinetics record's fitted content, digested into the determination key.
+_KINETICS_FIT_KEYS = ("tunneling", "A", "A_units", "n", "Ea", "Ea_units", "T0_k", "Tmin_k", "Tmax_k",
+                      "n_data_points")
+
+
+def _kinetics_declarations(
+    kinetics_record: Mapping[str, Any],
+    *,
+    project: Any,
+    has_workflow_tool: bool,
+    ts_label: Any = None,
+    kinetics_block: Mapping[str, Any] | None = None,
+    calculations: Mapping[str, Mapping[str, Any]] | None = None,
+    output_doc: Mapping[str, Any] | None = None,
+    source_records: Iterable[tuple[Any, Any]] = (),
+) -> dict[str, Any]:
+    """The ``direction``, ``determination`` and ``applicability`` of a fit ARC's Arkane run produced.
+
+    Only a fit whose ``tunneling`` ARC stamped is declared: output.yml states that key only for
+    parameters fitted by the Arkane kinetics run (null for user-supplied, restored or
+    non-Arkane kinetics). A fit without the stamp declares none.
+
+    None of what is declared is a field of output.yml. The stamp is the only output.yml fact
+    used, as the gate. What is sent is the adapter's interpretation of ARC's documented
+    provenance, accepted for this producer: ARC's kinetics run is Arkane's
+    ``compute_high_p_rate_coefficient`` job on a reaction written as ``reactants -> products``
+    (``arc/statmech/arkane.py``), and Arkane's statistical mechanics is gas-phase.
+
+    * ``applicability``: observable ``rate_coefficient``, coefficient basis
+      ``elementary_coefficient`` (output.yml's ``T0_k`` row writes ``k = A (T/T0)**n
+      exp(-Ea/RT)``), ``pressure_dependence: high_pressure_limit`` (the job computes the
+      high-pressure-limit rate coefficient), and ``phase: gas`` only when no level states
+      solvation: neither a built calculation's (``solvent``, ``solvent_model``) nor, read from
+      output.yml, a header level's or a participant's own ``levels`` entry (``solvent``,
+      ``solvation_method``, ``solvation_scheme_level``), so a calculation skipped for a missing
+      program still withholds it (a solvated level says nothing of the phase here). Its ``claim_origin`` is ``depositor_interpretation``, which marks the
+      pressure dependence and the phase as interpretation;
+    * ``direction: forward``: the fit is of the reaction as written, never a reverse fit;
+    * ``determination``: one complete determination of the whole reaction, keyed within the
+      bundle's ``workflow_tool_release`` (TCKDB refuses a determination without a literature or
+      workflow tool, so with no release none is sent); the key is scoped to the computation
+      (``_kinetics_determination_key``).
+
+    ``direction`` and ``determination`` have no origin field in the schema, so the caller marks
+    the interpretation, determination included, on the block's ``note`` and with
+    ``kinetics_declarations_interpreted``
+    (``_note_kinetics_declarations_interpreted``).
+
+    Not sent, because ARC states none of it: the reaction order, the method kind, the barrier
+    basis, the zero-point, rotor, conformer and path treatments (no ``protocol``).
+    """
+    tunneling = kinetics_record.get("tunneling")
+    if not isinstance(tunneling, str) or not tunneling.strip():
+        return {}
+    applicability: dict[str, Any] = {
+        "version": 1,
+        "observable": "rate_coefficient",
+        "coefficient_basis": "elementary_coefficient",
+        "claim_origin": "depositor_interpretation",
+    }
+    out: dict[str, Any] = {"applicability": applicability}
+    out["direction"] = "forward"
+    applicability["pressure_dependence"] = "high_pressure_limit"
+    calcs = calculations or {}
+    records = list(source_records)
+    if not (_participant_levels_state_solvent(calcs.values())
+            or _source_levels_state_solvation(output_doc, records)):
+        applicability["phase"] = "gas"
+    if has_workflow_tool:
+        out["determination"] = {
+            "key": _kinetics_determination_key(
+                project=project, ts_label=ts_label, kinetics_record=kinetics_record,
+                kinetics_block=kinetics_block or {}, output_doc=output_doc,
+                source_records=records),
+            "target_kind": "whole_reaction", "representation_role": "complete"}
+    return out
+
+
+_PRESSURE_DEPENDENCE_WORDS = {"high_pressure_limit": "high-pressure limit"}
+
+
+def _kinetics_interpretation_sentence(declarations: Mapping[str, Any]) -> str | None:
+    """The sentence naming what ``_kinetics_declarations`` sent as the adapter's interpretation.
+
+    ``None`` when no direction was declared. Names the direction, the pressure dependence, the
+    phase when sent and the determination when sent. The note and the warning both use it.
+    """
+    direction = declarations.get("direction")
+    if direction is None:
+        return None
+    applicability = declarations.get("applicability") or {}
+    pressure = applicability.get("pressure_dependence")
+    facts = [f"direction ({direction})",
+             f"pressure dependence ({_PRESSURE_DEPENDENCE_WORDS.get(pressure, pressure)})"]
+    if applicability.get("phase") is not None:
+        facts.append(f"phase ({applicability['phase']})")
+    if declarations.get("determination") is not None:
+        facts.append("the determination (one complete determination of the whole reaction)")
+    sentence = (
+        f"{', '.join(facts[:-1])} and {facts[-1]} are the adapter's interpretation of ARC's "
+        "Arkane high-pressure-limit kinetics run; output.yml states none of them.")
+    return sentence[0].upper() + sentence[1:]
+
+
+def _note_kinetics_declarations_interpreted(
+    kinetics_block: dict[str, Any],
+    declarations: Mapping[str, Any],
+    *,
+    warnings: list[dict[str, Any]] | None,
+    field: str,
+) -> None:
+    """Mark the declared direction, pressure dependence, phase and determination as interpretation.
+
+    ``KineticsDirection`` and ``KineticsDeterminationDeclaration`` carry no origin field, so
+    when ``_kinetics_declarations`` sent a direction this appends
+    ``_kinetics_interpretation_sentence`` to the block's ``note`` (never altering what is already
+    there; ``BundleKineticsIn.note`` has no length limit) and reports
+    ``kinetics_declarations_interpreted`` on ``field`` with the same sentence. Nothing is done
+    for a block that declared nothing.
+    """
+    sentence = _kinetics_interpretation_sentence(declarations)
+    if sentence is None:
+        return
+    existing = kinetics_block.get("note")
+    kinetics_block["note"] = f"{existing}\n{sentence}" if existing else sentence
+    if warnings is not None:
+        applicability = declarations.get("applicability") or {}
+        context: dict[str, Any] = {
+            "action": "kinetics_declarations_sent_as_interpretation",
+            "direction": declarations["direction"],
+            "pressure_dependence": applicability.get("pressure_dependence")}
+        if applicability.get("phase") is not None:
+            context["phase"] = applicability["phase"]
+        key = (declarations.get("determination") or {}).get("key")
+        if key:
+            context["determination_key"] = key
+        warnings.append(_self_check(
+            ArcWarning.KINETICS_DECLARATIONS_INTERPRETED.value, sentence, field, context))
 
 
 def _build_kinetics_block(

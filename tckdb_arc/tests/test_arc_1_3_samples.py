@@ -168,10 +168,12 @@ def test_the_sample_reaction_states_reversibility_and_the_kinetics_provenance(tm
     payload, _ = _reaction(tmp_path, doc)
     assert payload["reversible"] is True
     (kinetics,) = payload["kinetics"]
+    from tckdb_arc.adapter import _kinetics_interpretation_sentence
     assert kinetics["note"].splitlines() == [
         "Fitted by Arkane over 300-2000 K.",
         "Fitted to 50 data points; dA = *|/ 1.48",
         "Arkane kinetics run atom energy corrections: applied.",
+        _kinetics_interpretation_sentence(kinetics),
     ]
     assert kinetics["tunneling_model"] == "eckart"
     # ts_validation is null (no IRC failure found), so nothing about validation is claimed here.

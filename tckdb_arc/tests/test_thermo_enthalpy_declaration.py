@@ -349,8 +349,12 @@ def test_refused_reaction_thermo_is_omitted_and_never_sent(tmp_path, refused_dec
     contract_validate(ComputedReactionUploadRequest, posted[0])
     species_keys = [sp["key"] for sp in posted[0]["species"]]
     producer = [w for w in outcome.warnings if w.get("context", {}).get("source") == "tckdb_arc_self_check"]
-    assert [w["field"] for w in producer] == [f"species[{key}].thermo" for key in species_keys]
-    assert {w["code"] for w in producer} == {"enthalpy_reference_kind_unrecognized"}
+    # The reaction's Arkane-stamped kinetics fit also reports its interpreted declarations.
+    interpreted = [w for w in producer if w["code"] == "kinetics_declarations_interpreted"]
+    assert [w["field"] for w in interpreted] == ["kinetics[0]"]
+    producer_thermo = [w for w in producer if w["code"] != "kinetics_declarations_interpreted"]
+    assert [w["field"] for w in producer_thermo] == [f"species[{key}].thermo" for key in species_keys]
+    assert {w["code"] for w in producer_thermo} == {"enthalpy_reference_kind_unrecognized"}
     # Producer findings precede the server's, and both reach the sidecar.
     assert outcome.warnings == [*producer, server_warning]
     assert json.loads(outcome.sidecar_path.read_text())["warnings"] == outcome.warnings

@@ -417,7 +417,8 @@ def test_the_kinetics_note_carries_the_arkane_comment_the_ts_validation_and_the_
     assert "Fitted to 50 data points; dA = *|/ 1.48" in lines
     # The marker already ends the comment, so it is not repeated.
     assert kinetics["note"].count("TS failed the IRC check") == 1
-    assert lines[-1].startswith("Arkane kinetics run atom energy corrections: applied.")
+    assert lines[-2].startswith("Arkane kinetics run atom energy corrections: applied.")
+    assert lines[-1] == adapter_module._kinetics_interpretation_sentence(kinetics)
 
 
 def test_a_ts_validation_the_comment_does_not_carry_is_added_to_the_note(tmp_path):
@@ -441,12 +442,19 @@ def test_an_unstated_switch_and_absent_comment_leave_only_the_description(tmp_pa
     kinetics = doc["reactions"][0]["kinetics"]
     kinetics.update(atom_corrections_applied=None, comment=None, ts_validation=None)
     payload, _ = build_reaction(tmp_path, doc)
-    assert payload["kinetics"][0]["note"] == "Fitted by Arkane over 300-3000 K."
+    # The fit is Arkane-stamped, so the interpretation sentence follows the description.
+    assert payload["kinetics"][0]["note"].splitlines() == [
+        "Fitted by Arkane over 300-3000 K.",
+        adapter_module._kinetics_interpretation_sentence(payload["kinetics"][0])]
 
 
 def test_the_kinetics_keys_are_not_read_before_1_3(tmp_path):
     payload, _ = build_reaction(tmp_path, _doc("1.2"))
-    assert payload["kinetics"][0]["note"] == "Fitted by Arkane over 300-3000 K."
+    # Only the description is read before 1.3 (no comment, ts_validation or switch line); a
+    # stamped fit still gets the interpretation sentence.
+    assert payload["kinetics"][0]["note"].splitlines() == [
+        "Fitted by Arkane over 300-3000 K.",
+        adapter_module._kinetics_interpretation_sentence(payload["kinetics"][0])]
     assert "reversible" not in payload  # the schema default applies; 1.3 states it (below)
 
 

@@ -20,6 +20,7 @@ from unittest import mock
 
 from _contract import contract_validate
 from tckdb_arc.adapter import (
+    _kinetics_interpretation_sentence,
     ARTIFACTS_ENDPOINT_TEMPLATE,
     ArtifactUploadOutcome,
     COMPUTED_REACTION_ENDPOINT,
@@ -5996,6 +5997,16 @@ class TestComputedReactionBundle(unittest.TestCase):
                 contract_validate(ComputedReactionUploadRequest, payload)
 
     # ---------------- note from long_kinetic_description
+    # The demo fit is stamped by the Arkane run, so its note ends with the adapter's
+    # interpretation sentence; these tests read the note without it.
+    @staticmethod
+    def _note_without_interpretation(kinetics):
+        """The note minus the adapter's interpretation sentence, which must be there."""
+        sentence = _kinetics_interpretation_sentence(kinetics)
+        note = kinetics.get("note") or ""
+        assert note == sentence or note.endswith("\n" + sentence), note
+        return note.removesuffix(sentence).removesuffix("\n") or None
+
     def test_kinetics_note_from_long_kinetic_description(self):
         # ARCReaction.long_kinetic_description lives at the reaction
         # level in ARC but maps to ``KineticsCreate.note`` in TCKDB.
@@ -6003,7 +6014,7 @@ class TestComputedReactionBundle(unittest.TestCase):
         rxn["long_kinetic_description"] = "Refit at CCSD(T)-F12/cc-pVTZ-F12"
         _, _, payload = self._submit(reaction=rxn)
         self.assertEqual(
-            payload["kinetics"][0]["note"],
+            self._note_without_interpretation(payload["kinetics"][0]),
             "Refit at CCSD(T)-F12/cc-pVTZ-F12",
         )
 
@@ -6013,14 +6024,15 @@ class TestComputedReactionBundle(unittest.TestCase):
         rxn = _reaction_record()
         rxn["kinetics"]["note"] = "Hand-tuned barrier"
         _, _, payload = self._submit(reaction=rxn)
-        self.assertNotIn("note", payload["kinetics"][0])
+        self.assertIsNone(self._note_without_interpretation(payload["kinetics"][0]))
         rxn["long_kinetic_description"] = "from the reaction"
         _, _, payload = self._submit(reaction=rxn)
-        self.assertEqual(payload["kinetics"][0]["note"], "from the reaction")
+        self.assertEqual(
+            self._note_without_interpretation(payload["kinetics"][0]), "from the reaction")
 
     def test_kinetics_note_omitted_when_absent(self):
         _, _, payload = self._submit()
-        self.assertNotIn("note", payload["kinetics"][0])
+        self.assertIsNone(self._note_without_interpretation(payload["kinetics"][0]))
 
     def test_kinetics_note_empty_string_omits(self):
         # Empty / whitespace-only descriptions produce no note rather
@@ -6028,7 +6040,7 @@ class TestComputedReactionBundle(unittest.TestCase):
         rxn = _reaction_record()
         rxn["long_kinetic_description"] = "   "
         _, _, payload = self._submit(reaction=rxn)
-        self.assertNotIn("note", payload["kinetics"][0])
+        self.assertIsNone(self._note_without_interpretation(payload["kinetics"][0]))
 
     # ---------------- 6: dA → multiplicative a_uncertainty, dn → n_uncertainty,
     #                     dEa → d_reported_ea

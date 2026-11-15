@@ -69,6 +69,8 @@ and schema versions; their percentages are not current coverage measurements.
   [Release by release](#release-by-release-does-it-affect-the-adapter) (rows 0.162 to 0.174).
 - **Adapter 0.15.4, one-electron Hartree-Fock links (`tckdb_core` 0.5.4; tracked TCKDB `f79e7f94`, tckdb-schemas 0.173.0, client 0.205.0, which carries the server rule):** a free H atom run at HF in the same basis no longer blocks the kinetics `energy_level_of_theory`; the correlated level is declared and `one_electron_hf_substitution` says so. See
   [One-electron Hartree-Fock links (adapter 0.15.4)](#one-electron-hartree-fock-links-adapter-0154).
+- **Adapter 0.15.7, kinetics declarations and the H atom at HF (`tckdb_core` 0.5.7; same pin, TCKDB `c20b16a9`):** a fit ARC's Arkane run produced now states its `direction`, a `determination` and an `applicability`; a one-electron species at HF keeps its enthalpy under a correlated atom-corrections level. See
+  [Kinetics declarations and the H atom at HF (adapter 0.15.7)](#kinetics-declarations-and-the-h-atom-at-hf-adapter-0157).
 - **Adapter 0.15.2, ORCA routes are not compared with the level (same pin, `tckdb_core` 0.5.2):** the route-versus-level check runs only for jobs the record states ran in
   Gaussian, so an ORCA auxiliary-basis token (`aug-cc-pvtz/c`) is no longer read as a method/basis pair. See "Placeholders and contradictions" above.
 - **Adapter 0.6.3:** roadmap A1, A5 and A12 (see "Corrections and statmech
@@ -1299,3 +1301,56 @@ dropping the family condition fails the B3LYP, B2PLYP, G4, CBS-QB3 and unclassif
 TCKDB kept `missing_literature_provenance` for a correction scheme that states only `software` and `data_revision`: an RMG-database commit pins the numbers, not the paper they come from.
 The adapter keeps sending **no** `scheme.source_literature` (it will not attribute a DOI by guessing), so that warning remains on `arc_1_2_corrections`-shaped deposits. The honest path is
 for RMG-database or ARC to state the DOIs in machine-readable form: request A10 in `ARC_TCKDB_EXPORT_BRIEF.md`.
+
+## Kinetics declarations and the H atom at HF (adapter 0.15.7)
+
+### What a fit ARC's Arkane run declares
+
+A kinetics record states its `direction`, `determination` and `applicability` so a selection can assess it. A fit declares
+them only when its `reactions[].kinetics.tunneling` is a string: output.yml documents that key as stamped by the Arkane
+kinetics run that fitted `A`/`n`/`Ea`, and null for user-supplied, restored or non-Arkane kinetics. ARC's kinetics run is
+`compute_high_p_rate_coefficient` (`arc/statmech/arkane.py`): the Arkane input is `reaction(label, reactants, products,
+transitionState, tunneling)` and `kinetics(label, Tmin, Tmax, Tcount)`, read back by `parse_reaction_kinetics`, which stamps
+`tunneling`. A fit without the stamp declares nothing. What goes out for the four runs checked (a bimolecular
+H-abstraction by OH, and three reactions with a free H atom; all output.yml 1.3, all `tunneling: Eckart`). Direction,
+determination and pressure dependence (and the phase) rest on the documented provenance of the block, not on an output.yml
+field, and are the adapter's interpretation. The schema's only origin marker is the applicability's `claim_origin`
+(`depositor_interpretation`); `direction` and `determination` have none, so the kinetics `note` ends with one sentence stating
+the direction, pressure dependence, the determination and (when sent) the phase are the adapter's interpretation, and the sidecar carries one
+`kinetics_declarations_interpreted` warning per such block:
+
+| Fact | Sent | Where it is stated | Notes |
+|---|---|---|---|
+| Direction | `direction: "forward"` | ARC source: the kinetics run is written on the reaction as `reactants -> products`, and `reactant_keys`/`product_keys` follow ARC's species order; ARC has no reverse fit. output_yml_schema.md's `kinetics` rows do not name a direction | Not stated in output.yml; this is the reading of ARC's code |
+| Determination | `{key: "arkane_kinetics:<project>:<ts_label>:<digest>", target_kind: "whole_reaction", representation_role: "complete"}` | The `tunneling` stamp (Arkane kinetics run), output_yml_schema.md `kinetics.tunneling` and `atom_corrections_applied` rows | A locator only. The key is scoped to the computation: the digest (12 hex of SHA-256) covers output.yml values only (not the adapter's projections of them), namely the fit (`tunneling`, `A`, `A_units`, `n`, `Ea`, `Ea_units`, `T0_k`, `Tmin_k`, `Tmax_k`, `n_data_points`, whichever the record states), the header-level dicts, and each participant's `levels` object and stated energies (`sp_energy_hartree`, `opt_final_energy_hartree`), so a rerun under the same project name and ARC release is a separate determination (TCKDB identifies one by reaction entry, direction, target, source and key, and the fits of one are not independent support for each other) while one bundle built twice gets one key. A bundle names its source by `workflow_tool_release`, so without `arc_version`/`arc_git_commit` none is sent. `resolved_channel` needs a public ref (`tse_`/`net_`) that a bundle cannot hold, so the target is the whole reaction |
+| Observable, basis | `rate_coefficient`, `elementary_coefficient` | output_yml_schema.md `T0_k` row: `k = A (T/T0)^n exp(-Ea/RT)`; one TS per reaction | Reading of ARC's contract |
+| Pressure dependence | `high_pressure_limit` | ARC source: the job is named and documented as the high-pressure rate coefficient (`compute_high_p_rate_coefficient`). The schema document says nothing about pressure | Reading of ARC's source, not a per-record statement; `claim_origin: depositor_interpretation` |
+| Phase | `phase: "gas"` | Not stated by ARC. Arkane's statistical mechanics is gas-phase; sent only when no level states solvation: no built calculation's (`solvent`, `solvent_model`), and, read from output.yml so a skipped calculation still counts, no header level's, no level inside `adaptive_levels` and no participant's (reactants, products, TS) own `levels` entry (`solvent`, `solvation_method`, `solvation_scheme_level`, or a free-form `args` containing `scrf`, `cpcm`, `smd`, `pcm`, `cosmo`, `solvent` or `solvation`, case-insensitively) | `depositor_interpretation`; a solvated level sends no phase |
+| Temperature range | `tmin_k`/`tmax_k` (already sent, unchanged) | `Tmin_k`/`Tmax_k` | The applicability declaration has no temperature field |
+
+Not stated by ARC, so not sent (each is listed rather than defaulted): the **phase** of a fit with a solvated participant level
+(TCKDB then answers `phase_not_declared`), the **reaction order** (an advisory finding), the **rate-progress convention**
+(TCKDB answers `rate_progress_convention_not_declared` for a reaction with a species repeated on the requested side, such as
+HO2 + HO2, and nothing ARC states covers it), and every `protocol` field: the method kind
+(no ARC document names TST), the barrier basis, the zero-point, rotor, conformer and path treatments. The tunneling model
+already goes out as `tunneling_model`. A record whose kinetics lack `Tmin_k`/`Tmax_k` sends no bounds and is declared the same.
+
+TCKDB's selection (`kinetics_selection/assessment.py`) answers a request for `pressure.kind: independent` with
+`pressure_dependence_mismatch` for a `high_pressure_limit` claim; a request for `high_pressure_limit` accepts it.
+`tests/test_kinetics_declarations.py` replicates the four findings this clears (`determination_not_declared`,
+`direction_not_recorded`, `applicability_not_declared`, `pressure_dependence_not_declared`) and pins the exact declaration dicts.
+
+### The H atom at HF in the enthalpy check
+
+ORCA cannot run a correlated method on one electron, so ARC runs the free H atom at HF in the same basis, auxiliary basis and
+CABS basis as the DLPNO-CCSD(T)-F12 level its atom energies were matched to (three reactions with a free H atom as a reactant).
+`enthalpy_atom_corrections_level_mismatch` therefore stripped its enthalpy. The check now applies the exemption the
+kinetics energy-level rule has (`tckdb_core.rules`, TCKDB's one-electron HF rule): the mismatch is accepted when the species
+has exactly one electron (composition and stated charge, `_participant_electron_count`), its energy level's method identity
+key is `hf`, the corrections level's method is `wavefunction` or `multireference` (`tckdb_core.method_families`), and every
+other field of the two levels on TCKDB's projection (basis, auxiliary basis, CABS, dispersion, solvent, solvent model) is
+equal. The enthalpy is kept (`formation_298k`) and `one_electron_hf_substitution` is reported on the thermo field with the
+two levels in its context, and `cabs_singles_correction: absent` when the corrections method is an F12 method. An unknown
+electron count, H-, H2, HF in another basis or with another dispersion or solvent, HF under a DFT corrections level, and every
+other mismatch are refused as before. Only the branch with `atom_corrections_applied: true` is changed: an unflagged enthalpy
+still goes through the interim checks, whose light-species guard refuses a lone H atom.

@@ -129,9 +129,14 @@ class ArcWarning(CodedEnum):
         "The open-shell participants' energies were computed with different spin treatments (unrestricted and restricted-open), which TCKDB refuses for a declared kinetics level, so none is declared.",
     )
 
+    KINETICS_DECLARATIONS_INTERPRETED = (
+        "kinetics_declarations_interpreted",
+        "The kinetics direction (forward), pressure dependence (high-pressure limit) and, when sent, phase (gas) and the determination (one complete determination of the whole reaction) are the adapter's interpretation of ARC's Arkane kinetics run and are not fields of output.yml.",
+    )
+
     ONE_ELECTRON_HF_SUBSTITUTION = (
         "one_electron_hf_substitution",
-        "A one-electron participant's energy was computed at Hartree-Fock in the same basis and is accepted under the correlated kinetics level, because every correlation term vanishes for one electron; for an F12 level the HF energy omits the CABS singles correction (about 0.05 to 0.1 mEh for H).",
+        "A one-electron species' energy was computed at Hartree-Fock in the same basis and is accepted under the correlated level (the kinetics energy level, or the thermo atom-corrections level), because every correlation term vanishes for one electron; for an F12 level the HF energy omits the CABS singles correction (about 0.05 to 0.1 mEh for H).",
     )
 
     # --- energy corrections -------------------------------------------------------------

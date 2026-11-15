@@ -4,7 +4,7 @@ Convert ARC `output/output.yml` and portable parser evidence into TCKDB
 species, reaction, and transition-state uploads. Payloads and upload metadata
 are written locally before any network request, allowing inspection and replay.
 
-Requires Python 3.11+, `tckdb-client` 0.206.x and `tckdb-schemas` 0.174.x.
+Requires Python 3.11+, `tckdb-client` 0.208.x and `tckdb-schemas` 0.175.x.
 For development with sibling checkouts:
 
 ```bash
@@ -317,6 +317,8 @@ Adapter 0.11.0 (core extraction, batch L1; no behaviour change):
   the core config) and the CLI/sweep. Install `tckdb_core` before `tckdb_arc` when working from the checkout
   (`pip install -e tckdb_core -e tckdb_arc`).
 
+Adapter 0.15.7 (ships with core 0.5.7; needs `tckdb-adapters-core` `>=0.5.7,<0.6`): **a kinetics fit that ARC's Arkane run produced (output.yml states a `tunneling` for it) now sends `direction: forward`, a `determination` (whole reaction, complete, keyed within the bundle's workflow tool release and scoped to the computation) and an `applicability` (rate coefficient, elementary coefficient, high-pressure limit; claim origin `depositor_interpretation`)**, so a selection no longer reports `determination_not_declared`, `direction_not_recorded`, `applicability_not_declared` or `pressure_dependence_not_declared` for it. The phase is sent as `gas` only when no level states solvation (built calculations, header levels and each participant's own output.yml `levels` entry are all read); the determination key digests output.yml values (the fit, the links, the levels and energies), so two different fits of the same energies get different keys; direction, determination, pressure dependence and phase are the adapter's interpretation of ARC's documented Arkane provenance, not output.yml fields, so the kinetics `note` ends with one sentence saying so and the sidecar carries `kinetics_declarations_interpreted` (the schema gives `direction` and `determination` no origin field; only the applicability's `claim_origin` marks the rest). The reaction order and the whole `protocol` are not sent because ARC states none of them. **A one-electron species computed at Hartree-Fock keeps its enthalpy** when the atom-corrections level is a wavefunction or multireference level that is otherwise the same (the free H atom under DLPNO-CCSD(T)-F12 corrections), reported as `one_electron_hf_substitution`; every other level mismatch is still refused. Evidence and the not-sent list are in `docs/contract/CURRENT_ARC_INTEGRATION.md`.
+
 Adapter 0.15.6 (ships with core 0.5.6; needs `tckdb-adapters-core` `>=0.5.6,<0.6`): **a `rights` block in the `tckdb` block is sent as the upload's `rights` fragment** on every upload kind (conformer, computed species, computed reaction, transition state), validated against `tckdb_schemas.rights.DepositRights` when the config is read (a block it refuses is a config error). Without the block no `rights` fragment is sent, as before.
 
 Adapter 0.15.5 (tracks tckdb-schemas 0.174 / client 0.206, TCKDB c20b16a; ships with core 0.5.5) imports TCKDB's method-family classifier and method identity key from `tckdb_schemas` instead of replicating them; no behaviour change.
@@ -399,6 +401,7 @@ Adapter 0.12.0 (core extraction, batch L2; no behaviour change; needs `tckdb-ada
 Tracked TCKDB releases (added by `tools/tckdb_drift.py --bump`):
 
 <!-- tckdb-drift:changelog -->
+- Adapter 0.15.7: tracked TCKDB d4d5346 (schemas 0.175.2, client 0.208.2).
 - Adapter 0.15.5: tracked TCKDB c20b16a (schemas 0.174.0, client 0.206.0).
 - Adapter 0.15.4: tracked TCKDB f79e7f9 (schemas 0.173.0, client 0.205.0).
 - Adapter 0.15.3: tracked TCKDB 5557ed9 (schemas 0.170.0, client 0.201.0).
