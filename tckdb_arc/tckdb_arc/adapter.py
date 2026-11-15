@@ -1219,6 +1219,7 @@ class TCKDBAdapter(TCKDBUploaderBase):
             species_record=species_record,
             warnings=build_warnings,
         )
+        self._attach_rights(payload)
         self._report_adaptive_omissions(output_doc, build_warnings)
 
         species_label = species_record.get("label") or "unlabeled"
@@ -1431,6 +1432,7 @@ class TCKDBAdapter(TCKDBUploaderBase):
             conformer_key=conformer_label,
             warnings=build_warnings,
         )
+        self._attach_rights(payload)
         _enforce_geometry_anchoring(payload, "computed_species", build_warnings)
         _withhold_unlabelled_point_geometries(payload, "computed_species", build_warnings)
         self._report_adaptive_omissions(output_doc, build_warnings)
@@ -1464,6 +1466,11 @@ class TCKDBAdapter(TCKDBUploaderBase):
             return self._finalize_skipped(written)
 
         return self._upload(written, payload, endpoint=COMPUTED_SPECIES_ENDPOINT)
+
+    def _attach_rights(self, payload: dict[str, Any]) -> None:
+        """Set the upload's ``rights`` fragment from the configuration, when it states one."""
+        if self._config.rights is not None:
+            payload["rights"] = dict(self._config.rights)
 
     def _build_computed_species_payload(
         self,
@@ -2808,6 +2815,7 @@ class TCKDBAdapter(TCKDBUploaderBase):
             reaction_record=reaction_record,
             warnings=build_warnings,
         )
+        self._attach_rights(payload)
         _enforce_geometry_anchoring(payload, "computed_reaction", build_warnings)
         _withhold_unlabelled_point_geometries(payload, "computed_reaction", build_warnings)
         self._report_adaptive_omissions(output_doc, build_warnings)
@@ -3969,6 +3977,7 @@ class TCKDBAdapter(TCKDBUploaderBase):
             reaction_record=reaction_record,
             warnings=build_warnings,
         )
+        self._attach_rights(payload)
         _enforce_geometry_anchoring(payload, "transition_state", build_warnings)
         _withhold_unlabelled_point_geometries(payload, "transition_state", build_warnings)
         self._report_adaptive_omissions(output_doc, build_warnings)

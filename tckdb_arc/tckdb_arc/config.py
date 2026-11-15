@@ -40,6 +40,19 @@ from tckdb_core.config import (  # noqa: F401  (re-exported for backward compati
 logger = get_logger()
 
 
+def _parse_rights(raw: Any) -> dict[str, Any] | None:
+    """The ``rights`` block as the upload's ``rights`` fragment, validated against ``tckdb_schemas.rights``."""
+    if raw is None:
+        return None
+    from tckdb_schemas.rights import DepositRights
+
+    try:
+        rights = DepositRights.model_validate(raw)
+    except ValueError as exc:
+        raise ValueError(f"tckdb.rights is not a valid rights fragment: {exc}") from exc
+    return rights.model_dump(mode="json", exclude_none=True)
+
+
 @dataclass(frozen=True)
 class TCKDBArtifactConfig(_CoreArtifactConfig):
     """Per-artifact upload knobs, parsed from the ``artifacts:`` sub-block of ``tckdb``."""
@@ -125,4 +138,5 @@ class TCKDBConfig(_CoreConfig):
             upload_mode=upload_mode,
             artifacts=TCKDBArtifactConfig.from_dict(raw.get("artifacts")),
             allow_partial_uploads=bool(raw.get("allow_partial_uploads", True)),
+            rights=_parse_rights(raw.get("rights")),
         )
