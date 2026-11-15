@@ -131,7 +131,7 @@ class ArcWarning(CodedEnum):
 
     ONE_ELECTRON_HF_SUBSTITUTION = (
         "one_electron_hf_substitution",
-        "A one-electron participant's energy was computed at Hartree-Fock in the same basis and is accepted under the correlated kinetics level, because every correlation term vanishes for one electron; for an F12 level the HF energy omits the CABS singles correction (about 0.05 to 0.1 mEh for H).",
+        "A one-electron species' energy was computed at Hartree-Fock in the same basis and is accepted under the correlated level (the kinetics energy level, or the thermo atom-corrections level), because every correlation term vanishes for one electron; for an F12 level the HF energy omits the CABS singles correction (about 0.05 to 0.1 mEh for H).",
     )
 
     # --- energy corrections -------------------------------------------------------------
