@@ -92,6 +92,16 @@ def _shape(warnings):
     return [{k: w[k] for k in ("code", "field", "context")} for w in warnings]
 
 
+def _without_interpretation(warnings):
+    """The warnings minus the one ``kinetics_declarations_interpreted`` the Arkane-stamped fit draws.
+
+    Asserts that exactly one such warning, on ``kinetics[0]``, is present.
+    """
+    interpreted = [w for w in warnings if w["code"] == "kinetics_declarations_interpreted"]
+    assert [w["field"] for w in interpreted] == ["kinetics[0]"]
+    return [w for w in warnings if w["code"] != "kinetics_declarations_interpreted"]
+
+
 def _warning(code, level_source="not_recorded", field="thermo"):
     return {"code": code, "field": field, "context": {
         "source": "tckdb_arc_self_check", "action": "thermo_enthalpy_omitted",
@@ -389,6 +399,7 @@ def _reaction_doc_1_1(**header):
 
 def test_reaction_route_reads_the_header_level_and_composition(tmp_path):
     payload, warnings = _submit_reaction(tmp_path, _reaction_doc_1_1())
+    warnings = _without_interpretation(warnings)
     keys = [sp["key"] for sp in payload["species"]]
     assert warnings == []
     assert all(sp["thermo"]["enthalpy_reference_kind"] == "formation_298k"
@@ -396,6 +407,7 @@ def test_reaction_route_reads_the_header_level_and_composition(tmp_path):
 
     payload, warnings = _submit_reaction(tmp_path / "standin",
                                          _reaction_doc_1_1(arkane_level_of_theory=BMK))
+    warnings = _without_interpretation(warnings)
     assert all("h298_kj_mol" not in sp["thermo"] for sp in payload["species"])
     assert _shape(warnings) == [
         _warning("enthalpy_atom_corrections_level_mismatch", HEADER, field=f"species[{key}].thermo")
@@ -409,6 +421,7 @@ def test_reaction_route_reads_the_header_level_and_composition(tmp_path):
         tmp_path / "light", doc,
         atom_map_reactant_labels=_reaction_record()["reactant_labels"],
         atom_map_product_labels=_reaction_record()["product_labels"])
+    warnings = _without_interpretation(warnings)
     # The atom's primary is its sp (tckdb-schemas 0.59), so it draws no placeholder-opt warning.
     assert not any("placeholder" in w["code"] for w in warnings)
     light = [sp for sp in payload["species"] if "h298_kj_mol" not in sp["thermo"]]
