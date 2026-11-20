@@ -18,3 +18,11 @@ env/
 .ruff_cache/
 .coverage
 htmlcov/
+
+# Editors and local tooling
+.idea/
+.vscode/
+.axiomcode/
+
+# Payloads written by a local adapter run
+tckdb_payloads/

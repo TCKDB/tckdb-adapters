@@ -1,189 +1,114 @@
 # tckdb-adapters
 
-Per-tool extractors that push computed-chemistry results to
-[TCKDB](https://github.com/calvinp0/tckdbv2). Each adapter reads a producing
-tool's output and builds validated payloads for the shared **`tckdb-client`**
-transport against the shared **`tckdb-schemas`** wire-contract.
+Producer adapters for [TCKDB](https://github.com/TCKDB/TCKDB), a database of computed
+thermochemistry and kinetics. An adapter reads the output of one tool and turns it into
+TCKDB upload payloads. Today there is one, for
+[ARC](https://github.com/ReactionMechanismGenerator/ARC), and a shared core that the next
+adapter builds on.
 
-> "Extract a tool's computed-chemistry results and push them to TCKDB" is a
-> *tool-agnostic* concern. This repo hosts one adapter per producer; they share
-> one schema and one transport but are independently installable and versioned.
+TCKDB publishes its upload contract in two packages, and this repository depends on both:
+
+- `tckdb-schemas` holds the request models, the JSON Schema of every upload route and the
+  producer contract generated from TCKDB's own routes.
+- `tckdb-client` is the HTTP client: authentication, idempotency keys and replay.
+
+TCKDB decides what it accepts. An adapter conforms to the contract and sends only what its
+source states.
 
 ## Packages
 
-| Package    | Path         | Status | Description |
-|------------|--------------|--------|-------------|
-| `tckdb-adapters-core` | `tckdb_core/` | active | Producer-agnostic core shared by every adapter: payload writer, upload/sidecar/readiness pipeline, idempotency keys, level-identity replica, config and API-key resolution, shared numerics and TCKDB rule pre-checks, the warning-code registry type, and the contract test kit (`tckdb_core.testing`). Reads no producer's output format. See [`tckdb_core/README.md`](tckdb_core/README.md). |
-| `tckdb-arc`| `tckdb_arc/` | active | ARC → TCKDB upload adapter (ARC output reader + payload builders; uploads through `tckdb_core`). |
-| `tckdb_rmg`| —            | future | RMG adapter (placeholder; not yet created). |
-| `tckdb_chemtrayzer` | — | future | Chemtrayzer adapter (placeholder). |
+| Package | Path | What it is |
+|---|---|---|
+| `tckdb-adapters-core` | [`tckdb_core/`](tckdb_core/README.md) | Everything an adapter needs after it has built a payload, and every helper two adapters would write the same way: the payload writer, the upload pipeline with its sidecar files, idempotency keys, configuration, shared numerics, pre-checks of TCKDB's rules, the warning-code registry and a test kit. It reads no tool's output format. |
+| `tckdb-arc` | [`tckdb_arc/`](tckdb_arc/README.md) | The ARC adapter. It reads an ARC project's `output.yml` and builds species, reaction and transition-state uploads. Its command is `tckdb-arc-upload`. |
 
-The ecosystem:
+Dependencies point one way: `tckdb_arc` imports `tckdb_core`, and `tckdb_core` imports
+`tckdb-client` and `tckdb-schemas`. The core never imports an adapter or the tool behind
+it, and a test in `tckdb_core/tests` fails if it does.
 
-- **`tckdb-schemas`** (in `TCKDB_v2`) — canonical Pydantic wire-contract. Owns the schema.
-- **`tckdb-client`** (in `TCKDB_v2`) — HTTP transport + idempotency + replay. Tool-neutral.
-- **`tckdb-adapters`** (this repo) — per-tool extractors. Depend on the two above;
-  each *may* optionally depend on its own tool.
+## Install
 
-The dependency direction is acyclic: `tckdb_arc → tckdb_core → {tckdb-client, tckdb-schemas}`, and
-`tckdb_arc → arc(optional)`. Nothing in the shared layer or in `tckdb_core` ever points back at a
-producing tool; `tckdb_core/tests` has a guard test for that. A new producer adds a sibling package
-(`tckdb_rmg/`, ...) that depends on `tckdb_core` the way `tckdb_arc` does. Install the core first when
-working from the checkout: `pip install -e tckdb_core -e tckdb_arc`.
-
-See the [current ARC integration audit](docs/contract/CURRENT_ARC_INTEGRATION.md)
-for verified mappings, validation results, and remaining producer/server gaps.
-
-## Running the tests
-
-Install the core first (`tckdb-arc` depends on it), then either package's suite runs on its own or
-both together. The backend comparison tests need a TCKDB `backend/` checkout at the pinned revision
-(`TCKDB_BACKEND_PATH`; `TCKDB_REQUIRE_BACKEND=1` makes a missing backend a failure, as in CI).
-
-```bash
-pip install -e "tckdb_core[test]" -e "tckdb_arc[test]"
-export TCKDB_BACKEND_PATH=/path/to/TCKDB/backend TCKDB_REQUIRE_BACKEND=1
-
-# 1. both suites together, from the repository root
-python -m pytest   # or name paths: python -m pytest tckdb_core/tests tckdb_arc/tests
-
-# 2. each package from its own directory (what CI does)
-(cd tckdb_core && python -m pytest)
-(cd tckdb_arc && python -m pytest)
-
-# 3. one file or test: path it from the root, or from the package directory
-python -m pytest tckdb_arc/tests/test_warning_registry.py -q
-```
-
-From a git worktree whose `tckdb_core` / `tckdb_arc` editable installs point at another checkout, put the
-worktree's packages first instead of reinstalling: `PYTHONPATH=$PWD/tckdb_core:$PWD/tckdb_arc python -m pytest ...`.
-The root `pyproject.toml` sets pytest's `pythonpath = ["tckdb_core", "tckdb_arc"]` (inserted ahead of the
-current directory), which is what makes way 1 work; each package's own `pyproject.toml` sets `pythonpath = ["."]`
-for the same reason when pytest picks that ini (a single file path under a package, or a run from its directory). Without it the outer `tckdb_core/` and `tckdb_arc/`
-directories would be picked up as namespace packages at the root and `from tckdb_arc import ...` would fail.
-Pytest uses the nearest ini above the given paths, so a path under one package uses that package's ini.
-
-## The shared layer (pinned)
-
-The tested contract is `tckdb-client` 0.208.x with `tckdb-schemas` 0.175.x
-(the producer contract ships from 0.52,
-`python -m tckdb_schemas.contract`). CI pins both to the same tested TCKDB
-source revision (`tckdb-pin.toml`):
+Python 3.11 or newer. Neither package is on PyPI yet, so install from a checkout. The two
+TCKDB packages come from the TCKDB commit this repository is tested against:
 
 ```bash
 pip install \
   "tckdb-client @ git+https://github.com/calvinp0/tckdbv2.git@d4d53462db2b75ed699cb6bd7b39964b2b645254#subdirectory=clients/python" \
   "tckdb-schemas @ git+https://github.com/calvinp0/tckdbv2.git@d4d53462db2b75ed699cb6bd7b39964b2b645254#subdirectory=schemas/python/tckdb-schemas"
+pip install -e tckdb_core -e tckdb_arc
 ```
 
-For local development against a `TCKDB_v2` checkout, install from the local path
-instead (fast, no network):
+Install `tckdb_core` before `tckdb_arc`, as above, because the ARC adapter depends on it. With a
+local TCKDB checkout you can install the two TCKDB packages from its `clients/python` and
+`schemas/python/tckdb-schemas` directories instead.
+
+## Upload an ARC run
+
+Add a `tckdb` block to the ARC project's `input.yml`:
+
+```yaml
+tckdb:
+  enabled: true
+  base_url: https://tckdb.example.org/api/v1
+  upload_mode: computed_species   # or conformer, computed_reaction, computed_ts
+  upload: true                    # false writes the payloads and sends nothing
+```
+
+Put the API key in the `TCKDB_API_KEY` environment variable, then run the adapter on the
+finished project:
 
 ```bash
-pip install /path/to/TCKDB_v2/clients/python /path/to/TCKDB_v2/schemas/python/tckdb-schemas
+tckdb-arc-upload /path/to/project/input.yml --offline   # build and inspect, no network
+tckdb-arc-upload /path/to/project/input.yml             # upload
 ```
 
-## Tracking TCKDB releases
+Each payload is written under `<project>/tckdb_payloads/` before any request is made, next
+to a sidecar file that records the idempotency key, the server's answer and every warning.
+Because running the command again sends the same keys, a repeated upload does not create
+a second deposit. The [ARC adapter README](tckdb_arc/README.md) lists the other settings, and
+[`docs/contract/ARC_MAPPING.md`](docs/contract/ARC_MAPPING.md) says what each ARC field
+becomes in TCKDB and what is left out.
 
-The TCKDB commit CI installs from lives in `tckdb-pin.toml` (repo, `sha`, package
-subdirectories), which `ci.yml` reads at runtime. No workflow file holds a SHA, so an
-automated bump never edits `.github/workflows/` and `GITHUB_TOKEN` can push it.
-
-The pin must be a commit on the mirror `calvinp0/tckdbv2`, which may lag TCKDB/TCKDB main, so `--bump` takes the mirror's head, never a SHA that exists only on TCKDB main.
-
-`.github/workflows/tckdb-drift.yml` runs daily (and on demand). Its `test` job has a
-read-only token: it compares the adapter's pinned `tckdb-schemas` / `tckdb-client`
-minor lines with the mirror's `main`; on a newer line it bumps the pins in the
-runner, installs both packages from that commit, and runs the full suite. Its
-`publish` job (the only one with write access, `tools/tckdb_drift_publish.sh`) then:
-
-- **tests pass:** pushes `chore/tckdb-drift-schemas-<X.Y>-client-<A.B>` and opens (or
-  updates) the PR "Track TCKDB: schemas X.Y.Z / client A.B.C (TCKDB <sha7>)", then
-  starts `ci.yml` on the branch. The bot has already run the suite and moved
-  `TARGET_SCHEMAS_LINE`; the PR body carries `python -m tckdb_schemas.contract
-  --since <old pin>`, and **your job is to read that changelog and decide**, not to
-  trust the green run.
-- **tests fail:** opens (or updates) the issue "TCKDB drift: schemas X.Y / client A.B
-  breaks the adapter" with the failing tests; an install failure is titled "... install
-  failed".
-- **tests pass but no PR could be made** (push or PR creation failed): the issue
-  "TCKDB drift: schemas X.Y / client A.B is ready to adopt" names the branch or the
-  `--bump` command.
-
-Items are keyed by the line pair (X.Y / A.B), so a patch release updates the existing
-PR or issue instead of adding one. An issue is commented on only when the versions or
-the failing tests change. A drift issue is closed automatically when a later run finds
-no drift or the PR path succeeds; an older bot PR is commented as superseded when a
-newer line appears (never closed).
-
-**Branch safety.** The bot never overwrites work on its branch. If the remote branch
-already has the new tree, nothing is pushed (the PR is only refreshed and CI is not
-re-dispatched). If it holds any commit not authored by `github-actions[bot]`, nothing is
-pushed and the PR gets a comment with the `--bump` command. Otherwise the branch is
-updated with `--force-with-lease` against the commit the run saw.
-
-Run the same check locally (stdlib only; JSON on stdout, one summary line on stderr;
-exit 0 = no drift, 10 = drift, anything else = error):
+## Run the tests
 
 ```bash
-python tools/tckdb_drift.py --check
-python tools/tckdb_drift.py --check --repo /path/to/or/url --ref some-branch
-python tools/tckdb_drift.py --bump --sha <40-hex> --schemas X.Y.Z --client A.B.C
-python tools/tckdb_drift.py --since-output --from <old X.Y.0>   # needs the new tckdb-schemas installed
+pip install -e "tckdb_core[test]" -e "tckdb_arc[test]"
+python -m pytest                                    # both suites, from the repository root
+python -m pytest tckdb_arc/tests/test_sweep.py -q   # one file
 ```
 
-`--bump` moves the `pyproject.toml` bounds, `TARGET_SCHEMAS_LINE`, the `sha` in
-`tckdb-pin.toml`, the install lines and "tested contract" sentence here, the version
-sentence and a changelog line in `tckdb_arc/README.md`, and the adapter patch version.
-Running it twice changes nothing; it refuses to move a line backwards unless given
-`--allow-downgrade`. After a bump, pass `--from` the pre-bump line to `--since-output`.
+The suites run without ARC and without a TCKDB server. Tests that need ARC skip when it is
+not importable. The tests that compare the level-of-theory hash with TCKDB's own code need
+a TCKDB `backend/` directory at the pinned commit, named by `TCKDB_BACKEND_PATH`; they
+skip without it, and `TCKDB_REQUIRE_BACKEND=1` turns the skip into a failure, as CI does.
 
-When the PR or issue appears, the contract-reading rule in `CLAUDE.md` still applies:
-read the `--since` output (and `python -m tckdb_schemas.contract --print`) before merging
-or fixing. A green suite only shows the payloads the tests build still validate; it does
-not show that a new required field or convention is handled correctly.
+Every payload the tests build is validated against the JSON Schema that the installed
+`tckdb-schemas` ships for its route. An opt-in live gate uploads the test corpora to a
+TCKDB backend running on the same machine and reads the stored rows back. See
+[`docs/contract/INTEGRATION_GATE.md`](docs/contract/INTEGRATION_GATE.md).
 
-Setup and caveats:
+## The TCKDB pin
 
-- Enable Settings > Actions > General > "Allow GitHub Actions to create and approve
-  pull requests". That is the only required setting; optionally create a `tckdb-drift`
-  label (applied when present).
-- `workflow_dispatch:` in `ci.yml` must be on `main` before the first dispatch of CI on a
-  bot branch works (this change adds it), and the drift workflow itself only runs from
-  the default branch.
-- GitHub disables scheduled workflows after 60 days without repository activity; re-enable
-  it under Actions if the daily run stops.
+The tested contract is `tckdb-client` 0.208.x with `tckdb-schemas` 0.175.x. Both packages
+bound the two dependencies to those release lines, and `tckdb-pin.toml` names the TCKDB
+commit that CI installs them from.
 
-## `tckdb-arc`
+A scheduled workflow compares the pin with TCKDB's main branch every day. When a newer
+release line appears it moves the pin in a scratch checkout, runs the suites, and opens a
+pull request if they pass or an issue if they fail. A green run shows only that today's
+payloads still validate. The pull request body therefore carries the contract changelog,
+and a person reads it before merging. [`docs/tckdb_pin.md`](docs/tckdb_pin.md) describes the
+workflow, the `tools/tckdb_drift.py` commands and the one-time repository settings.
 
-```bash
-cd tckdb_arc
-pip install -e ".[test]"        # + the shared packages above
-pytest                          # base (no-ARC) suite
-```
+## Write a new adapter
 
-`tckdb-arc` bounds both shared packages at runtime so fresh installs use
-the contract exercised by the tests.
-The CLI entry point is `tckdb-arc-upload`.
+A new adapter is a sibling package, `tckdb_<tool>/`, that subclasses the core's uploader
+and maps its tool's output to the payloads. Start with
+[`docs/writing_an_adapter.md`](docs/writing_an_adapter.md). It lists what the core gives
+you, what you write yourself, and which TCKDB routes the core does not cover yet.
+[`AGENTS.md`](AGENTS.md) holds the same rules in the short form coding agents read, and
+[`CONTRIBUTING.md`](CONTRIBUTING.md) covers pull requests.
 
-### The optional `[arc]` extra
+## Licence
 
-Three payload paths (freq-Hessian, IRC trajectory, GSM string-file) can reparse
-ESS logs via ARC's `arc.parser` when portable evidence is absent. **ARC is not pip-installable as `arc`** — it is a
-conda/PYTHONPATH install — so the `[arc]` extra is a *documented marker*, not a
-pip-resolvable dependency. When ARC is not importable those three sub-payloads
-degrade gracefully (they are omitted, not errored) via
-`tckdb_arc._arc_optional`. The arc-gated tests run only where ARC is already on
-the path (they `pytest.importorskip("arc")` otherwise).
-
-The primary path is ARC's `parser_evidence` descriptor and matching
-`parser_evidence.json` beside `output.yml`. The legacy `tckdb_evidence`
-descriptor/file remains supported. Valid sidecars supply all three evidence
-types without installing ARC or retaining raw calculation logs.
-
-### Live integration gate
-
-`tckdb_arc/tests/integration/` uploads the offline corpora to a TCKDB backend
-running on this machine and checks what it stored. It is skipped unless
-`TCKDB_INTEGRATION_URL` is set, and refuses any host other than loopback. See
-[docs/contract/INTEGRATION_GATE.md](docs/contract/INTEGRATION_GATE.md).
+MIT. See [`LICENSE`](LICENSE).

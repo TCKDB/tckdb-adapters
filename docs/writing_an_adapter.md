@@ -1,0 +1,280 @@
+# Writing a new adapter
+
+An adapter turns one tool's output into TCKDB upload payloads and sends them. This guide
+is for someone adding the second adapter to this repository, next to the ARC one. It says
+what `tckdb_core` already does for you, what you write, and where the core stops.
+
+The ARC adapter (`tckdb_arc/`) is the working example throughout. It is large because ARC
+produces a great deal of data, and most of its size is mapping code that you will not
+copy.
+
+## Before you start
+
+Read TCKDB's producer contract. It ships inside `tckdb-schemas` and is generated from
+TCKDB's routes, models and refusal codes, so it is what the server accepts:
+
+```bash
+python -m tckdb_schemas.contract --print      # the whole contract
+python -m tckdb_schemas.contract --schemas    # one JSON Schema per upload payload
+python -m tckdb_schemas.contract --codes      # path of the refusal-code reference
+python -m tckdb_schemas.contract --warnings   # path of the warning-code reference
+```
+
+Decide which routes your tool's results fit (the table under "Routes" below), and check
+that the tool states everything those routes require.
+
+Three rules shape every adapter here.
+
+1. **TCKDB decides the contract and the adapter conforms.** The contract is the reference,
+   not memory and not another tool's conventions.
+2. **Send only what the source states.** If the tool does not state a convention that the
+   contract requires, such as `enthalpy_reference_kind` or `reference_pressure_bar`, do not
+   build that block, or omit that field, and report it with a warning code. A plausible
+   default would state something the source never said.
+3. **Mark an interpretation as one.** Sometimes the tool's documentation settles a fact
+   that its output file does not repeat. You may send that reading if the payload says it
+   is the adapter's interpretation and the sidecar carries a warning. The pattern is
+   `_kinetics_declarations` in `tckdb_arc/tckdb_arc/adapter.py` with the
+   `kinetics_declarations_interpreted` warning: the applicability carries
+   `claim_origin: depositor_interpretation`, and the kinetics `note` ends with a sentence
+   that names what was interpreted.
+
+## What the core gives you
+
+| Need | Use |
+|---|---|
+| Upload pipeline: readiness probe, POST, sidecar bookkeeping, strict mode, artifact batches | `tckdb_core.uploader.TCKDBUploaderBase` |
+| Writing the payload and its sidecar before any request | `tckdb_core.payload_writer.PayloadWriter` (the base class holds one as `self._writer`) |
+| Idempotency keys | `tckdb_core.idempotency` (`IdempotencyInputs`, `build_idempotency_key`, `build_artifact_idempotency_key`); the namespace is a required argument |
+| Configuration fields and API-key resolution | `tckdb_core.config.TCKDBConfig`, `TCKDBArtifactConfig` |
+| Route endpoints and payload kinds | `tckdb_core.constants` |
+| Outcome objects | `tckdb_core.outcomes` (`UploadOutcome`, `ArtifactUploadOutcome`) |
+| Warnings in the sidecar's shape | `tckdb_core.adapter_warnings` (`AdapterWarning`, `WarningSink`) and `tckdb_core.warning_codes` (`CodedEnum`) |
+| Level-of-theory identity, as TCKDB hashes it | `tckdb_core.level_rules` |
+| NASA polynomials and thermo point tables | `tckdb_core.thermo_numerics` |
+| RMG and Arkane unit strings | `tckdb_core.rmg_units` |
+| Elements, formulas, xyz text, isotopes | `tckdb_core.composition`, `xyz`, `isotopes` |
+| Bundle-local keys | `tckdb_core.keys` |
+| Pre-checks of TCKDB rules, run on your facts before upload | `tckdb_core.rules`, `ts_evidence`, `ts_evidence_rules`, `route_level` |
+| Software banners split the way TCKDB splits them | `tckdb_core.software_release` |
+| Tests: contract validation, the pin, client stubs, the live gate | `tckdb_core.testing` |
+
+Reuse these as they are. If one almost fits, extend it in the core with a parameter; do not
+copy it into your package.
+
+The core never imports an adapter and never names a tool's file format.
+`tckdb_core/tests/test_core_is_producer_agnostic.py` enforces that. Anything that reads
+your tool's keys stays in your package and passes plain values to the core.
+
+## What you write
+
+### 1. The package
+
+Create a sibling of `tckdb_arc/`:
+
+```text
+tckdb_mytool/
+  pyproject.toml
+  README.md
+  CHANGELOG.md
+  tckdb_mytool/
+    __init__.py
+    adapter.py          # the TCKDBUploaderBase subclass and the payload builders
+    config.py           # where the tckdb settings live in your tool's input
+    warning_codes.py    # your CodedEnum registry
+    cli.py              # optional
+  tests/
+    conftest.py
+    test_contract_pin.py
+    test_warning_registry.py
+    ...
+```
+
+In `pyproject.toml`, depend on `tckdb-adapters-core` and bound `tckdb-schemas` and
+`tckdb-client` to the same minor lines the core does. Add the package to
+`[tool.tckdb_adapters] packages`, `pythonpath` and `testpaths` in the root
+`pyproject.toml`, and to the CI workflow.
+
+`tools/tckdb_drift.py --bump` currently rewrites the bounds of `tckdb_core` and
+`tckdb_arc` only. Add your `pyproject.toml` to it, and to the file list in
+`tools/tckdb_drift_publish.sh`, so the three packages move together.
+
+### 2. The uploader subclass
+
+```python
+from tckdb_core.uploader import TCKDBUploaderBase
+
+class MyToolAdapter(TCKDBUploaderBase):
+    PRODUCER_TAG = "tckdb_mytool"
+    PRODUCER_NAME = "MyTool"
+    IDEMPOTENCY_NAMESPACE = "mytool"
+    LOGGER_NAME = "tckdb_mytool"
+```
+
+`PRODUCER_TAG` appears in every warning as `context.source = "tckdb_mytool_self_check"`.
+`IDEMPOTENCY_NAMESPACE` is the first part of every key. Choose both once: changing the
+namespace later changes every key, and TCKDB then treats old uploads as new deposits.
+
+### 3. A submit method per route
+
+Each one does the same things in the same order. `tckdb_core/README.md` has a complete
+example.
+
+1. Return `None` when the config is disabled.
+2. Create a `WarningSink(PRODUCER_TAG)` and build the payload, adding a warning for each
+   thing omitted or interpreted.
+3. Attach `config.rights` when the user configured it.
+4. Run the pre-checks that apply (`tckdb_core.rules`).
+5. Build the idempotency key from the finished payload.
+6. Write the payload and sidecar with `self._writer.write(...)`, passing the warnings.
+7. Return `self._finalize_skipped(written)` when upload is off, else
+   `self._upload(written, payload, endpoint=...)`.
+
+The payload is written before the request so that a crash leaves a `pending` sidecar on
+disk, and so that the bytes can be replayed. The idempotency key includes a hash of the
+payload, so the same input gives the same key and TCKDB replays its first answer. A change
+to your mapping changes the hash. Say so in your changelog when it happens.
+
+The ARC adapter has four such methods and they repeat this sequence. The base class has
+no shared template for it yet, so follow the sequence by hand.
+
+### 4. The mapping
+
+The mapping is the part only you can write. It reads your tool's records and builds the
+request dictionaries the contract describes. Keep each builder of a whole request a method of the adapter class, because the contract
+hook (below) wraps the builder methods you name.
+
+Check the server's rules before you post where the core has a pre-check for them:
+`rules.energy_level_declaration`, `rules.kinetics_energy_level_assessment`,
+`rules.geometry_anchor_refusals`, `rules.undeclarable_input_geometries`, the reaction
+coordinate designation, the isotope reconciliation and the transition-state evidence
+rules. A payload that TCKDB would refuse is cheaper to catch locally.
+
+Where `tckdb-schemas` ships a rule or an enum, import it. Examples already in use:
+`tckdb_schemas.enthalpy_reference.enthalpy_reference_error`,
+`tckdb_schemas.method_families`, `tckdb_schemas.bundle_source_rules`,
+`tckdb_schemas.rights.DepositRights`, `tckdb_schemas.enums`. A replica in this repository
+is justified only for a rule that exists solely in TCKDB's backend, and it then needs a
+parity test against the backend (`tckdb_core.testing.backend_import`).
+
+Do not use `tckdb_client.builders` for thermo. Its defaults declare an enthalpy reference
+kind, which breaks rule 2.
+
+### 5. Warning codes
+
+Define a `CodedEnum` in `warning_codes.py`, one member per code, each with a one-line
+description:
+
+```python
+from tckdb_core.warning_codes import CodedEnum
+
+class MyToolWarning(CodedEnum):
+    REFERENCE_PRESSURE_NOT_STATED = (
+        "thermo_reference_pressure_not_stated",
+        "The source records no standard-state pressure, so reference_pressure_bar is omitted.",
+    )
+```
+
+Emit them through the sink: `warnings.add(MyToolWarning.X, "message", "field.path",
+action="...")`. Never write a code as a bare string at the call site.
+
+The ARC adapter generates `docs/contract/WARNING_CODES.md` from its registry with
+`python tools/gen_warning_codes.py`, and `tckdb_arc/tests/test_warning_registry.py` fails
+when the document is stale, when a code is unregistered, or when a registered code is
+never emitted. Give your package the same: a `render_markdown()`, a branch in the
+generator that writes your table, and a registry test. Regenerate the document in the same
+commit that adds a code.
+
+### 6. Configuration and a command
+
+`TCKDBConfig` holds the fields. Your package decides where they come from in your tool's
+input and parses them. `tckdb_arc/tckdb_arc/config.py` is a parser you can follow; it
+validates `rights` with `DepositRights` and rejects unknown artifact kinds. API keys are
+never read from the input file, only from the environment or a key file named there.
+
+## Tests your package must have
+
+| Test | How |
+|---|---|
+| Every built request validates against the contract | In `tests/conftest.py`, register `tckdb_core.testing.contract_hook.contract_checks_fixture` with your adapter class and a map of builder-method name to schema name. It runs the published pydantic model and the shipped JSON Schema on every request any test builds. Call `contract_validate` yourself where a test checks a fragment. |
+| The contract pin | `tests/test_contract_pin.py` with the four assertions of `tckdb_core.testing.contract_pin`, pointed at your `pyproject.toml` and your routes. |
+| Warning registry | Codes are unique and registered, the generated document is current. |
+| Upload behaviour without a network | `tckdb_core.testing.stubs.StubClient`, passed as `client_factory=lambda config, key: client`. |
+| Refusals | For each convention the source may not state, a test that the block is omitted and the warning is present. |
+
+The contract hook checks shape. It does not run the route handlers' rules (energy-level
+ownership, geometry and composition checks), it does not check headers, and JSON Schema
+`format` keywords are not enforced. Only a live server reaches those.
+
+Run tests serially and only the files you touched while working:
+
+```bash
+python -m pytest -p no:xdist tckdb_mytool/tests/test_thermo.py -q
+```
+
+Run the whole suite once before you open a pull request.
+
+### The live gate
+
+`tckdb_core.testing.live` provides the fixture for an opt-in gate that uploads to a TCKDB
+backend on your own machine and reads the rows back.
+[`contract/INTEGRATION_GATE.md`](contract/INTEGRATION_GATE.md) explains how to bring the
+backend up. The fixture refuses any target that is not loopback, that uses port 8010, or
+whose artifact bucket is not named `tckdb-integ*`. Keep those guards. Tests in this
+repository never contact a shared or production TCKDB.
+
+## Routes
+
+The core's endpoint constants, payload writer, uploader and test kit cover five of TCKDB's
+producer routes. The others are accepted by TCKDB and listed in the contract, but the core
+has no constant, payload kind or test-kit entry for them yet.
+
+| Route | Request | Core |
+|---|---|---|
+| `POST /uploads/conformers` | `ConformerUploadRequest` | covered |
+| `POST /uploads/computed-species` | `ComputedSpeciesUploadRequest` | covered |
+| `POST /uploads/computed-reaction` | `ComputedReactionUploadRequest` | covered |
+| `POST /uploads/transition-states` | `TransitionStateUploadRequest` | covered |
+| `POST /calculations/{calculation_ref}/artifacts` | `ArtifactsUploadRequest` | covered |
+| `POST /uploads/thermo` | `ThermoUploadRequest` | not covered. `thermo_numerics` builds NASA-7 and point blocks; NASA-9, Wilhoit and group-additivity records have no helper. |
+| `POST /uploads/kinetics` | `KineticsUploadRequest` | not covered. `rmg_units` maps A and Ea units; only the ARC adapter builds a modified-Arrhenius block, and no other rate form has a helper. |
+| `POST /uploads/statmech` | `StatmechUploadRequest` | not covered |
+| `POST /uploads/transport` | `TransportUploadRequest` | not covered |
+| `POST /uploads/reactions` | `ReactionUploadRequest` | not covered |
+| `POST /uploads/networks`, `/uploads/networks/pdep` | `NetworkUploadRequest`, `NetworkPDepUploadRequest` | not covered |
+| `POST /uploads/thermoml` | `ThermoMLUploadRequest` | not covered |
+| `POST /bundles/dry-run`, `/bundles/submit` | `ContributionBundle` | not covered |
+| `POST /submissions/{ref}/rights-attestations`, `/submissions/{ref}/supersede` | `RightsAttestationCreate`, `SubmissionSupersedeRequest` | not covered. The `rights` fragment inside an upload is supported through `TCKDBConfig.rights`. |
+| `POST /jobs/*` (asynchronous twins of the upload routes) | same requests | not covered |
+
+If your tool's natural output is standalone thermo, kinetics or transport, the first step
+is to add that route to the core: an endpoint constant, a payload kind and subdirectory in
+`PayloadWriter`, a `ROUTE_SCHEMAS` entry in `tckdb_core.testing.contract`, and tests. The
+JSON Schema for every route already ships, so `assert_matches_contract(payload,
+"ThermoUploadRequest")` works today. Do that in the core, in its own pull request, before
+the adapter that needs it.
+
+Other limits of the core that an adapter author should know:
+
+- **Retries.** A failed POST is recorded in the sidecar and not retried. Only the
+  readiness probe retries. `tckdb-client` has a `RetryPolicy`; the core does not pass one
+  yet.
+- **Client replay.** The sidecars are replayed by re-running the adapter. They are not in
+  the format `tckdb-client`'s own replay tool reads.
+- **Artifacts.** Only the `output_log` and `input` kinds are implemented. The size limit is
+  per file; a calculation's batch is not split by total size.
+- **Payload validation at run time.** The request models and JSON Schemas run in tests.
+  The uploader does not validate a payload before posting it.
+
+## Checklist
+
+- [ ] The contract is read for every route you post to.
+- [ ] The package depends on `tckdb-adapters-core` and pins the same TCKDB lines.
+- [ ] Nothing in `tckdb_core` names your tool.
+- [ ] Every required convention the source does not state is omitted or refused, with a
+      registered warning code and a test.
+- [ ] Every interpretation is marked in the payload and in the sidecar.
+- [ ] The contract hook, the pin test and the registry test are in place.
+- [ ] The warning-code document is regenerated.
+- [ ] The package has a README and a changelog, and the changelog marks releases that
+      change payloads.
