@@ -3,6 +3,54 @@
 Releases are listed newest first. Each `tckdb-arc` release names the core version it needs in its
 own changelog.
 
+## 0.5.13
+
+Checks every request against the shipped contract before it is posted. No payload any route builds
+changes, and no idempotency key changes; a request the contract refuses is no longer posted.
+
+- New module `tckdb_core.validation`: `ROUTE_SCHEMAS` (endpoint to contract surface, now the one
+  table for all twelve routes; `tckdb_core.testing.contract` and `tckdb_core.standalone` read it
+  instead of keeping their own), the cached `Draft202012Validator` per schema, the published
+  pydantic models (`request_models()`, `REQUEST_MODELS`, `ARTIFACT_ITEM_MODEL`),
+  `request_findings` / `schema_findings` and `PayloadContractError`. Each finding is one line,
+  `"<path>: <message>"`: JSON Schema messages are cut at 200 characters (they echo the value),
+  a model's prose at 2000, at most 200 findings. jsonschema, the shipped schemas and the models are
+  imported on the first check, not by `import tckdb_core.uploader`.
+- Public names. Every name `testing.contract` and `standalone` exposed before still resolves
+  (`ROUTE_SCHEMAS`, `REQUEST_MODELS`, the four request models and `ArtifactIn` in the kit,
+  `MAX_FINDING_CHARS`, `_clip`, `_validator`, `StandalonePayloadError`, ...). Only incidental imports
+  are gone: `json` from the kit, and `json`, `lru_cache`, `Draft202012Validator` and `contract`
+  from `standalone`. `StandalonePayloadError` is now a subclass of `PayloadContractError`.
+- Which check runs. At run time the published model alone decides for a route that has one (the
+  conformer, computed-species, computed-reaction and transition-state routes, and each item of an
+  artifact batch), because the server runs that model in pydantic's lax mode: `species_entry.charge:
+  "0"` is accepted by the server and by the model, and refused by the JSON Schema ("not of type
+  integer"). A route with no published model (the seven standalone record routes) is checked
+  against its shipped JSON Schema. The test kit's `assert_request_is_accepted` is unchanged and
+  stricter (model, then schema), so a builder stays held to the schema in tests.
+- `TCKDBUploaderBase._upload` and the artifact batch upload check the request first, before the
+  API-key lookup, the readiness probe and the POST. A request that fails is not posted. The payload
+  file stays on disk; the sidecar is `failed` with `last_error` starting `payload_failed_local_validation:`
+  and the first finding (so the one line a sweep prints says what disagreed, the model's own wording
+  and remedy included, without pydantic's `Value error, ` prefix), and a warning with that code
+  (new `CoreWarning`; `source` is `tckdb_core_self_check`) carrying the endpoint, the contract, the
+  stable refusal codes found in the findings (`refusal_codes`) and the first 20 findings in full.
+  `response_status_code` stays empty, so it cannot be read as a server refusal. The outcome is
+  `failed`; strict mode raises `PayloadContractError` after the sidecar is written.
+- An artifact plan is checked whole before any of its batches is posted, from the prepared metadata
+  (kind, filename, sha256, byte count, non-empty content) with `ArtifactIn`: no file is read or
+  base64-encoded a second time.
+- A bug in the checker never blocks an upload: if it raises, the error is logged, the sidecar gains
+  a `payload_local_validation_unavailable` warning (new `CoreWarning`), and the request is posted
+  unchecked, strict mode included.
+- New config field `TCKDBConfig.validate_before_upload` (default `True`); `False` posts whatever was
+  built, as before. Turn it off when the installed tckdb-schemas is not the one the server runs.
+- `pydantic>=2.6` is now declared (tckdb-schemas already requires it).
+- `submit_standalone` still validates before it writes anything and raises regardless of the switch.
+- The check shares the limits of the test kit: no route-handler rules, no `format` keywords.
+  Cost: building a validator takes 2 to 300 ms per schema, once per process; a check of the
+  largest golden payload (a 78 KB computed-reaction request) takes about 11 ms.
+
 ## 0.5.12
 
 The submit sequence every route shares moves into the base class. No payload, endpoint,

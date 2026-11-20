@@ -10,6 +10,14 @@ published pydantic model, to every builder an adapter's conftest registers;
 tests call :func:`contract_validate` where they check a payload or fragment
 themselves.
 
+The route table (``ROUTE_SCHEMAS``) and the cached validators are the ones
+:mod:`tckdb_core.validation` checks every request with before the POST, so the kit and the runtime
+cover the same routes. The kit is deliberately the stricter of the two: it runs the published model
+and then the JSON Schema (``assert_request_is_accepted``), so a builder is held to the schema in
+tests, while at run time the model alone decides for a route that has one (it is what the server
+runs, in lax mode; the schema would refuse ``"0"`` for an integer ``charge`` where the server
+accepts it).
+
 What this does not cover: the route handlers' own rules (ownership and
 role checks such as ``thermo_energy_level_*``, composition checks such as
 ``calculation_geometry_composition_mismatch``), request headers, and JSON
@@ -24,7 +32,6 @@ testing against a contract nobody read.
 
 from __future__ import annotations
 
-import json
 from functools import lru_cache
 from importlib.metadata import version
 from typing import Any
@@ -37,55 +44,30 @@ from tckdb_schemas.workflows.computed_species_upload import ComputedSpeciesUploa
 from tckdb_schemas.workflows.conformer_upload import ConformerUploadRequest
 from tckdb_schemas.workflows.transition_state_upload import TransitionStateUploadRequest
 
+# The route table, the published models and the cached validators are the runtime check's
+# (:mod:`tckdb_core.validation`); the kit reads the same objects, so a route added there is
+# covered here and the two cannot drift. The names below stay importable from this module.
+from tckdb_core.validation import (
+    ROUTE_SCHEMAS,
+    json_schema_validator as _validator,
+    request_models,
+    wire_json as _wire_json,
+)
+
+#: The published pydantic model of each route's request (the four whole-request routes); the
+#: very dict the runtime check reads. The artifact route's request model lives in the backend; its
+#: items are ``ArtifactIn``. The standalone requests are backend-side too, so for those routes the
+#: shipped JSON Schema is the check.
+REQUEST_MODELS = request_models()
+
 #: The tckdb-schemas release line the suites were run against. Keep it equal
 #: to the ``tckdb-schemas`` bound in each ``pyproject.toml``; moving it means
 #: reading ``python -m tckdb_schemas.contract --since <old>`` first.
 TARGET_SCHEMAS_LINE = (0, 175)
 
-#: Upload endpoints and the contract surface each one posts.
-ROUTE_SCHEMAS = {
-    "/uploads/conformers": "ConformerUploadRequest",
-    "/uploads/computed-species": "ComputedSpeciesUploadRequest",
-    "/uploads/computed-reaction": "ComputedReactionUploadRequest",
-    "/uploads/transition-states": "TransitionStateUploadRequest",
-    "/calculations/{calculation_id}/artifacts": "ArtifactsUploadRequest",
-    "/uploads/thermo": "ThermoUploadRequest",
-    "/uploads/kinetics": "KineticsUploadRequest",
-    "/uploads/statmech": "StatmechUploadRequest",
-    "/uploads/transport": "TransportUploadRequest",
-    "/uploads/reactions": "ReactionUploadRequest",
-    "/uploads/networks": "NetworkUploadRequest",
-    "/uploads/networks/pdep": "NetworkPDepUploadRequest",
-}
-
-
-#: The published pydantic model of each route's request. The artifact
-#: route's request model lives in the backend; its items are ``ArtifactIn``.
-#: The standalone thermo, kinetics, statmech, transport, reaction and network
-#: requests are backend-side too (tckdb-schemas publishes only nested payloads
-#: of them), so for those routes the shipped JSON Schema is the check.
-REQUEST_MODELS = {
-    "ConformerUploadRequest": ConformerUploadRequest,
-    "ComputedSpeciesUploadRequest": ComputedSpeciesUploadRequest,
-    "ComputedReactionUploadRequest": ComputedReactionUploadRequest,
-    "TransitionStateUploadRequest": TransitionStateUploadRequest,
-}
-
 
 def installed_schemas_version() -> str:
     return version("tckdb-schemas")
-
-
-def _wire_json(payload: Any) -> Any:
-    """The payload as the client sends it: JSON, never NaN or Infinity."""
-    return json.loads(json.dumps(payload, allow_nan=False))
-
-
-@lru_cache(maxsize=None)
-def _validator(schema_name: str) -> Draft202012Validator:
-    schema = contract.json_schema(schema_name)
-    Draft202012Validator.check_schema(schema)
-    return Draft202012Validator(schema)
 
 
 @lru_cache(maxsize=None)

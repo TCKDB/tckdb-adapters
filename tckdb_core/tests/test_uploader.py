@@ -30,6 +30,8 @@ class DemoAdapter(TCKDBUploaderBase):
 
 def _config(tmp_path, **kw):
     kw.setdefault("preflight", False)
+    # These tests drive the transport with a toy ``{"a": 1}`` body; the contract check has its own file.
+    kw.setdefault("validate_before_upload", False)
     return TCKDBConfig(
         enabled=True, base_url="https://example.invalid", payload_dir=str(tmp_path),
         api_key_env="DEMO_TCKDB_KEY", **kw,

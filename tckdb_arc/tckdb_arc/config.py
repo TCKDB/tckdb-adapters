@@ -133,6 +133,7 @@ class TCKDBConfig(_CoreConfig):
             upload=bool(raw.get("upload", True)),
             preflight=bool(raw.get("preflight", True)),
             strict=bool(raw.get("strict", False)),
+            validate_before_upload=bool(raw.get("validate_before_upload", True)),
             timeout_seconds=float(raw.get("timeout_seconds", DEFAULT_TIMEOUT_SECONDS)),
             project_label=raw.get("project_label"),
             upload_mode=upload_mode,

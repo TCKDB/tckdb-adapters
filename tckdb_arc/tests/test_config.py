@@ -52,6 +52,13 @@ class TestTCKDBConfig(unittest.TestCase):
         self.assertTrue(cfg.upload)
         self.assertTrue(cfg.preflight)
         self.assertFalse(cfg.strict)
+        self.assertTrue(cfg.validate_before_upload)
+
+    def test_from_dict_reads_validate_before_upload(self):
+        cfg = TCKDBConfig.from_dict(
+            {"enabled": True, "base_url": "http://srv/api/v1", "validate_before_upload": False}
+        )
+        self.assertFalse(cfg.validate_before_upload)
 
     def test_from_dict_overrides(self):
         cfg = TCKDBConfig.from_dict(

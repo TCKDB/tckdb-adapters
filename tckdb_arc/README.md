@@ -47,6 +47,7 @@ run_upload_sweep(adapter=adapter, project_directory=project_directory, tckdb_con
 | `api_key_file` | unset | A file that contains only the key. |
 | `api_key_env_file` | unset | A dotenv-style file with a `<api_key_env>=` line (`TCKDB_API_KEY=` unless `api_key_env` is set). It is parsed, never executed. |
 | `preflight` | `true` | Probe the server's `/readyz` before the first upload. |
+| `validate_before_upload` | `true` | Check each request against the shipped tckdb-schemas contract (the published model for the conformer, computed-species, computed-reaction and transition-state routes, the JSON Schema for the rest) just before it is posted. A request that fails is not posted: the payload stays on disk, the sidecar is `failed` with `payload_failed_local_validation` and the findings, and `strict` raises. `false` posts whatever was built; use it when the installed tckdb-schemas is not the version the server runs. |
 | `strict` | `false` | Raise on a failed upload. Otherwise the failure is logged and recorded in the sidecar, and the run continues. |
 | `timeout_seconds` | `30` | Timeout of each request. |
 | `project_label` | the project name in `output.yml` | Part of every idempotency key. |
@@ -55,6 +56,8 @@ run_upload_sweep(adapter=adapter, project_directory=project_directory, tckdb_con
 | `rights` | unset | The upload's `rights` fragment (licence, the depositor's attestation, optional source terms), validated against `tckdb_schemas.rights.DepositRights`. Without it no rights are sent. |
 
 The key is never stored in YAML. The environment variable wins over either file.
+
+Boolean keys (`enabled`, `upload`, `preflight`, `strict`, `validate_before_upload`, `allow_partial_uploads`) are read with Python's `bool()`: write YAML `true` or `false` (unquoted). A quoted `"false"` or `"no"` is a non-empty string and counts as true.
 
 The upload modes map to TCKDB routes:
 

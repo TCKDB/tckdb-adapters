@@ -134,6 +134,20 @@ example.
    upload is off or uploads with `_upload`. `log_name` words the log line; `is_partial` writes
    a record that is never posted.
 
+`_upload` checks the finished payload against the shipped contract for its endpoint before it
+does anything else (no API-key lookup, no readiness probe, no POST), with `tckdb_core.validation`:
+the route's published pydantic model where tckdb-schemas has one (the server runs that model, in
+lax mode, so it alone decides), otherwise the shipped JSON Schema. A payload that fails is not
+posted. Its file stays on disk, the sidecar is `failed` with `last_error` starting
+`payload_failed_local_validation:` followed by the first finding, and a warning of that code lists
+the findings in full and any stable refusal codes in them (no `response_status_code`, which is how
+it differs from a server refusal), the outcome is `failed`, and strict mode raises
+`PayloadContractError`. A checker that itself raises does not block the upload: the request is
+posted unchecked and the sidecar says `payload_local_validation_unavailable`. The endpoint you pass must be a key of
+`ROUTE_SCHEMAS`, or there is nothing to check against and the request is posted unchecked.
+Your users can turn the check off with `config.validate_before_upload = False`; give your
+config parser that key.
+
 The payload is written before the request so that a crash leaves a `pending` sidecar on
 disk, and so that the bytes can be replayed. The idempotency key includes a hash of the
 payload, so the same input gives the same key and TCKDB replays its first answer. A change
@@ -290,7 +304,8 @@ outcome = adapter.submit_standalone(
 
 It follows the submit sequence above, minus the build step: `config.rights` is added to a copy
 of the request when the request has none (a request whose `rights` differ from the configured
-ones is refused), the request is validated against the shipped schema, and the finished request
+ones is refused), the request is validated against the shipped schema (here, and again by `_upload`
+before the POST), and the finished request
 goes to `_write_and_upload`, which builds the key
 (`<namespace>:<project>:<label>:<qualifier>:<kind>:<hash>`), writes the payload and a `pending`
 sidecar, and skips or uploads exactly as the other routes do (readiness probe, POST, sidecar
@@ -298,8 +313,9 @@ status, strict mode). It returns `None` when the
 config is disabled.
 
 An invalid request raises `StandalonePayloadError` before any file is written, in strict mode
-or not. A payload that never passed the contract has nothing worth replaying, so no sidecar is
-left for it.
+or not, and whatever `validate_before_upload` says. A payload that never passed the contract has
+nothing worth replaying, so no sidecar is left for it. (The pre-POST check in `_upload` is the one
+the switch governs; it reports through the sidecar instead.)
 
 What validation covers: the shipped JSON Schema, which checks shape; its `format` keywords are
 not enforced. tckdb-schemas publishes
@@ -323,7 +339,8 @@ before anything is written.
 If your tool's output also needs a route that is not in the table, add it in the core, in its
 own pull request, before the adapter that needs it: an endpoint and kind constant, a subdirectory
 constant in `PayloadWriter`, a row in `tckdb_core.standalone.STANDALONE_ROUTES`, a
-`ROUTE_SCHEMAS` entry in `tckdb_core.testing.contract`, and tests. A new `ROUTE_SCHEMAS` entry
+`ROUTE_SCHEMAS` entry in `tckdb_core.validation` (the one table; the test kit and the runtime
+check both read it, so the new route is checked before its POST from the start), and tests. A new `ROUTE_SCHEMAS` entry
 does not affect another adapter's pin test, which checks only the routes that adapter posts to;
 the core's own pin test requires an endpoint constant for every entry.
 
@@ -338,9 +355,23 @@ Other limits of the core that an adapter author should know:
   transition-state and standalone kinds as unknown, since it dispatches on four kinds only.
 - **Artifacts.** Only the `output_log` and `input` kinds are implemented. The size limit is
   per file; a calculation's batch is not split by total size.
-- **Payload validation at run time.** The request models and JSON Schemas run in tests.
-  The built-and-sent routes are not validated before posting; `submit_standalone` validates
-  the standalone routes against the shipped JSON Schema (shape only) before it writes anything.
+- **Payload validation at run time.** Every request is checked before its POST, artifact batches
+  included. For the conformer, computed-species, computed-reaction and transition-state routes and
+  for the items of an artifact batch the published pydantic model alone decides, because that is
+  what the server runs and it runs it in lax mode (`species_entry.charge: "0"` passes). The
+  standalone routes have no published model, so for them the shipped JSON Schema decides (shape
+  only), and `submit_standalone` checks the same schema once more before it writes anything. The
+  test kit is stricter on purpose: `assert_request_is_accepted` runs the model and then the JSON
+  Schema, so a builder is held to the schema in tests even where the server would accept looser
+  input. A check is as
+  strict as the *installed* tckdb-schemas, which may be older or newer than the server: that is
+  the reason for `validate_before_upload`. It does not run the route handlers' rules (ownership
+  of cited calculations, composition checks, the energy-level rules), headers, or `format`
+  keywords, so a request can pass and still be refused; only the live gate reaches those. With
+  `upload = false` nothing is checked: `_finalize_skipped` writes the sidecar as it always did.
+  A check costs milliseconds (about 11 ms for a 78 KB computed-reaction request, the largest ARC
+  golden payload); the first check of each route builds its validator, 10 to 300 ms, once per
+  process. An artifact plan is read twice, once to check its bodies and once to post them.
 
 ## Checklist
 

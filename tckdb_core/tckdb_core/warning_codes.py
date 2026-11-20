@@ -42,6 +42,17 @@ class CoreWarning(CodedEnum):
         "The upload response carried no `calculation_ref`, so a calculation's artifacts were not "
         "uploaded: TCKDB (0.116) addresses a calculation by its `calc_` ref only and refuses an integer id.",
     )
+    PAYLOAD_FAILED_LOCAL_VALIDATION = (
+        "payload_failed_local_validation",
+        "A request did not match the tckdb-schemas contract for its route, so it was not posted: the payload "
+        "file stays on disk and the sidecar is `failed`. This is the adapter's own check, not a server refusal; "
+        "`validate_before_upload = false` turns it off.",
+    )
+    PAYLOAD_LOCAL_VALIDATION_UNAVAILABLE = (
+        "payload_local_validation_unavailable",
+        "The adapter's own pre-POST contract check raised an error of its own, so the request was posted "
+        "unchecked: an internal checker failure is not a verdict on the request.",
+    )
 
 
 def registry(*enums: type[CodedEnum]) -> Iterator[tuple[str, str, str]]:
