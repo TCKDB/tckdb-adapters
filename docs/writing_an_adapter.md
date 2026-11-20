@@ -139,6 +139,16 @@ to your mapping changes the hash. Say so in your changelog when it happens.
 The ARC adapter has four such methods and they repeat this sequence. The base class has
 no shared template for it yet, so follow the sequence by hand.
 
+The artifact route is the exception: the base class already has the whole submit path.
+`submit_artifacts_for_calculation(species_label=..., calculation_ref=..., file_path=...)`
+uploads one file and `submit_artifact_batch_for_calculation(...)` uploads several, using the
+`calc_` ref that the upload response returned. They apply the config's artifact settings,
+write one sidecar per file and post one batch per calculation, so a producer does not
+rewrite them. Override `_project_label_for(output_doc)` if the project label comes from your
+tool's output when the config names none. You may wrap the public methods with a signature
+of your own: the base class's single-file method calls a private batch function, not the
+public batch method, so an override does not break it.
+
 ### 4. The mapping
 
 The mapping is the part only you can write. It reads your tool's records and builds the

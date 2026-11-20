@@ -3,6 +3,17 @@
 Releases are listed newest first. Each `tckdb-arc` release names the core version it needs in its
 own changelog.
 
+## 0.5.10
+
+No behaviour change for existing callers; released with adapter 0.15.10.
+
+- `TCKDBUploaderBase` gains `submit_artifacts_for_calculation` and
+  `submit_artifact_batch_for_calculation`, the standalone artifact submit path
+  (`POST /calculations/{calculation_ref}/artifacts`). They take the species label, the
+  calculation's `calculation_ref` (and optionally its integer id) and `(kind, file_path)` pairs;
+  the project label comes from the config or from `_project_label_for(output_doc)`. The skip
+  rules, sidecars, batch grouping and idempotency keys are those the pipeline already used.
+
 ## 0.5.9
 
 No behaviour change for existing callers; released with adapter 0.15.9.
