@@ -74,7 +74,7 @@ Each ARC job becomes a TCKDB calculation at the level and program ARC states for
 | composite job | the primary calculation at the composite level, linked under the `composite` role | |
 | rotor scans | `scan` calculations with `scan_result` | Each scan needs its own stated level and program; a scan without them is reported and not relabelled with the opt level. The scan's log is its `output_log` artifact. |
 | IRC jobs | `irc` calculation with `irc_result` | See the transition-state section. |
-| TS guess search | `path_search` calculation | NEB at `neb_level`, GSM at the header `gsm_level` (output 1.3). Without a stated level or program it is omitted (`ts_guess_level_not_stated`, `ts_guess_software_not_stated`). `path_search_result.converged` is never sent, because ARC's `success` flag means only that an output file exists. GSM energies and gradients are attached to a path point only where the evidence file matches them to that point's geometry. They are never attached by node number, and without an evidence file the archived values are left out. |
+| TS guess search | `path_search` calculation with `path_search_result` | NEB at `neb_level`, GSM at the header `gsm_level` (output 1.3). Without a stated level or program it is omitted (`ts_guess_level_not_stated`, `ts_guess_software_not_stated`). The points are described under "Path-search points" below. |
 | screened conformers | bare `opt` calculations marked as screened-conformer anchors | Filed at `conformer_levels` with each conformer's own program. A conformer with no stated level or program is omitted (`conformer_level_not_stated`). Force-field geometries are not calculations. |
 
 Other per-calculation values:
@@ -98,6 +98,40 @@ Other per-calculation values:
   IRC points are labelled with the record's isotopes when the frame has the record's
   element sequence in order and the program is Gaussian or ORCA. Any other point has its
   geometry left out (`geometry_isotopes_not_stated`).
+
+### Path-search points
+
+A path search carries its whole path where the source holds it. Relative energies are
+referenced to the lowest energy on the path.
+
+**ORCA NEB.** Every image of the log's band `PATH SUMMARY` becomes a point
+(`tckdb_arc.orca_neb`):
+
+- `path_coordinate` from `Dist.(Ang.)`, the energy, and `max_force` and `rms_force` from
+  `max(|Fp|)` and `RMS(Fp)` in Eh/Bohr. The force is the one perpendicular to the path,
+  and the total force at the two end points.
+- The climbing image is marked `is_climbing_image` and named by `climbing_image_index`. It
+  is the only image with a geometry, taken with its full-precision energy from the log's
+  saddle-point block. The other images' geometries are not in the log.
+- `converged: true` is sent when ORCA printed `THE NEB OPTIMIZATION HAS CONVERGED`.
+  Otherwise the field is omitted. ARC's own `success` flag is never used for it, because
+  it means only that an output file exists.
+- The summary is not read when it does not end the way ORCA ends it, or when its image
+  count differs from the count the run states (or the input's `NImages` plus the two end
+  points). The search then keeps a single point, the TS guess from `opt_input_xyz`.
+- No image is marked as the TS guess. ARC takes its guess from the log's last coordinate
+  block, which for its NEB-TS runs is the saddle point ORCA optimized from the climbing
+  image and is not an image. That geometry (`opt_input_xyz`) is sent as the calculation's
+  `final` output geometry, and the result's `note` says so. The saddle point's energy and
+  forces are not sent; the result has no field for a point that is not an image.
+
+**xtb GSM.** The points are the stringfile frames in ARC's parser evidence. A point
+carries an xTB energy and gradient norm only where the evidence matches a node evaluation
+to that frame's geometry. A frame with no match has no energy. Values are never attached
+by node number, the stringfile's all-zero energy column is not read as energies, and
+without an evidence file the archived node values are left out. GSM `converged` and
+`is_climbing_image` are not sent: ARC keeps no GSM output that states convergence, and the
+contract defines the climbing-image flag for NEB.
 
 ## Levels of theory
 
@@ -348,6 +382,7 @@ key built from the calculation ref, the kind and the file's SHA-256.
 | `tunneling_application`, `interpretation_assignments`, `network_kinetics_ref` | Each cites a record deposited earlier, and a bundle cannot cite what it is creating. |
 | Typed level-of-theory qualifiers | ARC does not export the effective keyword line per job. See "Levels of theory". |
 | Literature on correction schemes | ARC records no citation. |
-| `scale_kind`, `electronic_state_kind`, `path_search_result.converged`, GSM `is_climbing_image` | ARC does not state them. |
+| `scale_kind`, `electronic_state_kind` | ARC does not state them. |
+| GSM `converged` and `is_climbing_image`; the geometries of NEB images other than the climbing image; the NEB-TS saddle point's energy and forces | The files ARC keeps do not hold them, or the contract has no field. See "Path-search points". |
 | The `composite` calculation type | ARC does not export what it needs. |
 | Rights | Sent only when the `tckdb` block has a `rights` block. No licence is inferred. |
