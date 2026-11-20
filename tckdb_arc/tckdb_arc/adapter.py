@@ -3610,6 +3610,16 @@ class TCKDBAdapter(TCKDBUploaderBase):
                         conformer_xyz_text=None,
                         include_artifacts=include_artifacts,
                     )
+                    # A parsed NEB band marks no image as the guess (see
+                    # ``_build_path_search_result_payload``); the geometry ARC
+                    # fed to ts_opt is the path search's final output.
+                    guess_xyz = _normalize_xyz_text(ts_record.get("opt_input_xyz"), ts_record.get("label"))
+                    if (ts_guess_method == "neb" and guess_xyz
+                            and not any(p.get("is_ts_guess") for p in path_search_payload["points"])):
+                        guess_geometry = _geometry_payload(
+                            ts_record, guess_xyz, ts_record.get("opt_input_xyz_isotopes"))
+                        if guess_geometry:
+                            ts_guess_calc["output_geometries"] = [{"geometry": guess_geometry, "role": "final"}]
                 except ValueError as exc:
                     logger.warning(
                         "TCKDB computed-reaction: ts_guess (%s) calc skipped: %s",
@@ -11430,6 +11440,16 @@ def _read_gsm_node_outputs(
     return by_label
 
 
+_NEB_TS_GUESS_NOTE = (
+    "TS guess: the saddle point ORCA's NEB-TS optimized from the climbing image; "
+    "not a path image. It is this calculation's final output geometry."
+)
+_NEB_GUESS_NOTE = (
+    "TS guess: the last geometry in the ORCA log, not identified with a path image. "
+    "It is this calculation's final output geometry."
+)
+
+
 def _build_path_search_result_payload(
     *,
     method: str,
@@ -11463,11 +11483,12 @@ def _build_path_search_result_payload(
 
     * ``method == 'neb'``: every image of the ORCA band summary
       (:func:`tckdb_arc.orca_neb.parse_orca_neb_log`) becomes a point with
-      its distance (Angstrom), energy and perpendicular-force norms
-      (Eh/Bohr); only the climbing image's geometry is in the log. The
-      climbing image is the TS guess (ORCA's NEB-TS optimizes from it; the
-      optimized TS is not an image). ``converged`` is set only from ORCA's
-      convergence banner.
+      its distance (Angstrom), energy and force norms (Eh/Bohr); only the
+      climbing image's geometry is in the log. No point is marked as the TS
+      guess: ARC's guess is the log's last coordinate block (for NEB-TS the
+      saddle point refined from the climbing image, not an image), which the
+      caller files as the calculation's final output geometry; ``note`` says
+      so. ``converged`` is set only from ORCA's convergence banner.
 
     * Unparseable logs: fall back to a single TS-guess point from
       ``fallback_xyz_text`` (the chosen guess's geometry, also the
@@ -11594,6 +11615,7 @@ def _build_path_search_result_payload(
 
     converged: bool | None = None
     climbing_image_index: int | None = None
+    note: str | None = None
     if method == "neb" and log_path is not None:
         from tckdb_arc.orca_neb import parse_orca_neb_log
 
@@ -11601,7 +11623,12 @@ def _build_path_search_result_payload(
         if band is not None:
             converged = band["converged"]
             climbing_image_index = band["climbing_image_index"]
-            selected_index = climbing_image_index
+            # ARC takes the guess from the log's last coordinate block
+            # (``OrcaParser.parse_geometry``), never from a band image: for its
+            # NEB-TS runs that is the saddle point optimized from the climbing
+            # image. No point is the TS guess; the caller files ARC's guess as
+            # this calculation's final output geometry.
+            note = _NEB_TS_GUESS_NOTE if band["refines_ts"] else _NEB_GUESS_NOTE
             for image in band["images"]:
                 index = image["index"]
                 point = {
@@ -11614,7 +11641,6 @@ def _build_path_search_result_payload(
                     point["path_coordinate"] = image["distance_angstrom"]
                 if index == climbing_image_index:
                     point["is_climbing_image"] = True
-                    point["is_ts_guess"] = True
                 if image["atoms"]:
                     xyz_text = _normalize_xyz_text("\n".join(image["atoms"]), label=f"neb_image_{index}")
                     if xyz_text:
@@ -11717,6 +11743,8 @@ def _build_path_search_result_payload(
         payload["converged"] = converged
     if climbing_image_index is not None:
         payload["climbing_image_index"] = climbing_image_index
+    if note is not None:
+        payload["note"] = note
     if zero_e_h is not None:
         payload["zero_energy_reference_hartree"] = zero_e_h
     # Static method properties (is_double_ended, source_endpoint_count)

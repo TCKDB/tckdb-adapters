@@ -72,10 +72,13 @@ and schema versions; their percentages are not current coverage measurements.
 - **Adapter 0.15.7, kinetics declarations and the H atom at HF (`tckdb_core` 0.5.7; same pin, TCKDB `c20b16a9`):** a fit ARC's Arkane run produced now states its `direction`, a `determination` and an `applicability`; a one-electron species at HF keeps its enthalpy under a correlated atom-corrections level. See
   [Kinetics declarations and the H atom at HF (adapter 0.15.7)](#kinetics-declarations-and-the-h-atom-at-hf-adapter-0157).
 - **Adapter 0.15.8, whole path-search paths (`tckdb_core` 0.5.8; same pin):** an ORCA NEB guess sends every image of the
-  log's band summary (distance in Angstrom, energy, perpendicular-force norms in Eh/Bohr, the climbing image and its geometry,
-  the convergence banner), and an xtb GSM guess sends the node energies and gradient norms ARC's parser evidence attaches to
-  frames by geometry. Not sent because the source does not hold it: the other NEB images' geometries (ARC keeps only the ORCA
-  log), the NEB-TS optimized TS (not an image), GSM convergence.
+  log's band summary (distance in Angstrom, energy, force norms in Eh/Bohr, the climbing image with its geometry, the
+  convergence banner), and an xtb GSM guess sends the node energies and gradient norms ARC's parser evidence attaches to
+  frames by geometry. A truncated summary, or one whose image count differs from the run's, is not read. No NEB image is
+  marked as the TS guess: ARC's `orca_neb` always runs NEB-TS and takes the guess from the log's last coordinate block
+  (the saddle point optimized from the climbing image), so that geometry (`opt_input_xyz`) is the path search's `final`
+  output geometry instead. Not sent because the source does not hold it: the other NEB images' geometries (ARC keeps only
+  the ORCA log), the NEB-TS saddle point's energy and forces (no slot; it is not an image), GSM convergence.
 - **Adapter 0.15.2, ORCA routes are not compared with the level (same pin, `tckdb_core` 0.5.2):** the route-versus-level check runs only for jobs the record states ran in
   Gaussian, so an ORCA auxiliary-basis token (`aug-cc-pvtz/c`) is no longer read as a method/basis pair. See "Placeholders and contradictions" above.
 - **Adapter 0.6.3:** roadmap A1, A5 and A12 (see "Corrections and statmech
