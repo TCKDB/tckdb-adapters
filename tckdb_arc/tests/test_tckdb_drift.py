@@ -97,7 +97,7 @@ def test_bump_rewrites_only_the_pins_and_patch(root):
     after = {rel: (root / rel).read_text() for rel in FILES + UNTOUCHED}
 
     changed = {rel for rel in before if before[rel] != after[rel]}
-    assert changed == set(FILES)  # no workflow file, no CLAUDE.md
+    assert changed == set(FILES)  # no workflow file, no AGENTS.md or CLAUDE.md
 
     assert drift.pinned_line(after[drift.ADAPTER_PYPROJECT], "tckdb-schemas") == (0, 58)
     assert drift.pinned_line(after[drift.ADAPTER_PYPROJECT], "tckdb-client") == (0, 98)
@@ -114,13 +114,14 @@ def test_bump_rewrites_only_the_pins_and_patch(root):
     new_v = drift.parse_version(drift.adapter_version(after[drift.ADAPTER_PYPROJECT]))
     assert new_v == (old_v[0], old_v[1], old_v[2] + 1)
     entry = f"- Adapter {new_v[0]}.{new_v[1]}.{new_v[2]}: tracked TCKDB 74aae9a (schemas 0.58.0, client 0.98.0)."
-    assert f"{drift.CHANGELOG_MARKER}\n{entry}\n" in after[drift.PKG_README]
+    assert f"{drift.CHANGELOG_MARKER}\n{entry}\n" in after[drift.PKG_CHANGELOG]
+    assert drift.CHANGELOG_MARKER not in after[drift.PKG_README]
 
     # Nothing else moved: every changed line is a pin, the SHA, a version sentence or the changelog line.
     for rel in FILES:
         old_lines, new_lines = before[rel].splitlines(), after[rel].splitlines()
-        assert len(new_lines) == len(old_lines) + (1 if rel == drift.PKG_README else 0)
-        if rel == drift.PKG_README:
+        assert len(new_lines) == len(old_lines) + (1 if rel == drift.PKG_CHANGELOG else 0)
+        if rel == drift.PKG_CHANGELOG:
             new_lines = [n for n in new_lines if n != entry]
         for o, n in zip(old_lines, new_lines):
             if o != n:

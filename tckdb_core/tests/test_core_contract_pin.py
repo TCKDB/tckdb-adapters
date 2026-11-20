@@ -3,58 +3,50 @@
 The twin of ``tckdb_arc/tests/test_contract_pin.py``: both read the one
 ``TARGET_SCHEMAS_LINE`` in :mod:`tckdb_core.testing.contract`, so a bump that moves it
 (``tools/tckdb_drift.py --bump``) is checked against every package's ``pyproject.toml``.
-A silent upgrade or downgrade of tckdb-schemas fails here, naming the version, until
-someone reads ``python -m tckdb_schemas.contract --since <old>`` and moves the pin and
-the bound together.
+The assertions are :mod:`tckdb_core.testing.contract_pin`.
 """
 
-import re
-import tomllib
 from pathlib import Path
 
-from tckdb_schemas import contract
+import pytest
 
 from tckdb_core import constants
-from tckdb_core.testing.contract import ROUTE_SCHEMAS, TARGET_SCHEMAS_LINE, installed_schemas_version
+from tckdb_core.testing import contract_pin
 
 PYPROJECT = Path(__file__).resolve().parents[1] / "pyproject.toml"
 
 
-def _release_line(version: str) -> tuple[int, int]:
-    major, minor = version.split(".")[:2]
-    return int(major), int(minor)
-
-
 def test_installed_tckdb_schemas_is_the_targeted_line():
-    installed = installed_schemas_version()
-    assert _release_line(installed) == TARGET_SCHEMAS_LINE, (
-        f"tests ran against tckdb-schemas {installed}, but the suite targets "
-        f"{TARGET_SCHEMAS_LINE[0]}.{TARGET_SCHEMAS_LINE[1]}.x. Read "
-        f"`python -m tckdb_schemas.contract --since "
-        f"{TARGET_SCHEMAS_LINE[0]}.{TARGET_SCHEMAS_LINE[1]}.0` before moving the pin."
-    )
+    contract_pin.assert_installed_schemas_is_the_targeted_line()
 
 
 def test_pyproject_bounds_tckdb_schemas_to_the_targeted_line():
-    dependencies = tomllib.loads(PYPROJECT.read_text())["project"]["dependencies"]
-    (spec,) = [d for d in dependencies if re.match(r"tckdb-schemas\b", d)]
-    major, minor = TARGET_SCHEMAS_LINE
-    assert spec.replace(" ", "") == f"tckdb-schemas>={major}.{minor},<{major}.{minor + 1}"
+    contract_pin.assert_pyproject_bounds_schemas_to_the_targeted_line(PYPROJECT)
 
 
 def test_contract_document_is_the_installed_version():
-    stamp = re.search(r"tckdb-schemas version `([^`]+)`", contract.markdown())
-    assert stamp is not None
-    assert stamp.group(1) == installed_schemas_version()
+    contract_pin.assert_contract_document_is_the_installed_version()
 
 
 def test_every_core_route_constant_has_a_shipped_schema():
-    posted = {
+    contract_pin.assert_routes_have_shipped_schemas({
         constants.CONFORMER_UPLOAD_ENDPOINT,
         constants.COMPUTED_SPECIES_ENDPOINT,
         constants.COMPUTED_REACTION_ENDPOINT,
         constants.TRANSITION_STATE_ENDPOINT,
         constants.ARTIFACTS_ENDPOINT_TEMPLATE,
-    }
-    assert posted == set(ROUTE_SCHEMAS)
-    assert set(ROUTE_SCHEMAS.values()) <= set(contract.schema_names())
+    })
+
+
+def test_the_pin_assertions_fail_on_a_wrong_bound_or_a_missing_route(tmp_path):
+    loose = tmp_path / "pyproject.toml"
+    loose.write_text('[project]\ndependencies = ["tckdb-schemas>=0.1"]\n')
+    with pytest.raises(AssertionError):
+        contract_pin.assert_pyproject_bounds_schemas_to_the_targeted_line(loose)
+    absent = tmp_path / "absent.toml"
+    absent.write_text('[project]\ndependencies = ["PyYAML>=6"]\n')
+    with pytest.raises(AssertionError):
+        contract_pin.assert_pyproject_bounds_schemas_to_the_targeted_line(absent)
+    with pytest.raises(AssertionError):
+        contract_pin.assert_routes_have_shipped_schemas({constants.CONFORMER_UPLOAD_ENDPOINT})
+    assert contract_pin.release_line("0.175.2") == (0, 175)

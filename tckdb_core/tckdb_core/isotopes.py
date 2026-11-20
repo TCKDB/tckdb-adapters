@@ -26,10 +26,11 @@ MOST_ABUNDANT_ISOTOPE: Mapping[str, int] = {
     "Se": 80, "Br": 79, "Kr": 84,
 }
 
-_SMILES_ISOTOPE_RE = re.compile(r"\[(\d+)([A-Z][a-z]?|[bcnops])")
+SMILES_ISOTOPE_RE = re.compile(r"\[(\d+)([A-Z][a-z]?|[bcnops])")
 
 
-def _xyz_symbols(xyz_text: str | None) -> list[str] | None:
+def xyz_symbols(xyz_text: str | None) -> list[str] | None:
+    """Element symbols of an xyz string in atom order (a count/comment header is skipped); ``None`` for a non-string."""
     if not isinstance(xyz_text, str):
         return None
     symbols: list[str] = []
@@ -45,6 +46,11 @@ def _xyz_symbols(xyz_text: str | None) -> list[str] | None:
             continue
         symbols.append(parts[0][:1].upper() + parts[0][1:].lower())
     return symbols or None
+
+
+# Earlier names of the two above, kept so existing imports resolve.
+_xyz_symbols = xyz_symbols
+_SMILES_ISOTOPE_RE = SMILES_ISOTOPE_RE
 
 
 def geometry_isotope_substitutions(

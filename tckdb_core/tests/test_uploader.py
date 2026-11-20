@@ -12,7 +12,7 @@ from tckdb_client.errors import TCKDBConnectionError, TCKDBError
 
 from tckdb_core.config import TCKDBArtifactConfig, TCKDBConfig
 from tckdb_core.constants import PREFLIGHT_MAX_ATTEMPTS
-from tckdb_core.outcomes import TCKDBReadinessError
+from tckdb_core.outcomes import PreparedArtifactUpload, TCKDBReadinessError
 from tckdb_core.uploader import (
     TCKDBUploaderBase,
     _artifact_batch_idempotency_prefix,
@@ -380,13 +380,13 @@ def test_an_uploaded_legacy_sidecar_without_a_base_url_still_skips(tmp_path):
 def test_a_legacy_sidecar_that_does_not_match_does_not_skip(tmp_path, sidecar):
     adapter, artifact = _legacy_case(tmp_path, sidecar=sidecar)
     prepared = _prepare(adapter, artifact)
-    assert prepared.__class__.__name__ == "_PreparedArtifactUpload"
+    assert isinstance(prepared, PreparedArtifactUpload)
     assert prepared.calculation_ref == "calc_abc"
 
 
 def test_no_legacy_sidecar_does_not_skip(tmp_path):
     adapter, artifact = _legacy_case(tmp_path, sidecar=None)
-    assert _prepare(adapter, artifact).__class__.__name__ == "_PreparedArtifactUpload"
+    assert isinstance(_prepare(adapter, artifact), PreparedArtifactUpload)
 
 
 def test_the_legacy_sidecar_is_not_consulted_without_a_calculation_ref(tmp_path):

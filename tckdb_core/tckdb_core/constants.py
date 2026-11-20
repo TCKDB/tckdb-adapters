@@ -4,6 +4,10 @@ These name the routes of the TCKDB upload contract and the retry policy of the
 readiness probe; none of it depends on which tool produced the data.
 """
 
+from tckdb_schemas.enums import ArtifactKind
+from tckdb_schemas.fragments.artifact import KIND_ALLOWED_EXTENSIONS
+from tckdb_schemas.fragments.calculation_origin import CalculationOriginKind
+
 CONFORMER_UPLOAD_ENDPOINT = "/uploads/conformers"
 PAYLOAD_KIND = "conformer_calculation"
 
@@ -62,15 +66,19 @@ PREFLIGHT_MAX_DELAY_SECONDS = 8.0
 # parameters_json — MUST be one of these. Producer-specific provenance detail
 # that is NOT an enum member (e.g. "screened_conformer") is carried on a
 # separate ``origin_detail`` key, which the backend leaves opaque.
+# The members are tckdb-schemas' own enum, not a copy of it.
 VALID_TCKDB_ORIGIN_KINDS: frozenset[str] = frozenset(
-    {"executed", "reused_result", "imported", "derived"}
+    kind.value for kind in CalculationOriginKind
 )
 
-# Backend ``KIND_ALLOWED_EXTENSIONS`` for ``output_log`` is
-# ``{.log, .out, .orca}`` (see TCKDB_v2 fragments/artifact.py).
+# The extensions TCKDB accepts for an ``output_log`` artifact, from
+# tckdb-schemas' ``KIND_ALLOWED_EXTENSIONS`` (``.log``, ``.out``, ``.orca``).
 # Non-traditional log artifacts (e.g. the GSM ``stringfile.xyz0000``)
 # need their declared filename adapted to satisfy the allowlist while
 # preserving the original basename for human inspection. The backend
 # treats ``filename`` as provenance metadata only — storage is content-
 # addressed and the filename does not influence the URI.
-_OUTPUT_LOG_ALLOWED_EXTS: frozenset[str] = frozenset({".log", ".out", ".orca"})
+OUTPUT_LOG_ALLOWED_EXTS: frozenset[str] = frozenset(
+    KIND_ALLOWED_EXTENSIONS[ArtifactKind.output_log]
+)
+_OUTPUT_LOG_ALLOWED_EXTS = OUTPUT_LOG_ALLOWED_EXTS  # earlier name, kept so existing imports resolve

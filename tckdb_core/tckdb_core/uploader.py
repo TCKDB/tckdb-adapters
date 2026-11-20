@@ -74,7 +74,7 @@ _BUNDLE_MODES_WITH_INLINE_ARTIFACTS = frozenset({
 # ----------------------------------------------------------------------
 
 
-def _coerce_artifact_filename(name: str, kind: str) -> str:
+def coerce_artifact_filename(name: str, kind: str) -> str:
     """Adapt an artifact ``filename`` to satisfy the backend's per-kind
     extension allowlist. Currently only ``output_log`` is coerced —
     other kinds either match upstream (``input``, ``checkpoint``) or
@@ -95,7 +95,10 @@ def _coerce_artifact_filename(name: str, kind: str) -> str:
     return f"{name}.log"
 
 
-def _artifact_batch_digest(items: list[_PreparedArtifactUpload]) -> str:
+_coerce_artifact_filename = coerce_artifact_filename  # earlier name
+
+
+def artifact_batch_digest(items: list[_PreparedArtifactUpload]) -> str:
     """Content digest for a calculation-scoped artifact batch idempotency key."""
     h = hashlib.sha256()
     for item in items:
@@ -112,7 +115,10 @@ def _artifact_batch_digest(items: list[_PreparedArtifactUpload]) -> str:
     return h.hexdigest()[:16]
 
 
-def _artifact_batch_idempotency_prefix(
+_artifact_batch_digest = artifact_batch_digest  # earlier name
+
+
+def artifact_batch_idempotency_prefix(
     project_label: Any,
     species_label: Any,
     *,
@@ -125,6 +131,9 @@ def _artifact_batch_idempotency_prefix(
         return cleaned[:limit]
 
     return f"{namespace}:{clean(project_label, limit=48)}:{clean(species_label, limit=64)}:artifact"
+
+
+_artifact_batch_idempotency_prefix = artifact_batch_idempotency_prefix  # earlier name
 
 
 def _summarize_artifact_batch_results(batch_results: Any) -> Any:
@@ -230,7 +239,7 @@ def _attach_preflight(sidecar: Any, metadata: dict[str, Any] | None) -> None:
         })
 
 
-def _preflight_sleep(seconds: float) -> None:
+def preflight_sleep(seconds: float) -> None:
     """Sleep between readiness-probe retries.
 
     Thin indirection over :func:`time.sleep` so tests can patch out the
@@ -238,6 +247,9 @@ def _preflight_sleep(seconds: float) -> None:
     and run instantly without changing the retry logic.
     """
     time.sleep(seconds)
+
+
+_preflight_sleep = preflight_sleep  # earlier name; the base class calls this one, so tests can patch it
 
 
 def _readyz_body_is_ready(body: Any) -> bool:

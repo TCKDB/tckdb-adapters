@@ -22,9 +22,12 @@ from typing import Any
 _SAFE_LABEL = re.compile(r"[^A-Za-z0-9._-]+")
 
 
-def _utcnow_iso() -> str:
+def utcnow_iso() -> str:
     """Z-suffixed UTC timestamp; the standard for sidecar timestamps."""
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+_utcnow_iso = utcnow_iso  # earlier name, kept so existing imports resolve
 
 
 def _safe_label(label: str) -> str:

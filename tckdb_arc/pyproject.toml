@@ -4,17 +4,34 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tckdb-arc"
-version = "0.15.8"
-description = "ARC → TCKDB upload adapter (payload builder + sidecar writer + uploader)."
+version = "0.15.9"
+description = "ARC adapter for TCKDB: builds species, reaction and transition-state upload payloads from an ARC run and uploads them."
 requires-python = ">=3.11"
 readme = "README.md"
 license = { text = "MIT" }
+authors = [{ name = "The tckdb-adapters contributors" }]
+keywords = ["TCKDB", "thermochemistry", "kinetics", "computational chemistry", "ARC"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Chemistry",
+]
 dependencies = [
-    "tckdb-adapters-core>=0.5.8,<0.6",  # producer-agnostic upload pipeline, numerics, rules, test kit
+    "tckdb-adapters-core>=0.5.9,<0.6",  # producer-agnostic upload pipeline, numerics, rules, test kit
     "tckdb-client>=0.208,<0.209",   # tested transport + replay contract
     "tckdb-schemas>=0.175,<0.176", # the producer contract module ships from 0.52
     "PyYAML>=6",                  # vendored read_yaml_file
 ]
+
+[project.urls]
+Homepage = "https://github.com/calvinp0/tckdb-adapters"
+Repository = "https://github.com/calvinp0/tckdb-adapters"
+Issues = "https://github.com/calvinp0/tckdb-adapters/issues"
+Changelog = "https://github.com/calvinp0/tckdb-adapters/blob/main/tckdb_arc/CHANGELOG.md"
 
 [project.optional-dependencies]
 # NOTE: ARC is NOT pip-installable as `arc` from PyPI — it is a conda/PYTHONPATH

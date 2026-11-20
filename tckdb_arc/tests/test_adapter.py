@@ -74,106 +74,14 @@ _GSM_FIXTURE_SKIP_MSG = (
 )
 
 
-def _upload_calls(client):
-    return [call for call in client.calls if call.get("path") != "/readyz"]
-
-
-# ---------------------------------------------------------------------------
-# Stubs
-# ---------------------------------------------------------------------------
-
-
-class _StubResponse:
-    def __init__(self, data, status_code=201, replayed=False, headers=None):
-        self.data = data
-        self.status_code = status_code
-        self.idempotency_replayed = replayed
-        self.headers = headers or {}
-
-
-class _StubClient:
-    """Minimal TCKDBClient lookalike for adapter tests."""
-
-    def __init__(self, *, response=None, raise_exc=None, readyz_response=None):
-        self._response = response
-        self._raise_exc = raise_exc
-        self._readyz_response = readyz_response or _StubResponse(
-            {"status": "ready", "alembic_revision": "test-rev"},
-            status_code=200,
-            headers={"X-Request-ID": "req-readyz"},
-        )
-        self.calls = []
-        self.closed = False
-
-    def request_json(
-        self,
-        method,
-        path,
-        *,
-        json=None,
-        authenticated=True,
-        idempotency_key=None,
-    ):
-        self.calls.append(
-            dict(
-                method=method,
-                path=path,
-                json=json,
-                authenticated=authenticated,
-                idempotency_key=idempotency_key,
-            )
-        )
-        if path == "/readyz":
-            if isinstance(self._readyz_response, BaseException):
-                raise self._readyz_response
-            return self._readyz_response
-        if self._raise_exc is not None:
-            raise self._raise_exc
-        return self._response
-
-    def close(self):
-        self.closed = True
-
-
-class _SequencedReadyzClient(_StubClient):
-    """Stub whose ``/readyz`` responses are consumed from a sequence.
-
-    Each ``/readyz`` call pops the next item in ``readyz_sequence``; when
-    the sequence is exhausted the last item repeats (steady state). An
-    item that is a ``BaseException`` is raised (simulating a request
-    exception); otherwise it is returned. Non-readyz calls behave like
-    the base ``_StubClient``. Lets a test drive "K transient failures then
-    ready" without real sleeps.
-    """
-
-    def __init__(self, *, readyz_sequence, response=None, raise_exc=None):
-        super().__init__(response=response, raise_exc=raise_exc)
-        self._readyz_sequence = list(readyz_sequence)
-        self._readyz_idx = 0
-
-    def request_json(
-        self,
-        method,
-        path,
-        *,
-        json=None,
-        authenticated=True,
-        idempotency_key=None,
-    ):
-        if path == "/readyz":
-            self.calls.append(dict(method=method, path=path, json=json,
-                                   authenticated=authenticated,
-                                   idempotency_key=idempotency_key))
-            idx = min(self._readyz_idx, len(self._readyz_sequence) - 1)
-            self._readyz_idx += 1
-            item = self._readyz_sequence[idx]
-            if isinstance(item, BaseException):
-                raise item
-            return item
-        return super().request_json(
-            method, path, json=json, authenticated=authenticated,
-            idempotency_key=idempotency_key,
-        )
+# The client stubs are shared test-kit code (``tckdb_core.testing.stubs``); the
+# underscore names are kept because other test modules import them from here.
+from tckdb_core.testing.stubs import (  # noqa: E402
+    SequencedReadyzClient as _SequencedReadyzClient,
+    StubClient as _StubClient,
+    StubResponse as _StubResponse,
+    upload_calls as _upload_calls,
+)
 
 
 def _fake_record(label="ethanol", smiles="CCO", charge=0, multiplicity=1, is_ts=False):
@@ -1899,8 +1807,8 @@ class TestComputedSpeciesBundle(unittest.TestCase):
 
     # ---------------- unmapped_smiles passthrough on species_entry
     def test_species_entry_ignores_an_unmapped_smiles_key(self):
-        # ARC's output.yml writes no ``unmapped_smiles`` for a species
-        # (BRIDGE_ROADMAP A19), so the adapter does not read one: a key from a
+        # ARC's output.yml writes no ``unmapped_smiles`` for a species,
+        # so the adapter does not read one: a key from a
         # hand-edited or third-party record is not forwarded and nothing is
         # derived from ``smiles``.
         record = _full_record()
@@ -4110,7 +4018,7 @@ class TestComputedSpeciesStatmechBaseFields(unittest.TestCase):
         # here only because the surviving entry is also first in the
         # list. See test_slim_torsions_index_is_source_position_not_a_
         # compacted_counter below for the case that actually
-        # distinguishes the two policies (PHASE_C_PLAN.md C-7).
+        # distinguishes the two policies.
         self.assertEqual(torsions[0]["torsion_index"], 1)
 
     def test_slim_torsions_index_is_source_position_not_a_compacted_counter(self):
@@ -5764,9 +5672,9 @@ class TestComputedReactionBundle(unittest.TestCase):
         # dict-shape assertion.
         contract_validate(ComputedReactionUploadRequest, payload)
 
-    # ---------------- C-4 / adversarial-review D1: A/Ea with no usable
-    # unit must never be deposited as a bare (unitless) magnitude — see
-    # PHASE_C_PLAN.md C-4 — but an unresolvable unit on this one
+    # ---------------- A/Ea with no usable
+    # unit must never be deposited as a bare (unitless) magnitude,
+    # but an unresolvable unit on this one
     # *optional* field must never take down the whole reaction bundle
     # either. ``A_units: null`` alongside a numeric ``A`` is valid,
     # deliberate ARC output (``arc/schemas/output_yml_schema.json``:
@@ -5980,7 +5888,7 @@ class TestComputedReactionBundle(unittest.TestCase):
         _, _, payload = self._submit(reaction=rxn)
         self.assertNotIn("tunneling_model", payload["kinetics"][0])
 
-    # ---------------- degeneracy: never sent (BRIDGE_ROADMAP A19)
+    # ---------------- degeneracy: never sent
     # ARC's kinetics record has no degeneracy key (arc/output.py::_rxn_to_dict),
     # and TCKDB reads a missing value as NULL, not 1. The adapter does not read
     # a ``degeneracy`` key, so nothing from a hand-edited record reaches the
@@ -6019,7 +5927,7 @@ class TestComputedReactionBundle(unittest.TestCase):
         )
 
     def test_kinetics_record_note_is_not_read(self):
-        # ARC's kinetics record has no ``note`` key (BRIDGE_ROADMAP A19); the
+        # ARC's kinetics record has no ``note`` key; the
         # reaction-level ``long_kinetic_description`` is the only source.
         rxn = _reaction_record()
         rxn["kinetics"]["note"] = "Hand-tuned barrier"
@@ -6766,7 +6674,7 @@ class TestComputedReactionBundle(unittest.TestCase):
         )["irc_result"]
         self.assertAlmostEqual(result["zero_energy_reference_hartree"], -303.6)
         # relative_energy_kj_mol = (E - E_ref) * E_h_kJmol. Uses the same
-        # vendored constant as path_search_result (PHASE_C_PLAN.md C-3) —
+        # vendored constant as path_search_result —
         # not the old inline ``2625.4996`` literal — so this doubles as
         # the regression test for the two fields agreeing bit-for-bit.
         from tckdb_arc._vendor import E_h_kJmol
@@ -7454,7 +7362,7 @@ class TestComputedReactionProvenanceFields(unittest.TestCase):
 
     def test_reversible_key_on_the_record_is_not_read(self):
         # ARC's output.yml reaction record has no ``reversible`` key
-        # (arc/output.py::_rxn_to_dict, BRIDGE_ROADMAP A19), so the adapter
+        # (arc/output.py::_rxn_to_dict), so the adapter
         # does not read one: the schema default (True) applies whatever a
         # hand-edited record says.
         for value in (True, False):
@@ -8376,7 +8284,7 @@ class TestComputedReactionDependencyEdges(unittest.TestCase):
     def test_neb_path_search_carries_the_exported_neb_level_and_software(self):
         # ARC exports ``neb_level`` and the observed NEB program/banner. The
         # path-search calculation states those, not the opt level and the opt
-        # program (BRIDGE_ROADMAP A3).
+        # program.
         doc = _reaction_output_doc()
         self._make_neb_ts(doc)
         doc["opt_level"] = {"method": "b3lyp", "basis": "6-31g(d)",
@@ -8744,8 +8652,8 @@ class TestComputedReactionDependencyEdges(unittest.TestCase):
 
     # ---------------- unmapped_smiles on reaction participant species
     def test_reaction_participant_ignores_an_unmapped_smiles_key(self):
-        # ARC's output.yml writes no ``unmapped_smiles`` for a species
-        # (BRIDGE_ROADMAP A19), so a key on a participant record is not read.
+        # ARC's output.yml writes no ``unmapped_smiles`` for a species,
+        # so a key on a participant record is not read.
         doc = _reaction_output_doc()
         target = next(s for s in doc["species"] if s["label"] == "CHO")
         target["smiles"] = "[CH:1]=[O:2]"           # mapped
