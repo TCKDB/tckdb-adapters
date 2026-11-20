@@ -43,9 +43,9 @@ def test_xyz_symbols_reads_bare_and_headed_xyz():
     assert isotopes.xyz_symbols(None) is None
 
 
-def test_the_base_class_sleeps_through_the_patchable_name(monkeypatch):
+def test_the_base_class_sleeps_through_the_public_name(monkeypatch):
     slept = []
-    monkeypatch.setattr(uploader, "_preflight_sleep", slept.append)
+    monkeypatch.setattr(uploader, "preflight_sleep", slept.append)
     uploader.TCKDBUploaderBase._sleep_between_probes(object(), 0.25)
     assert slept == [0.25]
 

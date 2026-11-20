@@ -1,4 +1,4 @@
-"""Thermo and statmech declare ``energy_level_of_theory`` (adapter 0.6.6, roadmap A11).
+"""Thermo and statmech declare ``energy_level_of_theory`` (adapter 0.6.6).
 
 TCKDB checks a declared energy level against the calculations the record links
 (``calculation_levels.assert_role_consistency``): the linked sp's level, else the

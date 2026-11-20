@@ -92,8 +92,9 @@ tckdb_mytool/
 
 In `pyproject.toml`, depend on `tckdb-adapters-core` and bound `tckdb-schemas` and
 `tckdb-client` to the same minor lines the core does. Add the package to
-`[tool.tckdb_adapters] packages`, `pythonpath` and `testpaths` in the root
-`pyproject.toml`, and to the CI workflow.
+`pythonpath` and `testpaths` under `[tool.pytest.ini_options]` in the root
+`pyproject.toml`, which is what lets `pytest` find it from the repository root, and to the
+CI workflow.
 
 `tools/tckdb_drift.py --bump` currently rewrites the bounds of `tckdb_core` and
 `tckdb_arc` only. Add your `pyproject.toml` to it, and to the file list in
@@ -141,8 +142,9 @@ no shared template for it yet, so follow the sequence by hand.
 ### 4. The mapping
 
 The mapping is the part only you can write. It reads your tool's records and builds the
-request dictionaries the contract describes. Keep each builder of a whole request a method of the adapter class, because the contract
-hook (below) wraps the builder methods you name.
+request dictionaries the contract describes. Keep each builder of a whole request a method
+of the adapter class, because the contract hook (below) wraps the builder methods you
+name.
 
 Check the server's rules before you post where the core has a pre-check for them:
 `rules.energy_level_declaration`, `rules.kinetics_energy_level_assessment`,
@@ -197,7 +199,7 @@ never read from the input file, only from the environment or a key file named th
 | Test | How |
 |---|---|
 | Every built request validates against the contract | In `tests/conftest.py`, register `tckdb_core.testing.contract_hook.contract_checks_fixture` with your adapter class and a map of builder-method name to schema name. It runs the published pydantic model and the shipped JSON Schema on every request any test builds. Call `contract_validate` yourself where a test checks a fragment. |
-| The contract pin | `tests/test_contract_pin.py` with the four assertions of `tckdb_core.testing.contract_pin`, pointed at your `pyproject.toml` and your routes. |
+| The contract pin | `tests/test_contract_pin.py` with the four assertions of `tckdb_core.testing.contract_pin`, pointed at your `pyproject.toml` and your routes. `assert_routes_have_shipped_schemas` takes the set of endpoints your adapter posts to, which can be any subset of the kit's `ROUTE_SCHEMAS`. |
 | Warning registry | Codes are unique and registered, the generated document is current. |
 | Upload behaviour without a network | `tckdb_core.testing.stubs.StubClient`, passed as `client_factory=lambda config, key: client`. |
 | Refusals | For each convention the source may not state, a test that the block is omitted and the warning is present. |
@@ -249,7 +251,10 @@ has no constant, payload kind or test-kit entry for them yet.
 
 If your tool's natural output is standalone thermo, kinetics or transport, the first step
 is to add that route to the core: an endpoint constant, a payload kind and subdirectory in
-`PayloadWriter`, a `ROUTE_SCHEMAS` entry in `tckdb_core.testing.contract`, and tests. The
+`PayloadWriter`, a `ROUTE_SCHEMAS` entry in `tckdb_core.testing.contract`, and tests. A
+new `ROUTE_SCHEMAS` entry does not affect another adapter's pin test, which checks only the
+routes that adapter posts to; the core's own pin test requires an endpoint constant for
+every entry. The
 JSON Schema for every route already ships, so `assert_matches_contract(payload,
 "ThermoUploadRequest")` works today. Do that in the core, in its own pull request, before
 the adapter that needs it.

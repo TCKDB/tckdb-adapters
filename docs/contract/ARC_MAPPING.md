@@ -11,14 +11,25 @@ This page records only how ARC's output is fitted to it.
 ## Rules the mapping follows
 
 1. **A value ARC does not state is not sent.** The field is omitted and the omission is
-   reported in the sidecar under a warning code. No default is filled in.
+   reported in the sidecar under a warning code. The exceptions are listed below.
 2. **A record that cannot be built correctly is refused.** A species without a usable
    integer `charge` or `multiplicity` raises an error and that upload is not built.
 3. **An interpretation is marked as one.** Where the adapter sends its reading of ARC's
    documented behaviour, the payload says so in a `note` or a `claim_origin`, and the
-   sidecar carries a warning.
+   sidecar carries a warning. The exceptions below are marked less fully.
 4. **A minimum with an imaginary frequency is refused.** ARC rejects such species and the
    adapter does the same. TCKDB's tolerance for soft modes is not applied.
+
+### Exceptions to rules 1 and 3
+
+Three values are sent although the output being read does not state them. Each was a
+deliberate decision, and each is described in full in its own section.
+
+| Value | When | How it is marked |
+|---|---|---|
+| `enthalpy_reference_kind: formation_298k` | Output before 1.2, which records no atom-correction switch, when the heuristic checks under "Thermo" pass. | Not marked in the payload or the sidecar. A stripped enthalpy is reported; a kept one is not. |
+| `reversible: true` on a standalone transition state | The reaction states no `reversible` (output before 1.3, or a null). | Not marked. The route requires the field. |
+| The opt level on an IRC calculation | The output states no IRC level. | `irc_level_assumed_opt_level` in the sidecar; nothing in the payload. |
 
 ## What is read
 
@@ -63,7 +74,7 @@ Each ARC job becomes a TCKDB calculation at the level and program ARC states for
 | composite job | the primary calculation at the composite level, linked under the `composite` role | |
 | rotor scans | `scan` calculations with `scan_result` | Each scan needs its own stated level and program; a scan without them is reported and not relabelled with the opt level. The scan's log is its `output_log` artifact. |
 | IRC jobs | `irc` calculation with `irc_result` | See the transition-state section. |
-| TS guess search | `path_search` calculation | NEB at `neb_level`, GSM at the header `gsm_level` (output 1.3). Without a stated level or program it is omitted (`ts_guess_level_not_stated`, `ts_guess_software_not_stated`). `path_search_result.converged` is never sent, because ARC's `success` flag means only that an output file exists. |
+| TS guess search | `path_search` calculation | NEB at `neb_level`, GSM at the header `gsm_level` (output 1.3). Without a stated level or program it is omitted (`ts_guess_level_not_stated`, `ts_guess_software_not_stated`). `path_search_result.converged` is never sent, because ARC's `success` flag means only that an output file exists. GSM energies and gradients are attached to a path point only where the evidence file matches them to that point's geometry. They are never attached by node number, and without an evidence file the archived values are left out. |
 | screened conformers | bare `opt` calculations marked as screened-conformer anchors | Filed at `conformer_levels` with each conformer's own program. A conformer with no stated level or program is omitted (`conformer_level_not_stated`). Force-field geometries are not calculations. |
 
 Other per-calculation values:
@@ -146,6 +157,11 @@ be shown, the enthalpy content (H298, the NASA fit, point H and G) is stripped a
 the S and Cp points are kept. Each strip is reported with action `thermo_enthalpy_omitted`,
 or `thermo_omitted` when nothing is left.
 
+The finished block is also checked with TCKDB's own `enthalpy_reference_error`. A block
+that rule refuses is omitted whole, with the rule's code, and the rest of the upload is
+sent. A block with only Cp content carries neither `enthalpy_reference_kind` nor
+`reference_pressure_bar`.
+
 Output 1.2 and later record whether Arkane applied the corrections
 (`thermo.atom_corrections_applied`) and at which level (`thermo.atom_corrections_level`).
 The enthalpy is stripped when:
@@ -172,11 +188,14 @@ magnitude checks above and these three, applied in order:
   (`enthalpy_atom_corrections_level_mismatch`);
 - neither that level nor the energy level may set `dispersion` or `solvation_method`
   (`enthalpy_atom_corrections_level_unverifiable`);
-- the species must be heavy enough for the magnitude check to mean something. For
-  hydrogen-only species up to H15, He, He2, HeH and the Li atom, the raw total energy
-  estimated from the composition is itself within ±2.0e4 kJ/mol, so an uncorrected
-  enthalpy cannot be told from a formation enthalpy
-  (`enthalpy_formation_unverifiable_light_species`).
+- the species must be heavy enough for the magnitude check to mean something. The raw
+  total energy of a species made only of H, He and Li is estimated from its composition
+  at 0.50, 2.90 and 7.43 hartree per atom. When that estimate is within ±2.0e4 kJ/mol
+  (H15, He2, HeH and the Li atom are, for example), an uncorrected enthalpy cannot be told
+  from a formation enthalpy and it is stripped
+  (`enthalpy_formation_unverifiable_light_species`). A species with any heavier atom is
+  not subject to this check. The composition is read from the record's xyz, else from its
+  `formula`, which ARC 1.0 keeps for single atoms that it writes with `xyz: null`.
 
 These checks are heuristics. They make an uncorrected or wrong-level enthalpy very unlikely
 to pass; they do not prove that the corrections ran at the right level. The recorded switch
@@ -257,7 +276,7 @@ a string, which `output.yml` documents as stamped by ARC's Arkane kinetics run:
 | `direction` | `forward` | ARC writes the kinetics run on the reaction as reactants to products and has no reverse fit. |
 | `determination` | whole reaction, complete, with a key built from the project, the TS label and a digest of the fit, the levels and the energies in `output.yml` | The `tunneling` stamp. Two different fits of the same energies get different keys. |
 | `applicability` | rate coefficient, elementary coefficient, high-pressure limit, `claim_origin: depositor_interpretation` | ARC's kinetics job is its high-pressure-limit rate calculation. |
-| `phase` | `gas`, only when no level of any participant states solvation | Arkane's statistical mechanics is gas phase. |
+| `phase` | `gas`, only when no level states solvation | Arkane's statistical mechanics is gas phase. Every level is read: the built calculations', the header levels, the levels inside `adaptive_levels` and each participant's own `levels` entry. A level states solvation when it sets `solvent`, `solvation_method` or `solvation_scheme_level`, or when its free-form `args` contain `scrf`, `cpcm`, `smd`, `pcm`, `cosmo`, `solvent` or `solvation` in any letter case. |
 
 These are the adapter's interpretation of ARC's documented provenance and not values read
 from `output.yml`. The kinetics `note` therefore ends with a sentence that says so, and the
@@ -274,8 +293,9 @@ not sent, because ARC states none of them.
   normal-mode displacement check validated (`reaction_coordinate_mode_index`). When none is
   stated, TCKDB's 50 cm-1 noise floor picks the one mode above it. Two or more above it
   refuse the record.
-- `reversible` on a standalone TS is `true`. ARC has no reversibility attribute for it and
-  the route requires the field.
+- `reversible` on a standalone TS is the value the reaction states in output 1.3. When
+  the reaction states none (earlier output, or a null), `true` is sent, because the route
+  requires the field. This is one of the exceptions listed at the top.
 - An `irc_result` is sent only when every contributing log's direction is stated.
   Otherwise the result is withheld (`irc_direction_not_stated`) and the `irc` calculation
   is still sent.
@@ -304,12 +324,19 @@ Atom maps:
 
 ## Artifacts
 
-With `artifacts.upload` on, each calculation's log (`output_log`) and input deck (`input`)
-are posted to `/calculations/{calculation_ref}/artifacts` after the record is accepted, one
-batch per calculation. A file larger than `max_size_mb` is skipped. A response that
-carries no `calculation_ref` leaves that calculation's artifacts unposted
-(`calculation_ref_not_returned`). Each artifact has its own sidecar and idempotency key,
-built from the calculation ref, the kind and the file's SHA-256.
+With `artifacts.upload` on, a calculation's log (`output_log`) and input deck (`input`)
+are sent. How depends on the upload mode:
+
+| Mode | Artifacts |
+|---|---|
+| `computed_species`, `computed_reaction` | Encoded in base64 inside the bundle, under each calculation's `artifacts`. No separate request is made, and the standalone artifact call is suppressed in these modes. |
+| `conformer` | Posted to `/calculations/{calculation_ref}/artifacts` after the conformer upload is accepted, one batch per calculation. |
+| `computed_ts` | Not sent. The transition-state route has no artifact field and the sweep makes no artifact request in this mode. |
+
+A file larger than `max_size_mb` is skipped in every mode. In `conformer` mode a response
+that carries no `calculation_ref` leaves that calculation's artifacts unposted
+(`calculation_ref_not_returned`), and each artifact has its own sidecar and an idempotency
+key built from the calculation ref, the kind and the file's SHA-256.
 
 ## Not sent
 

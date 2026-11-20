@@ -7,7 +7,7 @@ it can be inspected and replayed.
 
 Requires Python 3.11+, `tckdb-client` 0.208.x and `tckdb-schemas` 0.175.x, and
 `tckdb-adapters-core` from this repository. Install instructions are in the
-[repository README](../README.md).
+[repository README](https://github.com/TCKDB/tckdb-adapters/blob/main/README.md).
 
 ## Use
 
@@ -45,12 +45,12 @@ run_upload_sweep(adapter=adapter, project_directory=project_directory, tckdb_con
 | `payload_dir` | `tckdb_payloads` | Where payloads and sidecars go, relative to the project directory. |
 | `api_key_env` | `TCKDB_API_KEY` | Name of the environment variable that holds the API key. |
 | `api_key_file` | unset | A file that contains only the key. |
-| `api_key_env_file` | unset | A dotenv-style file with a `TCKDB_API_KEY=` line. It is parsed, never executed. |
+| `api_key_env_file` | unset | A dotenv-style file with a `<api_key_env>=` line (`TCKDB_API_KEY=` unless `api_key_env` is set). It is parsed, never executed. |
 | `preflight` | `true` | Probe the server's `/readyz` before the first upload. |
 | `strict` | `false` | Raise on a failed upload. Otherwise the failure is logged and recorded in the sidecar, and the run continues. |
 | `timeout_seconds` | `30` | Timeout of each request. |
 | `project_label` | the project name in `output.yml` | Part of every idempotency key. |
-| `artifacts` | off | `{upload: true, kinds: [output_log, input], max_size_mb: 50}` uploads calculation logs and input decks after the records. |
+| `artifacts` | off | `{upload: true, kinds: [output_log, input], max_size_mb: 50}` sends calculation logs and input decks. In `computed_species` and `computed_reaction` mode they travel inside the bundle; in `conformer` mode they are posted separately after each upload; `computed_ts` mode sends none. Files over `max_size_mb` are skipped. |
 | `allow_partial_uploads` | `true` | Write a `.partial` sidecar for a reaction whose transition state did not converge. A partial sidecar is never posted. |
 | `rights` | unset | The upload's `rights` fragment (licence, the depositor's attestation, optional source terms), validated against `tckdb_schemas.rights.DepositRights`. Without it no rights are sent. |
 
@@ -77,11 +77,11 @@ idempotency key, the response, the server's warnings and the adapter's own.
 An idempotency key is `arc:<project>:<species>:<conformer>:<kind>:<payload hash>`. The
 same ARC output gives the same key, and TCKDB answers a repeated key by replaying the first
 response. A release of this adapter that changes a payload changes its hash, and TCKDB
-then records a re-upload as a new deposit. The [changelog](CHANGELOG.md) marks those
+then records a re-upload as a new deposit. The [changelog](https://github.com/TCKDB/tckdb-adapters/blob/main/tckdb_arc/CHANGELOG.md) marks those
 releases.
 
 The adapter's warnings each carry a stable code, and
-[`docs/contract/WARNING_CODES.md`](../docs/contract/WARNING_CODES.md) lists them all.
+[`docs/contract/WARNING_CODES.md`](https://github.com/TCKDB/tckdb-adapters/blob/main/docs/contract/WARNING_CODES.md) lists them all.
 
 ## Evidence files and the optional ARC import
 
@@ -96,15 +96,19 @@ sub-payloads are left out and the rest of the upload is unchanged.
 
 ## What is sent
 
-[`docs/contract/ARC_MAPPING.md`](../docs/contract/ARC_MAPPING.md) is the reference: which
+[`docs/contract/ARC_MAPPING.md`](https://github.com/TCKDB/tckdb-adapters/blob/main/docs/contract/ARC_MAPPING.md) is the reference: which
 ARC fields become which TCKDB fields, the checks an enthalpy must pass before it is
 declared a formation enthalpy, and what the adapter leaves out because ARC does not state
 it. Two rules cover most of it:
 
-- A value ARC does not state is omitted and reported with a warning code. It is never
-  filled with a default.
+- A value ARC does not state is omitted and reported with a warning code.
 - When the adapter sends its own reading of ARC's documented behaviour, the payload and
   the sidecar both say that it is an interpretation.
+
+Three documented exceptions exist: the formation-enthalpy declaration for output before
+1.2, `reversible: true` on a standalone transition state whose reaction states none, and
+the opt level on an IRC calculation whose level is not stated. The mapping page lists
+them under "Exceptions to rules 1 and 3".
 
 ## Tests
 
@@ -118,4 +122,4 @@ backend comparison tests and the live integration gate.
 
 ## Changes
 
-See [CHANGELOG.md](CHANGELOG.md).
+See [CHANGELOG.md](https://github.com/TCKDB/tckdb-adapters/blob/main/tckdb_arc/CHANGELOG.md).

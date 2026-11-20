@@ -21,7 +21,7 @@ bound together. A package's ``test_contract_pin.py`` is four one-line tests::
         contract_pin.assert_contract_document_is_the_installed_version()
 
     def test_every_route_has_a_shipped_schema():
-        contract_pin.assert_routes_have_shipped_schemas({...the endpoints the adapter posts to...})
+        contract_pin.assert_routes_have_shipped_schemas({...the endpoints this adapter posts to...})
 """
 
 from __future__ import annotations
@@ -69,11 +69,20 @@ def assert_contract_document_is_the_installed_version() -> None:
     assert stamp.group(1) == installed_schemas_version()
 
 
-def assert_routes_have_shipped_schemas(posted: Iterable[str]) -> None:
-    """Every endpoint in ``posted`` is a key of ``ROUTE_SCHEMAS`` and each has a shipped JSON Schema.
+def assert_routes_have_shipped_schemas(posted: Iterable[str], *, expected: Iterable[str] | None = None) -> None:
+    """Every endpoint the adapter posts to is in ``ROUTE_SCHEMAS`` and has a shipped JSON Schema.
 
-    ``posted`` is the set of endpoints the adapter sends to. It must equal the kit's
-    ``ROUTE_SCHEMAS`` keys, so a route added on either side fails here until the other follows.
+    ``posted`` is the adapter's own set of endpoints. It may be any subset of the kit's
+    ``ROUTE_SCHEMAS``: an adapter that uses two routes checks two, and a route added to the
+    table for another adapter does not fail this one. Pass ``expected`` to also require that
+    ``posted`` is exactly that set (the core's own test passes ``ROUTE_SCHEMAS``, so every route
+    in the table keeps an endpoint constant).
     """
-    assert set(posted) == set(ROUTE_SCHEMAS)
-    assert set(ROUTE_SCHEMAS.values()) <= set(contract.schema_names())
+    posted = set(posted)
+    assert posted, "the adapter names no route"
+    unknown = posted - set(ROUTE_SCHEMAS)
+    assert not unknown, f"no ROUTE_SCHEMAS entry for {sorted(unknown)}; add the route to tckdb_core.testing.contract"
+    unshipped = {ROUTE_SCHEMAS[route] for route in posted} - set(contract.schema_names())
+    assert not unshipped, f"tckdb-schemas ships no JSON Schema named {sorted(unshipped)}"
+    if expected is not None:
+        assert posted == set(expected), (sorted(posted), sorted(expected))

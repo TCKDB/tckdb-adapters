@@ -6649,7 +6649,7 @@ _W_ENTHALPY_NOT_FORMATION_MAGNITUDE = ArcWarning.ENTHALPY_NOT_FORMATION_MAGNITUD
 # 1.2's ``atom_corrections_applied`` (ARC PR #1059), which supersedes them.
 #
 # Declaring ``formation_298k`` on output without the 1.2 flags is a
-# deliberate, maintainer-approved interpretation ("option (d)"), not a
+# deliberate, maintainer-approved interpretation, not a
 # default filled in for a convention ARC left unstated. Arkane's corrected
 # H298 (and the NASA fit and point H/G built from it) is a formation
 # enthalpy by construction: Arkane subtracts the atom energies of the level

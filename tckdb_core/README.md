@@ -6,7 +6,7 @@ This package takes over once a payload exists, and it also holds the helpers tha
 producer would otherwise write the same way.
 
 To write an adapter on top of it, read
-[`docs/writing_an_adapter.md`](../docs/writing_an_adapter.md).
+[`docs/writing_an_adapter.md`](https://github.com/TCKDB/tckdb-adapters/blob/main/docs/writing_an_adapter.md).
 
 ## What belongs here
 
@@ -61,6 +61,14 @@ from tckdb_core.constants import COMPUTED_SPECIES_ENDPOINT, COMPUTED_SPECIES_KIN
 from tckdb_core.idempotency import IdempotencyInputs, build_idempotency_key
 from tckdb_core.payload_writer import PayloadWriter
 from tckdb_core.uploader import TCKDBUploaderBase
+from tckdb_core.warning_codes import CodedEnum
+
+
+class MyToolWarning(CodedEnum):
+    REFERENCE_PRESSURE_NOT_STATED = (
+        "thermo_reference_pressure_not_stated",
+        "The source records no standard-state pressure, so reference_pressure_bar is omitted.",
+    )
 
 
 class MyToolAdapter(TCKDBUploaderBase):
@@ -69,11 +77,22 @@ class MyToolAdapter(TCKDBUploaderBase):
     IDEMPOTENCY_NAMESPACE = "mytool"    # keys: "mytool:<project>:..."
     LOGGER_NAME = "tckdb_mytool"
 
+    def _build_species_payload(self, record, warnings):
+        # The producer's own mapping. A real one builds the whole request and
+        # reports each omission through a registered code.
+        warnings.add(
+            MyToolWarning.REFERENCE_PRESSURE_NOT_STATED,
+            f"{record.label} states no standard-state pressure",
+            "thermo.reference_pressure_bar",
+            action="reference_pressure_omitted",
+        )
+        return {"species_entry": {"smiles": record.smiles}}
+
     def submit_species(self, record):
         if not self._config.enabled:
             return None
         warnings = WarningSink(self.PRODUCER_TAG)
-        payload = self._build_species_payload(record, warnings)   # the producer's own mapping
+        payload = self._build_species_payload(record, warnings)
         if self._config.rights is not None:
             payload["rights"] = dict(self._config.rights)
         key = build_idempotency_key(
@@ -155,4 +174,4 @@ Without `TCKDB_BACKEND_PATH` the backend comparison of `level_rules` skips.
 
 ## Changes
 
-See [CHANGELOG.md](CHANGELOG.md).
+See [CHANGELOG.md](https://github.com/TCKDB/tckdb-adapters/blob/main/tckdb_core/CHANGELOG.md).

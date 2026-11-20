@@ -2,7 +2,7 @@
 # Read by .github/workflows/ci.yml and moved by tools/tckdb_drift.py --bump (kept
 # out of the workflow files so an automated bump never edits .github/workflows/).
 [tckdb]
-repo = "https://github.com/calvinp0/tckdbv2.git"
+repo = "https://github.com/TCKDB/TCKDB.git"
 sha = "d4d53462db2b75ed699cb6bd7b39964b2b645254"
 schemas_subdir = "schemas/python/tckdb-schemas"
 client_subdir = "clients/python"

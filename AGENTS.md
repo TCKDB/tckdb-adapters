@@ -34,13 +34,17 @@ ARC or RMG conventions are not.
 
 - When the source does not state a convention the contract requires (for example
   `enthalpy_reference_kind` or `reference_pressure_bar`), refuse to build that block or
-  omit the field, and report a registered warning code. A plausible default is never
-  filled in.
+  omit the field, and report a registered warning code. Add no new default.
 - An interpretation may be sent only when it is visibly marked as one in the payload and
   in the sidecar. The pattern is `_kinetics_declarations` in
   `tckdb_arc/tckdb_arc/adapter.py`: `claim_origin: depositor_interpretation`, a closing
   sentence in the kinetics `note`, and the `kinetics_declarations_interpreted` warning.
   Sending a new interpretation is the repository owner's decision. Ask before adding one.
+- The ARC adapter has three documented exceptions to the two rules above: `formation_298k`
+  for pre-1.2 output under the heuristic checks, `reversible: true` on a standalone
+  transition state whose reaction states none, and the opt level on an IRC calculation
+  (`irc_level_assumed_opt_level`). `docs/contract/ARC_MAPPING.md`, "Exceptions to rules 1
+  and 3", lists them. Keep the list complete when one is added or removed.
 - A minimum with an imaginary frequency stays refused. TCKDB's soft-mode tolerance is not
   copied into an adapter.
 
@@ -88,9 +92,10 @@ a parity test (`tckdb_core.testing.backend_import`). Build thermo blocks in the 
 1. Create `pyproject.toml` (depends on `tckdb-adapters-core`; bounds `tckdb-schemas` and
    `tckdb-client` to the core's minor lines), `README.md`, `CHANGELOG.md`, the package and
    `tests/`.
-2. Add the package to `[tool.tckdb_adapters] packages`, `pythonpath` and `testpaths` in the
-   root `pyproject.toml`, to `.github/workflows/ci.yml`, to `tools/tckdb_drift.py --bump`
-   and to the `git add` list in `tools/tckdb_drift_publish.sh`.
+2. Add the package to `pythonpath` and `testpaths` under `[tool.pytest.ini_options]` in the
+   root `pyproject.toml` (that is what makes a root `pytest` run find it), to
+   `.github/workflows/ci.yml`, to `tools/tckdb_drift.py --bump` and to the `git add` list
+   in `tools/tckdb_drift_publish.sh`.
 3. Write the `TCKDBUploaderBase` subclass, one submit method per route, and the builders.
 4. Register warning codes and wire the tests below.
 
@@ -160,7 +165,7 @@ holds `__version__`; keep it equal to the `pyproject.toml` version.
 
 ## ARC-specific decisions
 
-- **Pre-1.2 enthalpies (maintainer-approved option (d)).** Without output.yml 1.2's
+- **Pre-1.2 enthalpies (a maintainer-approved interpretation).** Without output.yml 1.2's
   `atom_corrections_applied` flags, the adapter still declares
   `enthalpy_reference_kind: formation_298k` when the non-finite, magnitude, header-level,
   dispersion/solvation and light-species checks pass. This is a deliberate interpretation,

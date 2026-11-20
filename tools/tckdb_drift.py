@@ -7,7 +7,7 @@ tool never edits a workflow file. Modes:
 
 ``--check``
     Read the adapter's pinned minor lines (schemas, client) and the pinned TCKDB
-    commit, resolve the mirror's ``main`` (repo from ``tckdb-pin.toml``; ``--repo``
+    commit, resolve TCKDB's ``main`` (repo from ``tckdb-pin.toml``; ``--repo``
     and ``--ref`` override), read the two package versions at that commit, and print
     a JSON summary on stdout plus one human line on stderr. Exit 0 = no drift,
     10 = drift, anything else = error.
@@ -75,7 +75,7 @@ Line = tuple[int, int]
 
 
 class DriftError(Exception):
-    """A failure that is not drift (bad input, unreachable mirror, unparsable file)."""
+    """A failure that is not drift (bad input, unreachable repository, unparsable file)."""
 
 
 # ---------------------------------------------------------------------------
@@ -162,7 +162,7 @@ def adapter_version(pyproject_text: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Reading the mirror
+# Reading the TCKDB repository
 # ---------------------------------------------------------------------------
 
 
@@ -492,11 +492,11 @@ def run_since_output(root: Path, since: str | None) -> int:
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     mode = p.add_mutually_exclusive_group(required=True)
-    mode.add_argument("--check", action="store_true", help="report drift vs the mirror (exit 10 on drift)")
+    mode.add_argument("--check", action="store_true", help="report drift vs TCKDB's main (exit 10 on drift)")
     mode.add_argument("--bump", action="store_true", help="rewrite the pins (needs --sha --schemas --client)")
     mode.add_argument("--since-output", action="store_true", help="print tckdb_schemas.contract --since <pin>")
     mode.add_argument("--install-specs", action="store_true", help="print pip specifiers from tckdb-pin.toml")
-    p.add_argument("--repo", default=None, help="TCKDB mirror, overriding the repo in tckdb-pin.toml")
+    p.add_argument("--repo", default=None, help="TCKDB repository, overriding the repo in tckdb-pin.toml")
     p.add_argument("--ref", default=DEFAULT_REF, help="branch, tag or SHA to resolve (default: %(default)s)")
     p.add_argument("--sha", help="--bump: full commit SHA to pin")
     p.add_argument("--schemas", help="--bump: available tckdb-schemas version X.Y.Z")

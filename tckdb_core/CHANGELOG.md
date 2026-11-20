@@ -20,7 +20,11 @@ No behaviour change for existing callers; released with adapter 0.15.9.
   `constants.OUTPUT_LOG_ALLOWED_EXTS` are read from tckdb-schemas too; their values are unchanged.
 - Test kit: `tckdb_core.testing.stubs` (`StubClient`, `StubResponse`, `SequencedReadyzClient`,
   `upload_calls`) and `tckdb_core.testing.contract_pin` (the four assertions of a package's
-  contract-pin test).
+  contract-pin test; the route assertion checks the routes an adapter names, which can be a
+  subset of the kit's table).
+- The core calls its helpers by their public names, so patching the public name in a test
+  takes effect.
+- The packages ship a `NOTICE` that attributes the code and data ported from ARC.
 
 ## 0.5.8
 

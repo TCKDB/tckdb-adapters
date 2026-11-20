@@ -87,7 +87,7 @@ def test_summary_drift_is_per_package():
     assert (s["schemas"]["newer"], s["client"]["newer"], s["drift"]) == (True, False, True)
 
 
-def test_summary_older_mirror_is_not_drift():
+def test_summary_older_upstream_is_not_drift():
     assert _summary("0.53.0", "0.94.0")["drift"] is False
 
 
@@ -125,7 +125,7 @@ def test_bump_rewrites_only_the_pins_and_patch(root):
             new_lines = [n for n in new_lines if n != entry]
         for o, n in zip(old_lines, new_lines):
             if o != n:
-                assert any(k in o for k in ("tckdb-", "TARGET_SCHEMAS_LINE", "tckdbv2.git@", "version =", "sha =")), o
+                assert any(k in o for k in ("tckdb-", "TARGET_SCHEMAS_LINE", "tckdb.git@", "version =", "sha =")), o
 
 
 def test_bump_is_idempotent(root):
@@ -256,7 +256,7 @@ def test_bump_keeps_extras_and_markers_in_specifiers():
 
 def test_rewrite_sha_uses_the_pin_repo_not_a_hardcoded_one():
     repo = "https://example.org/other.git"
-    text = f"pip install git+{repo}@{'1' * 40}#x\n pip install git+https://github.com/calvinp0/tckdbv2.git@{'2' * 40}#x\n"
+    text = f"pip install git+{repo}@{'1' * 40}#x\n pip install git+https://github.com/example/other.git@{'2' * 40}#x\n"
     new = drift.rewrite_sha(text, repo, NEW_SHA, "README")
     assert f"{repo}@{NEW_SHA}" in new and "2" * 40 in new
     with pytest.raises(drift.DriftError):

@@ -12,9 +12,6 @@ how the scheduled workflow moves it, and what a person must still do when it mov
 | `tckdb_core/tckdb_core/testing/contract.py` | `TARGET_SCHEMAS_LINE`, the `tckdb-schemas` line the test suites target. It exists once. Each package's `test_contract_pin.py` fails when the installed version or a `pyproject.toml` bound disagrees with it. |
 | `README.md`, `tckdb_arc/README.md` | The install lines and the sentences that name the tested versions. |
 
-The repository in `tckdb-pin.toml` is a mirror of TCKDB and can lag behind TCKDB's own
-main branch. The pin must be a commit that exists on that mirror.
-
 ## Moving the pin is a reading task
 
 The tests validate each payload against the JSON Schema of the installed `tckdb-schemas`.
@@ -35,9 +32,9 @@ adapter refuses to build that block; it does not fill a default to make the suit
 
 `.github/workflows/tckdb-drift.yml` runs daily and on demand.
 
-Its `test` job has a read-only token. It compares the pinned release lines with the
-mirror's `main`. On a newer line it bumps the pins in the runner, installs both TCKDB
-packages from that commit and runs the full suite.
+Its `test` job has a read-only token. It compares the pinned release lines with the `main`
+branch of the TCKDB repository named in `tckdb-pin.toml`. On a newer line it bumps the
+pins in the runner, installs both TCKDB packages from that commit and runs the full suite.
 
 Its `publish` job is the only one with write access (`tools/tckdb_drift_publish.sh`):
 

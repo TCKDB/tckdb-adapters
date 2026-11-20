@@ -36,7 +36,7 @@ from tckdb_core.constants import (
     PREFLIGHT_BASE_DELAY_SECONDS,
     PREFLIGHT_MAX_ATTEMPTS,
     PREFLIGHT_MAX_DELAY_SECONDS,
-    _OUTPUT_LOG_ALLOWED_EXTS,
+    OUTPUT_LOG_ALLOWED_EXTS,
 )
 from tckdb_core.idempotency import (
     ArtifactIdempotencyInputs,
@@ -46,14 +46,14 @@ from tckdb_core.outcomes import (
     ArtifactUploadOutcome,
     TCKDBReadinessError,
     UploadOutcome,
-    _ArtifactBatchResult,
-    _PreparedArtifactUpload,
+    ArtifactBatchResult,
+    PreparedArtifactUpload,
 )
 from tckdb_core.payload_writer import (
     PayloadWriter,
     WrittenArtifact,
     WrittenPayload,
-    _utcnow_iso,
+    utcnow_iso,
 )
 from tckdb_core.adapter_warnings import AdapterWarning
 from tckdb_core.warning_codes import CoreWarning
@@ -90,7 +90,7 @@ def coerce_artifact_filename(name: str, kind: str) -> str:
     if kind != "output_log":
         return name
     ext = os.path.splitext(name)[1].lower()
-    if ext in _OUTPUT_LOG_ALLOWED_EXTS:
+    if ext in OUTPUT_LOG_ALLOWED_EXTS:
         return name
     return f"{name}.log"
 
@@ -98,7 +98,7 @@ def coerce_artifact_filename(name: str, kind: str) -> str:
 _coerce_artifact_filename = coerce_artifact_filename  # earlier name
 
 
-def artifact_batch_digest(items: list[_PreparedArtifactUpload]) -> str:
+def artifact_batch_digest(items: list[PreparedArtifactUpload]) -> str:
     """Content digest for a calculation-scoped artifact batch idempotency key."""
     h = hashlib.sha256()
     for item in items:
@@ -156,14 +156,14 @@ def _summarize_artifact_batch_results(batch_results: Any) -> Any:
 
 
 def _artifact_batch_bodies(
-    prepared: list[_PreparedArtifactUpload],
-) -> list[tuple[int | str, list[_PreparedArtifactUpload], dict[str, Any]]]:
+    prepared: list[PreparedArtifactUpload],
+) -> list[tuple[int | str, list[PreparedArtifactUpload], dict[str, Any]]]:
     """Group a plan by calculation and build each ``ArtifactsUploadRequest`` body.
 
     Groups keep first-seen order; each artifact carries its kind, filename,
     base64 content and the declared sha256 and byte count.
     """
-    groups: dict[int | str, list[_PreparedArtifactUpload]] = {}
+    groups: dict[int | str, list[PreparedArtifactUpload]] = {}
     for item in prepared:
         groups.setdefault(item.handle, []).append(item)
     return [
@@ -249,7 +249,7 @@ def preflight_sleep(seconds: float) -> None:
     time.sleep(seconds)
 
 
-_preflight_sleep = preflight_sleep  # earlier name; the base class calls this one, so tests can patch it
+_preflight_sleep = preflight_sleep  # earlier name
 
 
 def _readyz_body_is_ready(body: Any) -> bool:
@@ -590,7 +590,7 @@ class TCKDBUploaderBase:
 
     def _sleep_between_probes(self, seconds: float) -> None:
         """Wait between readiness-probe retries (a producer may rebind this for tests)."""
-        _preflight_sleep(seconds)
+        preflight_sleep(seconds)
 
     def _project_label_for(self, output_doc: Mapping[str, Any]) -> Any:
         """The project label to key artifact uploads on when the config names none."""
@@ -653,7 +653,7 @@ class TCKDBUploaderBase:
             content = fh.read()
         return {
             "kind": kind,
-            "filename": _coerce_artifact_filename(resolved.name, kind),
+            "filename": coerce_artifact_filename(resolved.name, kind),
             "content_base64": base64.b64encode(content).decode("ascii"),
             "sha256": hashlib.sha256(content).hexdigest(),
             "bytes": size_bytes,
@@ -728,7 +728,7 @@ class TCKDBUploaderBase:
             _close_quietly(client, "after upload success", self._log)
 
         sc.status = "uploaded"
-        sc.uploaded_at = _utcnow_iso()
+        sc.uploaded_at = utcnow_iso()
         sc.response_status_code = getattr(response, "status_code", None)
         response_data = getattr(response, "data", None)
         sc.response_body = _summarize_response_body(response_data)
@@ -951,7 +951,7 @@ class TCKDBUploaderBase:
         file_path: str | Path,
         artifact_cfg: Any,
         calculation_ref: str | None = None,
-    ) -> _PreparedArtifactUpload | ArtifactUploadOutcome:
+    ) -> PreparedArtifactUpload | ArtifactUploadOutcome:
         if not calculation_ref:
             # TCKDB 0.116: a calculation is addressed by its ``calc_`` ref only; an integer id is
             # refused (422 ``invalid_handle``), so nothing is posted for a response without a ref.
@@ -1035,7 +1035,7 @@ class TCKDBUploaderBase:
             source_path=str(resolved),
             base_url=self._config.base_url,
         )
-        return _PreparedArtifactUpload(
+        return PreparedArtifactUpload(
             written=written_artifact,
             calculation_key=f"{kind}-{sha256[:16]}",
             calculation_id=calculation_id,
@@ -1051,7 +1051,7 @@ class TCKDBUploaderBase:
     def _upload_artifact_batch(
         self,
         *,
-        prepared: list[_PreparedArtifactUpload],
+        prepared: list[PreparedArtifactUpload],
         idempotency_key_prefix: str,
     ) -> list[ArtifactUploadOutcome]:
         api_key = self._config.resolve_api_key()
@@ -1094,7 +1094,7 @@ class TCKDBUploaderBase:
             response = result.response
             response_data = getattr(response, "data", None)
             sc.status = "uploaded"
-            sc.uploaded_at = _utcnow_iso()
+            sc.uploaded_at = utcnow_iso()
             sc.response_status_code = getattr(response, "status_code", None)
             sc.response_body = _summarize_response_body(batch_summary)
             sc.public_refs = _extract_tckdb_public_refs(batch_summary)
@@ -1125,10 +1125,10 @@ class TCKDBUploaderBase:
     @staticmethod
     def _post_artifact_batches(
         client: Any,
-        prepared: list[_PreparedArtifactUpload],
+        prepared: list[PreparedArtifactUpload],
         *,
         idempotency_key_prefix: str,
-    ) -> list[_ArtifactBatchResult]:
+    ) -> list[ArtifactBatchResult]:
         """POST one artifact batch per calculation through ``client.request_json``.
 
         ``TCKDBClient.upload_artifacts`` (tckdb-client 0.93 to 0.95) does the
@@ -1143,7 +1143,7 @@ class TCKDBUploaderBase:
         """
         from tckdb_client.idempotency import validate_idempotency_key
 
-        results: list[_ArtifactBatchResult] = []
+        results: list[ArtifactBatchResult] = []
         for handle, group, body in _artifact_batch_bodies(prepared):
             first_key = group[0].calculation_key if group else str(handle)
             response = client.request_json(
@@ -1154,7 +1154,7 @@ class TCKDBUploaderBase:
                     f"{idempotency_key_prefix}:{first_key}:artifact-batch"
                 ),
             )
-            results.append(_ArtifactBatchResult(
+            results.append(ArtifactBatchResult(
                 handle=handle,
                 calculation_keys=tuple(item.calculation_key for item in group),
                 artifact_count=len(group),
@@ -1164,7 +1164,7 @@ class TCKDBUploaderBase:
 
     def _record_artifact_batch_failure(
         self,
-        prepared: list[_PreparedArtifactUpload],
+        prepared: list[PreparedArtifactUpload],
         message: str,
         raised: BaseException,
     ) -> list[ArtifactUploadOutcome]:

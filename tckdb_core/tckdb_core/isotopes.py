@@ -64,7 +64,7 @@ def geometry_isotope_substitutions(
     ``None`` when the list cannot be applied (not one integer per atom, or an
     element whose standard isotope is not tabulated).
     """
-    symbols = _xyz_symbols(xyz_text)
+    symbols = xyz_symbols(xyz_text)
     if symbols is None or not isinstance(isotopes, Sequence) or isinstance(isotopes, str):
         return None
     if len(isotopes) != len(symbols):
@@ -90,7 +90,7 @@ def smiles_isotope_multiset(smiles: Any) -> dict[tuple[str, int], int] | None:
     if not isinstance(smiles, str) or not smiles:
         return None
     out: dict[tuple[str, int], int] = {}
-    for mass_text, symbol in _SMILES_ISOTOPE_RE.findall(smiles):
+    for mass_text, symbol in SMILES_ISOTOPE_RE.findall(smiles):
         element = symbol[:1].upper() + symbol[1:]
         mass = int(mass_text)
         if MOST_ABUNDANT_ISOTOPE.get(element) == mass:
@@ -102,7 +102,7 @@ def smiles_isotope_multiset(smiles: Any) -> dict[tuple[str, int], int] | None:
 def geometry_isotope_multiset(
     xyz_text: str | None, substitutions: Mapping[int, int],
 ) -> dict[tuple[str, int], int]:
-    symbols = _xyz_symbols(xyz_text) or []
+    symbols = xyz_symbols(xyz_text) or []
     out: dict[tuple[str, int], int] = {}
     for index, mass in substitutions.items():
         key = (symbols[index - 1], int(mass))
@@ -253,13 +253,13 @@ def label_point_geometries(
     its geometry). Path-search points are never labelled.
     """
     isotopes = reference_geometry.get("isotopes") if isinstance(reference_geometry, Mapping) else None
-    symbols = _xyz_symbols(reference_geometry.get("xyz_text")) if isinstance(reference_geometry, Mapping) else None
+    symbols = xyz_symbols(reference_geometry.get("xyz_text")) if isinstance(reference_geometry, Mapping) else None
     can_label = bool(isotopes) and symbols is not None and str(software or "").strip().lower() in ORDER_PRESERVING_ESS
     remaining: list[tuple[str, dict[str, Any]]] = []
     for field, point in unlabelled_point_geometries(calc):
         geometry = point["geometry"]
         if (can_label and field.split(".")[0] in LABELLABLE_POINT_FIELDS
-                and _xyz_symbols(geometry.get("xyz_text")) == symbols):
+                and xyz_symbols(geometry.get("xyz_text")) == symbols):
             geometry["isotopes"] = dict(isotopes)
         else:
             remaining.append((field, point))

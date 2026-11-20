@@ -3,9 +3,6 @@
 # pyproject.toml; this top-level file is not a distributable package. Install the
 # core first, then an adapter: `pip install -e ./tckdb_core -e ./tckdb_arc[test]`.
 
-[tool.tckdb_adapters]
-packages = ["tckdb_core", "tckdb_arc"]
-
 # Lets `python -m pytest` run from the repo root. The outer tckdb_core/ and
 # tckdb_arc/ distribution dirs (no __init__.py) would otherwise shadow the real
 # packages as namespace packages when cwd is on sys.path; pythonpath is inserted

@@ -63,7 +63,7 @@ class SidecarMetadata:
     idempotency_key: str
     payload_kind: str
     bundle_format_version: str = BUNDLE_FORMAT_VERSION
-    created_at: str = field(default_factory=_utcnow_iso)
+    created_at: str = field(default_factory=utcnow_iso)
     uploaded_at: str | None = None
     status: str = "pending"
     response_status_code: int | None = None
@@ -124,7 +124,7 @@ class ArtifactSidecarMetadata:
     source_path: str | None = None
     payload_kind: str = "calculation_artifact"
     bundle_format_version: str = BUNDLE_FORMAT_VERSION
-    created_at: str = field(default_factory=_utcnow_iso)
+    created_at: str = field(default_factory=utcnow_iso)
     uploaded_at: str | None = None
     status: str = "pending"
     response_status_code: int | None = None

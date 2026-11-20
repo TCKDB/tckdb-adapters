@@ -12,6 +12,7 @@ import pytest
 
 from tckdb_core import constants
 from tckdb_core.testing import contract_pin
+from tckdb_core.testing.contract import ROUTE_SCHEMAS
 
 PYPROJECT = Path(__file__).resolve().parents[1] / "pyproject.toml"
 
@@ -35,7 +36,7 @@ def test_every_core_route_constant_has_a_shipped_schema():
         constants.COMPUTED_REACTION_ENDPOINT,
         constants.TRANSITION_STATE_ENDPOINT,
         constants.ARTIFACTS_ENDPOINT_TEMPLATE,
-    })
+    }, expected=ROUTE_SCHEMAS)  # every route in the kit's table has an endpoint constant
 
 
 def test_the_pin_assertions_fail_on_a_wrong_bound_or_a_missing_route(tmp_path):
@@ -47,6 +48,13 @@ def test_the_pin_assertions_fail_on_a_wrong_bound_or_a_missing_route(tmp_path):
     absent.write_text('[project]\ndependencies = ["PyYAML>=6"]\n')
     with pytest.raises(AssertionError):
         contract_pin.assert_pyproject_bounds_schemas_to_the_targeted_line(absent)
+    # An adapter that posts to a subset of the kit's routes passes ...
+    contract_pin.assert_routes_have_shipped_schemas({constants.CONFORMER_UPLOAD_ENDPOINT})
+    # ... unless it asked for exact equality, names a route the kit does not know, or names none.
     with pytest.raises(AssertionError):
-        contract_pin.assert_routes_have_shipped_schemas({constants.CONFORMER_UPLOAD_ENDPOINT})
+        contract_pin.assert_routes_have_shipped_schemas({constants.CONFORMER_UPLOAD_ENDPOINT}, expected=ROUTE_SCHEMAS)
+    with pytest.raises(AssertionError):
+        contract_pin.assert_routes_have_shipped_schemas({"/uploads/thermo"})
+    with pytest.raises(AssertionError):
+        contract_pin.assert_routes_have_shipped_schemas(set())
     assert contract_pin.release_line("0.175.2") == (0, 175)

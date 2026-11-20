@@ -1,6 +1,6 @@
 name: tckdb-drift
 
-# Tracks tckdb-schemas / tckdb-client releases in TCKDB. When the mirror's main
+# Tracks tckdb-schemas / tckdb-client releases in TCKDB. When TCKDB's main
 # ships a newer minor line than the adapter pins, the `test` job bumps the pins in
 # its runner and runs the suite with a read-only token; the `publish` job (the only
 # one with write access) opens a PR (tests pass) or an issue (tests fail).

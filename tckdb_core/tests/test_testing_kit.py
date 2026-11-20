@@ -89,49 +89,29 @@ def test_sequenced_readyz_client_repeats_its_last_answer():
     assert len(client.calls) == 4 and len(upload_calls(client)) == 1
 
 
-def test_stub_client_drives_the_submit_sequence_of_the_readme(tmp_path, monkeypatch):
-    """The "Writing a producer" example of the package README, run against a stub client."""
+def _readme_producer_example() -> str:
+    """The first fenced ``python`` block under "Writing a producer" in the package README."""
+    from pathlib import Path
+
+    readme = (Path(__file__).resolve().parents[1] / "README.md").read_text(encoding="utf-8")
+    section = readme.split("## Writing a producer", 1)[1]
+    return section.split("```python\n", 1)[1].split("\n```", 1)[0]
+
+
+def test_the_readme_producer_example_runs_against_a_stub_client(tmp_path, monkeypatch):
+    """The README's example is executed as written, so it cannot drift from the API."""
+    import json
     from types import SimpleNamespace
 
-    from tckdb_core.adapter_warnings import WarningSink
     from tckdb_core.config import TCKDBConfig
-    from tckdb_core.constants import COMPUTED_SPECIES_ENDPOINT, COMPUTED_SPECIES_KIND
-    from tckdb_core.idempotency import IdempotencyInputs, build_idempotency_key
-    from tckdb_core.payload_writer import PayloadWriter
+    from tckdb_core.constants import COMPUTED_SPECIES_ENDPOINT
     from tckdb_core.testing.stubs import StubClient, StubResponse, upload_calls
-    from tckdb_core.uploader import TCKDBUploaderBase
+    from tckdb_core.warning_codes import CodedEnum
 
-    class MyToolAdapter(TCKDBUploaderBase):
-        PRODUCER_TAG = "tckdb_mytool"
-        PRODUCER_NAME = "MyTool"
-        IDEMPOTENCY_NAMESPACE = "mytool"
-        LOGGER_NAME = "tckdb_mytool"
-
-        def _build_species_payload(self, record, warnings):
-            warnings.add("reference_pressure_not_stated", "no pressure", "thermo.reference_pressure_bar",
-                         action="reference_pressure_omitted")
-            return {"species_entry": {"smiles": record.smiles}}
-
-        def submit_species(self, record):
-            if not self._config.enabled:
-                return None
-            warnings = WarningSink(self.PRODUCER_TAG)
-            payload = self._build_species_payload(record, warnings)
-            if self._config.rights is not None:
-                payload["rights"] = dict(self._config.rights)
-            key = build_idempotency_key(
-                IdempotencyInputs.from_payload(
-                    project_label=self._config.project_label, species_label=record.label,
-                    conformer_label="bundle", payload_kind=COMPUTED_SPECIES_KIND, payload=payload),
-                namespace=self.IDEMPOTENCY_NAMESPACE)
-            written = self._writer.write(
-                label=record.label, payload=payload, endpoint=COMPUTED_SPECIES_ENDPOINT,
-                idempotency_key=key, payload_kind=COMPUTED_SPECIES_KIND,
-                subdir=PayloadWriter.COMPUTED_SPECIES_SUBDIR,
-                base_url=self._config.base_url, warnings=warnings)
-            if not self._config.upload:
-                return self._finalize_skipped(written)
-            return self._upload(written, payload, endpoint=COMPUTED_SPECIES_ENDPOINT)
+    namespace: dict = {"__name__": "readme_producer_example"}
+    exec(compile(_readme_producer_example(), "tckdb_core/README.md", "exec"), namespace)
+    MyToolAdapter, MyToolWarning = namespace["MyToolAdapter"], namespace["MyToolWarning"]
+    assert issubclass(MyToolWarning, CodedEnum)
 
     record = SimpleNamespace(label="h2", smiles="[H][H]")
     monkeypatch.setenv("TCKDB_STUB_KIT_KEY", "secret")
@@ -141,17 +121,17 @@ def test_stub_client_drives_the_submit_sequence_of_the_readme(tmp_path, monkeypa
                               "api_key_env": "TCKDB_STUB_KIT_KEY", "project_label": "proj", **overrides})
 
     assert MyToolAdapter(config(enabled=False)).submit_species(record) is None
-    offline = MyToolAdapter(config(upload=False)).submit_species(record)
-    assert offline.status == "skipped"
+    assert MyToolAdapter(config(upload=False)).submit_species(record).status == "skipped"
 
     client = StubClient(response=StubResponse({"id": 3}))
-    outcome = MyToolAdapter(config(rights={"license": "CC-BY-4.0"}), client_factory=lambda cfg, key: client).submit_species(record)
-    assert outcome.status == "uploaded"
+    adapter = MyToolAdapter(config(rights={"license": "CC-BY-4.0"}), client_factory=lambda cfg, key: client)
+    assert adapter.submit_species(record).status == "uploaded"
     (call,) = upload_calls(client)
     assert call["path"] == COMPUTED_SPECIES_ENDPOINT
     assert call["json"] == {"species_entry": {"smiles": "[H][H]"}, "rights": {"license": "CC-BY-4.0"}}
     assert call["idempotency_key"].startswith("mytool:proj:h2:")
-    import json
     sidecar = json.loads((tmp_path / "computed_species" / "h2.meta.json").read_text())
     assert sidecar["status"] == "uploaded" and sidecar["idempotency_key"] == call["idempotency_key"]
-    assert sidecar["warnings"][0]["context"]["source"] == "tckdb_mytool_self_check"
+    (warning,) = sidecar["warnings"]
+    assert warning["code"] == MyToolWarning.REFERENCE_PRESSURE_NOT_STATED.value
+    assert warning["context"] == {"source": "tckdb_mytool_self_check", "action": "reference_pressure_omitted"}

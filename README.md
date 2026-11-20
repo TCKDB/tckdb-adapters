@@ -33,8 +33,8 @@ TCKDB packages come from the TCKDB commit this repository is tested against:
 
 ```bash
 pip install \
-  "tckdb-client @ git+https://github.com/calvinp0/tckdbv2.git@d4d53462db2b75ed699cb6bd7b39964b2b645254#subdirectory=clients/python" \
-  "tckdb-schemas @ git+https://github.com/calvinp0/tckdbv2.git@d4d53462db2b75ed699cb6bd7b39964b2b645254#subdirectory=schemas/python/tckdb-schemas"
+  "tckdb-client @ git+https://github.com/TCKDB/TCKDB.git@d4d53462db2b75ed699cb6bd7b39964b2b645254#subdirectory=clients/python" \
+  "tckdb-schemas @ git+https://github.com/TCKDB/TCKDB.git@d4d53462db2b75ed699cb6bd7b39964b2b645254#subdirectory=schemas/python/tckdb-schemas"
 pip install -e tckdb_core -e tckdb_arc
 ```
 
@@ -111,4 +111,5 @@ you, what you write yourself, and which TCKDB routes the core does not cover yet
 
 ## Licence
 
-MIT. See [`LICENSE`](LICENSE).
+MIT. See [`LICENSE`](LICENSE). [`NOTICE`](NOTICE) lists the code and data ported from ARC,
+which is also MIT-licensed.

@@ -127,6 +127,7 @@ ${SINCE}
 - [ ] I read the \`--since\` changelog above.
 - [ ] Every changed route, field or refusal code is handled by the adapter or judged irrelevant.
 - [ ] No producer convention was defaulted to fit a new required field (refuse to build the block instead).
+- [ ] The \`tckdb-adapters-core\` version (\`tckdb_core/pyproject.toml\` and \`tckdb_core/tckdb_core/__init__.py\`) and \`tckdb_core/CHANGELOG.md\` are bumped by hand; the bot bumps only \`tckdb-arc\`.
 BODY
 
 git config user.name "$BOT_NAME"
