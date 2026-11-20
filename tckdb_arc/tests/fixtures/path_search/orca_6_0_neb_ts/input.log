@@ -1,0 +1,290 @@
+
+                                 *****************
+                                 * O   R   C   A *
+
+                         Program Version 6.0.0  -   RELEASE  -
+
+
+================================================================================
+                                       INPUT FILE
+================================================================================
+NAME = input.in
+|  1> 
+|  2> !uHF wb97x-d3 def2-tzvp NEB-TS
+|  3> %maxcore 3584
+|  4> %pal nprocs 12 end
+|  5> 
+|  6> %neb
+|  7>    Interpolation    IDPP
+|  8>    NImages  15
+|  9>    PrintLevel   3
+| 10>    PreOpt           true
+| 11>    NEB_END_XYZFILE "product.xyz"
+| 12> END
+| 13> 
+| 14> * XYZFILE 0 2 reactant.xyz
+| 15> 
+| 16>                          ****END OF INPUT****
+================================================================================
+
+
+--------------------------------------------------------------------------------
+                        Nudged Elastic Band Calculation
+--------------------------------------------------------------------------------
+
+Number of images (incl. end points)     ....  17
+Number of intermediate images           ....  15
+Number of optimized images              ....  15
+Optimization of end points before NEB   ....  YES
+Use existing gbw files for MO input     ....  NO
+Number of atoms                         ....  10
+Number of (active) degrees of freedom   ....  30
+Warning: large step (max comp.: 0.052288 Bohr) was attempted. Maxmove condition invoked.
+idpp initial path generation successfully converged in 210 iterations
+Displacement along initial path:              8.8149 Bohr
+Writing initial trajectory to file      ....  input_initial_path_trj.xyz
+
+
+
+----------------------
+NEB OPTIMIZATION      
+----------------------
+
+Following output files will be written:
+Energy profile during opt. written to    ....  input.interp
+Optimization log-file                    ....  input.NEB.log
+Current trajectory will be written to    ....  input_MEP_trj.xyz
+       and to allxyz file                ....  input_MEP.allxyz
+       and individual images to xyz file ....  input_im{NIm}.xyz
+Trajectory history will be written to    ....  input_MEP_ALL_trj.xyz
+Converged CI will be written to          ....  input_NEB-CI_converged.xyz
+Converged TS will be written to          ....  input_NEB-TS_converged.xyz
+
+Single point energy and gradient calculation of reactant and
+product configurations (have to be performed only once)
+Properties of fixed NEB end points:
+               Reactant:
+                         E               ....   -118.485128 Eh
+                         RMS(F)          ....      0.000053 Eh/Bohr
+                         MAX(|F|)        ....      0.000190 Eh/Bohr
+               Product:
+                         E               ....   -118.478999 Eh
+                         RMS(F)          ....      0.000079 Eh/Bohr
+                         MAX(|F|)        ....      0.000177 Eh/Bohr
+
+
+
+Starting iterations:
+
+Optim.  Iteration  HEI  E(HEI)-E(0)  max(|Fp|)   RMS(Fp)    dS
+Switch-on CI threshold               0.020000 
+   LBFGS     0      7    0.163121    0.110070   0.022339  8.8149       
+Warning: large step (max comp.: 0.520127 Bohr) was attempted. Maxmove condition invoked.
+   LBFGS     1      6    0.143925    0.083393   0.018231  8.8380       
+Warning: large step (max comp.: 0.587327 Bohr) was attempted. Maxmove condition invoked.
+   LBFGS     2      6    0.136268    0.069847   0.015074  8.9283       
+Warning: large step (max comp.: 0.578620 Bohr) was attempted. Maxmove condition invoked.
+   LBFGS     3      6    0.128279    0.062792   0.012133  9.0711       
+Warning: large step (max comp.: 0.679352 Bohr) was attempted. Maxmove condition invoked.
+   LBFGS     4      6    0.119436    0.055900   0.009955  9.2250       
+Warning: large step (max comp.: 0.559210 Bohr) was attempted. Maxmove condition invoked.
+   LBFGS     5      6    0.110623    0.048941   0.008197  9.3963       
+Warning: large step (max comp.: 0.770756 Bohr) was attempted. Maxmove condition invoked.
+   LBFGS     6      6    0.102038    0.041966   0.007054  9.5499       
+Warning: large step (max comp.: 0.415317 Bohr) was attempted. Maxmove condition invoked.
+   LBFGS     7      6    0.094774    0.034001   0.005864  9.7395       
+Warning: large step (max comp.: 0.575759 Bohr) was attempted. Maxmove condition invoked.
+   LBFGS     8      6    0.088512    0.026528   0.004578  9.9548       
+Warning: large step (max comp.: 0.389938 Bohr) was attempted. Maxmove condition invoked.
+   LBFGS     9      6    0.083940    0.025477   0.004162  10.1428       
+Warning: large step (max comp.: 0.561544 Bohr) was attempted. Maxmove condition invoked.
+   LBFGS    10      6    0.080297    0.015303   0.002888  10.3787       
+
+Image  6 will be converted to a climbing image in the next iteration (max(|Fp|) < 0.0200) 
+
+Optim.  Iteration  CI   E(CI)-E(0)   max(|Fp|)   RMS(Fp)    dS     max(|FCI|)   RMS(FCI)
+Convergence thresholds               0.020000   0.010000            0.002000    0.001000 
+   LBFGS    11      6    0.078649    0.013589   0.002552  10.5193    0.008927    0.003602       
+Warning: large step (max comp.: 0.506679 Bohr) was attempted. Maxmove condition invoked.
+   LBFGS    12      6    0.076993    0.010305   0.001907  10.7343    0.006555    0.002954       
+Warning: large step (max comp.: 0.155454 Bohr) was attempted. Maxmove condition invoked.
+   LBFGS    13      6    0.075885    0.024756   0.003708  10.9154    0.006114    0.002680       
+Warning: large step (max comp.: 0.193602 Bohr) was attempted. Maxmove condition invoked.
+   LBFGS    14      6    0.074393    0.023410   0.003426  11.1709    0.012711    0.004209       
+   LBFGS    15      6    0.074854    0.019026   0.002377  11.1834    0.004849    0.002235       
+   LBFGS    16      6    0.074860    0.008642   0.001733  11.1832    0.004385    0.001553       
+   LBFGS    17      6    0.073523    0.019521   0.002468  11.2361    0.014489    0.004201       
+Warning: large step (max comp.: 0.124817 Bohr) was attempted. Maxmove condition invoked.
+   LBFGS    18      6    0.072114    0.026043   0.003008  11.4477    0.020075    0.005953       
+   LBFGS    19      6    0.073226    0.021719   0.002137  11.4442    0.012980    0.003713       
+   LBFGS    20      6    0.073616    0.012111   0.001525  11.4469    0.007167    0.002233       
+   LBFGS    21      6    0.072666    0.008417   0.001493  11.4882    0.013361    0.004078       
+   LBFGS    22      6    0.072233    0.012578   0.001958  11.4978    0.015537    0.005202       
+Warning: large step (max comp.: 0.142996 Bohr) was attempted. Maxmove condition invoked.
+   LBFGS    23      6    0.072518    0.017402   0.002729  11.5075    0.021045    0.006978       
+   LBFGS    24      6    0.072793    0.014560   0.002180  11.4523    0.007075    0.003305       
+   LBFGS    25      6    0.073018    0.007652   0.001259  11.4227    0.008538    0.003128       
+   LBFGS    26      6    0.072684    0.007243   0.001167  11.3986    0.006706    0.002064       
+   LBFGS    27      6    0.072387    0.010549   0.001395  11.4059    0.009095    0.002695       
+Warning: large step (max comp.: 0.147172 Bohr) was attempted. Maxmove condition invoked.
+   LBFGS    28      6    0.071763    0.012072   0.001930  11.4705    0.011800    0.003908       
+   LBFGS    29      6    0.072379    0.023585   0.002940  11.4678    0.004421    0.001572       
+   LBFGS    30      6    0.072447    0.008137   0.001217  11.4636    0.001888    0.000825       
+
+                                .--------------------.
+          ----------------------| CI-NEB convergence |-------------------------
+          Item                value                   Tolerance       Converged
+          ---------------------------------------------------------------------
+          RMS(Fp)             0.0012172437            0.0100000000      YES
+          MAX(|Fp|)           0.0081365198            0.0200000000      YES
+          RMS(FCI)            0.0008253146            0.0010000000      YES
+          MAX(|FCI|)          0.0018880518            0.0020000000      YES
+          ---------------------------------------------------------------------
+
+The elastic band and climbing image have converged successfully to a MEP in 30 iterations!
+
+
+                    *********************H U R R A Y*********************
+                    ***        THE NEB OPTIMIZATION HAS CONVERGED     ***
+                    *****************************************************
+
+
+
+---------------------------------------------------------------
+                         PATH SUMMARY              
+---------------------------------------------------------------
+All forces in Eh/Bohr.
+
+Image Dist.(Ang.)    E(Eh)   dE(kcal/mol)  max(|Fp|)  RMS(Fp)
+  0     0.000    -118.48513      0.00       0.00019   0.00005
+  1     0.441    -118.48509      0.03       0.00073   0.00020
+  2     1.136    -118.48456      0.36       0.00333   0.00095
+  3     1.647    -118.47203      8.22       0.00420   0.00128
+  4     1.878    -118.44838     23.06       0.00713   0.00229
+  5     2.058    -118.42385     38.46       0.00814   0.00302
+  6     2.216    -118.41268     45.46       0.00179   0.00082 <= CI
+  7     2.423    -118.43019     34.47       0.00185   0.00102
+  8     2.660    -118.45859     16.65       0.00341   0.00128
+  9     3.141    -118.47366      7.20       0.00351   0.00148
+ 10     3.951    -118.47501      6.35       0.00218   0.00092
+ 11     4.547    -118.47599      5.73       0.00141   0.00066
+ 12     4.965    -118.47696      5.12       0.00125   0.00053
+ 13     5.275    -118.47770      4.66       0.00102   0.00044
+ 14     5.541    -118.47828      4.30       0.00077   0.00035
+ 15     5.799    -118.47876      3.99       0.00052   0.00020
+ 16     6.066    -118.47900      3.85       0.00018   0.00008
+
+Straight line distance between images along the path:
+        D( 0- 1) =   0.4410 Ang.
+        D( 1- 2) =   0.6947 Ang.
+        D( 2- 3) =   0.5117 Ang.
+        D( 3- 4) =   0.2301 Ang.
+        D( 4- 5) =   0.1804 Ang.
+        D( 5- 6) =   0.1585 Ang.
+        D( 6- 7) =   0.2062 Ang.
+        D( 7- 8) =   0.2372 Ang.
+        D( 8- 9) =   0.4809 Ang.
+        D( 9-10) =   0.8098 Ang.
+        D(10-11) =   0.5959 Ang.
+        D(11-12) =   0.4183 Ang.
+        D(12-13) =   0.3103 Ang.
+        D(13-14) =   0.2660 Ang.
+        D(14-15) =   0.2574 Ang.
+        D(15-16) =   0.2677 Ang.
+
+---------------------------------------------------------------
+               INFORMATION ABOUT SADDLE POINT     
+---------------------------------------------------------------
+
+Climbing image                            ....  6 
+Energy                                    ....  -118.41268176 Eh
+Max. abs. force                           ....  1.8881e-03 Eh/Bohr
+
+-----------------------------------------
+  SADDLE POINT (ANGSTROEM)
+-----------------------------------------
+C     -0.322156    -0.044561     1.358703 
+C      0.330756     0.382911     0.094751 
+C     -0.010351    -0.175530    -1.257511 
+H      0.901688    -0.323758     1.017133 
+H     -0.903415    -0.956887     1.374445 
+H     -0.463452     0.672099     2.156610 
+H      0.795816     1.360342     0.132210 
+H     -0.866401    -0.851957    -1.216566 
+H      0.816626    -0.709687    -1.733827 
+H     -0.279112     0.647028    -1.925949 
+
+-----------------------------------------
+  FORCES (Eh/Bohr)
+-----------------------------------------
+C     -0.000443    -0.000964     0.000176 
+C      0.001888    -0.000056     0.000308 
+C     -0.000087    -0.000054     0.000514 
+H     -0.001216     0.000995    -0.000600 
+H     -0.001059     0.001039    -0.001760 
+H      0.001398    -0.000899     0.000687 
+H     -0.000350     0.000428    -0.000167 
+H      0.000473    -0.000376     0.000989 
+H      0.000052     0.000410     0.000769 
+H     -0.000656    -0.000522    -0.000915 
+
+-----------------------------------------
+  UNIT TANGENT
+-----------------------------------------
+C     -0.472865     0.161379     0.001589 
+C      0.261136    -0.243925     0.272943 
+C      0.032050    -0.028822     0.060711 
+H      0.292697     0.138061    -0.633990 
+H     -0.034326    -0.039337     0.052860 
+H     -0.058175     0.056043     0.095277 
+H     -0.043238    -0.052206     0.048004 
+H      0.011740     0.003043     0.017198 
+H     -0.002950     0.000748     0.000261 
+H      0.013931     0.005017     0.085147 
+ => Unit tangent is an approximation to the TS mode at the saddle point
+
+Next a TS optimization is performed on the CI from the NEB run.
+
+         *************************************************************
+         *                       TS OPTIMIZATION                     *
+         *************************************************************
+
+
+Following output files will be written:
+Converged TS will be written to          ....  input_NEB-TS_converged.xyz
+                                         ....  input.xyz
+Current trajectory will be written to    ....  input_trj.xyz
+
+
+
+                    ***********************HURRAY************************
+                    ***        THE TS OPTIMIZATION HAS CONVERGED      ***
+                    *****************************************************
+
+
+
+---------------------------------------------------------------
+                      PATH SUMMARY FOR NEB-TS             
+---------------------------------------------------------------
+All forces in Eh/Bohr. Global forces for TS.
+
+Image     E(Eh)   dE(kcal/mol)  max(|Fp|)  RMS(Fp)
+  0    -118.48513     0.00       0.00019   0.00005
+  1    -118.48509     0.03       0.00073   0.00020
+  2    -118.48456     0.36       0.00333   0.00095
+  3    -118.47203     8.22       0.00420   0.00128
+  4    -118.44838    23.06       0.00713   0.00229
+  5    -118.42385    38.46       0.00814   0.00302
+  6    -118.41268    45.46       0.00179   0.00082 <= CI
+ TS    -118.41612    43.30       0.00027   0.00012 <= TS
+  7    -118.43019    34.47       0.00185   0.00102
+  8    -118.45859    16.65       0.00341   0.00128
+  9    -118.47366     7.20       0.00351   0.00148
+ 10    -118.47501     6.35       0.00218   0.00092
+ 11    -118.47599     5.73       0.00141   0.00066
+ 12    -118.47696     5.12       0.00125   0.00053
+ 13    -118.47770     4.66       0.00102   0.00044
+ 14    -118.47828     4.30       0.00077   0.00035
+ 15    -118.47876     3.99       0.00052   0.00020
+ 16    -118.47900     3.85       0.00018   0.00008
+                             ****ORCA TERMINATED NORMALLY****

@@ -3568,9 +3568,13 @@ class TCKDBAdapter(TCKDBUploaderBase):
                 ts_guess_level = path_search_level
                 ts_guess_level_kind = ts_guess_method
         if ts_guess_level is not None and ts_guess_level_kind is not None:
-            # Resolve the on-disk log path (neb_log is stored run-relative on
-            # the record). NEB has no image parser, so the payload is the
-            # single TS-guess point from ``opt_input_xyz``.
+            # Resolve the on-disk log path (neb_log / gsm_log are stored
+            # run-relative on the record). GSM energies come only from ARC's
+            # parser-evidence sidecar, which attaches a node's xTB energy to
+            # a stringfile frame by geometry.
+            gsm_lookup = self._evidence.lookup(
+                output_doc, "transition_state", str(ts_record.get("label") or ""), "gsm"
+            ) if ts_guess_method == "gsm" else None
             log_local = self._resolve_local_path(
                 ts_record.get(ts_guess_log_field),
             )
@@ -3578,6 +3582,9 @@ class TCKDBAdapter(TCKDBUploaderBase):
                 method=ts_guess_method,
                 log_path=str(log_local) if log_local is not None else None,
                 fallback_xyz_text=ts_record.get("opt_input_xyz"),
+                gsm_evidence=(gsm_lookup.value if gsm_lookup is not None and gsm_lookup.state == "available"
+                              else None),
+                evidence_unavailable=bool(gsm_lookup is not None and gsm_lookup.state == "unavailable"),
             )
             if path_search_payload is None:
                 logger.warning(
@@ -3603,6 +3610,16 @@ class TCKDBAdapter(TCKDBUploaderBase):
                         conformer_xyz_text=None,
                         include_artifacts=include_artifacts,
                     )
+                    # A parsed NEB band marks no image as the guess (see
+                    # ``_build_path_search_result_payload``); the geometry ARC
+                    # fed to ts_opt is the path search's final output.
+                    guess_xyz = _normalize_xyz_text(ts_record.get("opt_input_xyz"), ts_record.get("label"))
+                    if (ts_guess_method == "neb" and guess_xyz
+                            and not any(p.get("is_ts_guess") for p in path_search_payload["points"])):
+                        guess_geometry = _geometry_payload(
+                            ts_record, guess_xyz, ts_record.get("opt_input_xyz_isotopes"))
+                        if guess_geometry:
+                            ts_guess_calc["output_geometries"] = [{"geometry": guess_geometry, "role": "final"}]
                 except ValueError as exc:
                     logger.warning(
                         "TCKDB computed-reaction: ts_guess (%s) calc skipped: %s",
@@ -11423,6 +11440,16 @@ def _read_gsm_node_outputs(
     return by_label
 
 
+_NEB_TS_GUESS_NOTE = (
+    "TS guess: the saddle point ORCA's NEB-TS optimized from the climbing image; "
+    "not a path image. It is this calculation's final output geometry."
+)
+_NEB_GUESS_NOTE = (
+    "TS guess: the last geometry in the ORCA log, not identified with a path image. "
+    "It is this calculation's final output geometry."
+)
+
+
 def _build_path_search_result_payload(
     *,
     method: str,
@@ -11449,15 +11476,24 @@ def _build_path_search_result_payload(
       middle-ish frame xtb_gsm picks as the TS guess (mirroring
       ``xTBGSMAdapter.process_run``).
 
-    * ``method == 'neb'``: NEB log image extraction is a future parser
-      lift; for now emit a single TS-guess point from
-      ``fallback_xyz_text`` (the chosen guess's geometry, also the
-      ts_opt's input XYZ). This is provenance the producer already
-      committed to — the same geometry that became ``ts_opt`` input —
-      not invented data. Marked with ``is_ts_guess=True``.
+    * ``method == 'gsm'`` with ``gsm_evidence`` (ARC's parser-evidence
+      sidecar): the sidecar's points, carrying xTB energies and gradient
+      norms only where ARC matched a node evaluation to that frame by
+      geometry.
 
-    * Other methods or unparseable logs: fall back to the single-point
-      shape, or return ``None`` if no fallback geometry is available.
+    * ``method == 'neb'``: every image of the ORCA band summary
+      (:func:`tckdb_arc.orca_neb.parse_orca_neb_log`) becomes a point with
+      its distance (Angstrom), energy and force norms (Eh/Bohr); only the
+      climbing image's geometry is in the log. No point is marked as the TS
+      guess: ARC's guess is the log's last coordinate block (for NEB-TS the
+      saddle point refined from the climbing image, not an image), which the
+      caller files as the calculation's final output geometry; ``note`` says
+      so. ``converged`` is set only from ORCA's convergence banner.
+
+    * Unparseable logs: fall back to a single TS-guess point from
+      ``fallback_xyz_text`` (the chosen guess's geometry, also the
+      ts_opt's input XYZ), or return ``None`` if no fallback geometry is
+      available.
 
     Returns ``None`` (caller skips the calc) when even the fallback
     can't be built — the conservative gate then leaves ``ts_opt``
@@ -11577,6 +11613,40 @@ def _build_path_search_result_payload(
                     point["is_ts_guess"] = True
                 points.append(point)
 
+    converged: bool | None = None
+    climbing_image_index: int | None = None
+    note: str | None = None
+    if method == "neb" and log_path is not None:
+        from tckdb_arc.orca_neb import parse_orca_neb_log
+
+        band = parse_orca_neb_log(log_path)
+        if band is not None:
+            converged = band["converged"]
+            climbing_image_index = band["climbing_image_index"]
+            # ARC takes the guess from the log's last coordinate block
+            # (``OrcaParser.parse_geometry``), never from a band image: for its
+            # NEB-TS runs that is the saddle point optimized from the climbing
+            # image. No point is the TS guess; the caller files ARC's guess as
+            # this calculation's final output geometry.
+            note = _NEB_TS_GUESS_NOTE if band["refines_ts"] else _NEB_GUESS_NOTE
+            for image in band["images"]:
+                index = image["index"]
+                point = {
+                    "point_index": index,
+                    "electronic_energy_hartree": image["energy_hartree"],
+                    "max_force": image["max_force_hartree_per_bohr"],
+                    "rms_force": image["rms_force_hartree_per_bohr"],
+                }
+                if image["distance_angstrom"] is not None:
+                    point["path_coordinate"] = image["distance_angstrom"]
+                if index == climbing_image_index:
+                    point["is_climbing_image"] = True
+                if image["atoms"]:
+                    xyz_text = _normalize_xyz_text("\n".join(image["atoms"]), label=f"neb_image_{index}")
+                    if xyz_text:
+                        point["geometry"] = {"xyz_text": xyz_text}
+                points.append(point)
+
     if not points and evidence_unavailable:
         return None
     if not points:
@@ -11660,17 +11730,21 @@ def _build_path_search_result_payload(
                             (v - base_kcal) * _KCAL_MOL_TO_KJ_MOL
                         )
 
-    # ``converged`` (optional) is omitted: ARC records no convergence
-    # verdict for a path search. ``TSGuess.success`` and ``log_path`` mean
-    # only that the output file exists (arc/job/adapters/ts/xtb_gsm.py and
-    # orca_neb.py ``process_run``), not that the string or band converged,
-    # and the contract asks a producer to leave out what its source does
-    # not state.
+    # ``converged`` is sent only when the program's own verdict was read (the
+    # ORCA NEB banner). ``TSGuess.success`` and ``log_path`` mean only that
+    # the output file exists, and ARC archives no GSM stdout, so a GSM
+    # string's convergence is not stated.
     payload: dict[str, Any] = {
         "method": method,
         "n_points": len(points),
         "points": points,
     }
+    if converged is not None:
+        payload["converged"] = converged
+    if climbing_image_index is not None:
+        payload["climbing_image_index"] = climbing_image_index
+    if note is not None:
+        payload["note"] = note
     if zero_e_h is not None:
         payload["zero_energy_reference_hartree"] = zero_e_h
     # Static method properties (is_double_ended, source_endpoint_count)
