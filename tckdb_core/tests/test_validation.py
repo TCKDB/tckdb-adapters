@@ -600,3 +600,22 @@ def test_an_empty_artifact_file_is_refused_from_its_metadata(tmp_path):
         species_label="CH4", calculation_ref="calc_1", artifacts=[("output_log", empty)])
     assert client.calls == []
     assert [o.status for o in outcomes] == ["failed"] and "artifacts/0/bytes" in outcomes[0].error
+
+
+@pytest.mark.parametrize("kind", sorted(STANDALONE_ROUTES))
+def test_the_switch_does_not_disable_the_standalone_refusal_before_the_write(tmp_path, kind):
+    """`submit_standalone` refuses a bad request before anything exists on disk, switch or not."""
+    adapter, client = _adapter(tmp_path, validate_before_upload=False)
+    with pytest.raises(StandalonePayloadError, match="does not match the tckdb-schemas contract"):
+        adapter.submit_standalone(kind, _broken(STANDALONE_ROUTES[kind].endpoint), label="rec")
+    assert client.calls == [] and not (tmp_path / "out").exists()
+
+
+def test_standalone_validation_is_the_runtime_check():
+    endpoint = constants.THERMO_ENDPOINT
+    body = _broken(endpoint)
+    assert standalone.standalone_payload_errors("thermo", body) == request_findings(endpoint, body)
+    with pytest.raises(StandalonePayloadError) as caught:
+        standalone.validate_standalone_payload("thermo", body)
+    assert caught.value.errors == request_findings(endpoint, body)
+    assert str(caught.value).startswith("thermo payload does not match the tckdb-schemas contract for ThermoUploadRequest")

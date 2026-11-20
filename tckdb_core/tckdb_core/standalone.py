@@ -12,9 +12,10 @@ For one request it
 
 1. attaches ``config.rights`` when the request states none (a request that states
    different rights is refused);
-2. validates the request against the route's shipped JSON Schema (:mod:`tckdb_core.validation`; this
-   check is not governed by ``config.validate_before_upload``, which switches off the check
-   :meth:`~tckdb_core.uploader.TCKDBUploaderBase._upload` makes just before the POST), and raises
+2. validates the request against the route's contract with :mod:`tckdb_core.validation` (the
+   shipped JSON Schema: these routes have no published model). This check stays on whatever
+   ``config.validate_before_upload`` says: that switch governs only the check
+   :meth:`~tckdb_core.uploader.TCKDBUploaderBase._upload` makes just before the POST. It raises
    :class:`StandalonePayloadError` before anything is written when TCKDB's contract
    would refuse it;
 3. hands the finished request to
@@ -61,7 +62,8 @@ from tckdb_core.validation import (
     PayloadContractError,
     clip as _clip,
     json_schema_validator as _validator,  # noqa: F401  (earlier private name, kept)
-    schema_findings,
+    contract_error,
+    request_findings,
 )
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -121,26 +123,23 @@ def standalone_route(kind: str) -> StandaloneRoute:
 
 
 def standalone_payload_errors(kind: str, payload: Any) -> list[str]:
-    """Every way ``payload`` fails the route's shipped JSON Schema, as ``"<path>: <message>"``.
+    """Every way ``payload`` fails the route's contract, as ``"<path>: <message>"``.
 
-    The request is checked as the client sends it: through a JSON round trip, so a value
-    that is not JSON, or a NaN or infinity, is a finding. An empty list means the shape is
-    accepted; it says nothing about the rules the route handlers apply.
+    :func:`tckdb_core.validation.request_findings` for the route's endpoint. These routes have no
+    published pydantic model, so the check is the shipped JSON Schema, which decides shape only.
+    The request is checked as the client sends it: through a JSON round trip, so a value that is
+    not JSON, or a NaN or infinity, is a finding. An empty list means the shape is accepted; it
+    says nothing about the rules the route handlers apply.
     """
-    return schema_findings(standalone_route(kind).schema_name, payload)
+    return request_findings(standalone_route(kind).endpoint, payload)
 
 
 def validate_standalone_payload(kind: str, payload: Any) -> None:
-    """Raise :class:`StandalonePayloadError` unless ``payload`` matches the route's shipped schema."""
+    """Raise :class:`StandalonePayloadError` unless ``payload`` matches the route's contract."""
     errors = standalone_payload_errors(kind, payload)
     if errors:
-        route = standalone_route(kind)
-        shown = "\n".join(f"  at {line}" for line in errors[:10])
-        raise StandalonePayloadError(
-            f"{kind} payload does not match the tckdb-schemas contract for {route.schema_name} "
-            f"({len(errors)} finding(s)):\n{shown}",
-            errors,
-        )
+        refusal = contract_error(standalone_route(kind).endpoint, errors, what=f"{kind} payload")
+        raise StandalonePayloadError(str(refusal), errors)
 
 
 class StandaloneSubmitMixin:
@@ -176,7 +175,9 @@ class StandaloneSubmitMixin:
         Returns ``None`` when the config is disabled. Raises :class:`StandalonePayloadError`,
         before any file is written, for a request the contract refuses, a request whose
         ``rights`` differ from the configured ones, an empty ``label``, or a label, qualifier or
-        project label so long that the idempotency key exceeds the server's 200 characters; strict mode does not
+        project label so long that the idempotency key exceeds the server's 200 characters, whatever
+        ``config.validate_before_upload`` says (that switch governs only the check just before the
+        POST); strict mode does not
         turn that into a recorded failure, because a payload that never passed validation
         has nothing to replay. Otherwise the outcome is that of ``_upload`` (``uploaded``,
         ``failed``, or ``skipped`` when ``config.upload`` is off).
