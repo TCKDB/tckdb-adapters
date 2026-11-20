@@ -35,6 +35,31 @@ COMPUTED_REACTION_KIND = "computed_reaction"
 TRANSITION_STATE_ENDPOINT = "/uploads/transition-states"
 TRANSITION_STATE_KIND = "transition_state"
 
+# Standalone record routes. Each takes one request describing one record of its
+# kind (the species or reaction it belongs to is named by identity inside the
+# request, never by a database id). The core transports and validates a request a
+# producer built; it builds none of them. See ``tckdb_core.standalone``.
+THERMO_ENDPOINT = "/uploads/thermo"
+THERMO_KIND = "thermo"
+
+KINETICS_ENDPOINT = "/uploads/kinetics"
+KINETICS_KIND = "kinetics"
+
+STATMECH_ENDPOINT = "/uploads/statmech"
+STATMECH_KIND = "statmech"
+
+TRANSPORT_ENDPOINT = "/uploads/transport"
+TRANSPORT_KIND = "transport"
+
+REACTION_ENDPOINT = "/uploads/reactions"
+REACTION_KIND = "reaction"
+
+NETWORK_ENDPOINT = "/uploads/networks"
+NETWORK_KIND = "network"
+
+NETWORK_PDEP_ENDPOINT = "/uploads/networks/pdep"
+NETWORK_PDEP_KIND = "network_pdep"
+
 # Readiness-probe (/readyz) retry policy. During a long producer run the TCKDB
 # server can be briefly not-ready (restart, rolling deploy, momentary
 # load). Rather than fail the in-run upload on the first blip, the

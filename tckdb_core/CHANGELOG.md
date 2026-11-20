@@ -3,6 +3,35 @@
 Releases are listed newest first. Each `tckdb-arc` release names the core version it needs in its
 own changelog.
 
+## 0.5.11
+
+Adds the standalone record routes. No payload an existing route sends changes, and no existing
+idempotency key changes.
+
+- `tckdb_core.standalone` and `TCKDBUploaderBase.submit_standalone(kind, payload, *, label,
+  qualifier=None, project_label=None, warnings=None)`: post a request a producer already built to
+  `POST /uploads/thermo`, `/uploads/kinetics`, `/uploads/statmech`, `/uploads/transport`,
+  `/uploads/reactions`, `/uploads/networks` or `/uploads/networks/pdep`. It adds `config.rights`
+  (a request stating different rights is refused), validates the request against the route's shipped
+  JSON Schema and raises `StandalonePayloadError` before anything is written when it fails, then
+  writes the payload and sidecar and uploads with the same readiness probe, idempotency key,
+  sidecar bookkeeping and strict mode as the other routes. The core builds none of these requests.
+  The schema checks shape only; the route handlers' rules are not run. tckdb-schemas publishes no
+  pydantic model for these requests.
+- New constants for each route (`THERMO_ENDPOINT`/`THERMO_KIND`, `KINETICS_*`, `STATMECH_*`,
+  `TRANSPORT_*`, `REACTION_*`, `NETWORK_*`, `NETWORK_PDEP_*`), a `PayloadWriter` subdirectory for
+  each, and `standalone.STANDALONE_ROUTES`. Sidecars carry the kind as `payload_kind`. As with
+  every sidecar the core writes, `tckdb-client` 0.208 replay does not replay them (it accepts only an
+  integer `bundle_format_version` of 1; the core writes `"0"`).
+- Test kit: `ROUTE_SCHEMAS` gains the seven routes. `assert_request_is_accepted` runs the pydantic
+  model only for a route that has one in `REQUEST_MODELS`, then the JSON Schema. An adapter's own
+  pin test, which names its routes, is unaffected; the core's pin test requires an endpoint constant
+  for each entry.
+- `jsonschema>=4.18` is now a runtime dependency (it was in the `[test]` extra, which no longer lists it).
+- A `qualifier` is part of the payload's file name as well as its key, so two records under one label do not overwrite each other. A finding's message is cut at 200 characters, and a label that makes the key exceed 200 characters raises `StandalonePayloadError`.
+- Not added: `POST /uploads/thermoml` (a ThermoML document ingest), the contribution bundle routes, the
+  submission rights-attestation and supersede routes, and `/jobs/*`.
+
 ## 0.5.10
 
 No behaviour change for existing callers; released with adapter 0.15.10.

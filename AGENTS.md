@@ -67,6 +67,7 @@ almost fits:
 | Need | Core module |
 |---|---|
 | Upload, readiness probe, sidecars, strict mode, artifact batches | `uploader.TCKDBUploaderBase` (subclass it; set `PRODUCER_TAG`, `PRODUCER_NAME`, `IDEMPOTENCY_NAMESPACE`, `LOGGER_NAME`) |
+| Posting a finished thermo, kinetics, statmech, transport, reaction or network request | `TCKDBUploaderBase.submit_standalone` (`standalone`); validates against the shipped schema, builds nothing |
 | Payload and sidecar files | `payload_writer.PayloadWriter` (`self._writer`) |
 | Idempotency keys | `idempotency` (pass the producer's namespace) |
 | Config fields, API-key resolution | `config` |
