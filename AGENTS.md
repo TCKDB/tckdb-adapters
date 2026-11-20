@@ -78,10 +78,10 @@ almost fits:
 | TCKDB rule pre-checks | `rules`, `ts_evidence`, `ts_evidence_rules`, `route_level` |
 | Tests | `tckdb_core.testing`: `contract`, `contract_hook`, `contract_pin`, `stubs`, `backend_import`, `live` |
 
-Submit sequence for every route: build the payload with a `WarningSink`, attach
-`config.rights` when set, run the pre-checks, build the idempotency key from the finished
-payload, `self._writer.write(...)`, then `self._finalize_skipped(written)` or
-`self._upload(written, payload, endpoint=...)`. The write always precedes the request.
+Submit sequence for every route: build the payload with a `WarningSink`, run the
+pre-checks, then `self._write_and_upload(...)`. It attaches `config.rights` when set, builds
+the idempotency key from the finished payload, writes with `self._writer.write(...)`, and
+finishes with `_finalize_skipped` or `_upload`. The write always precedes the request.
 
 Import a rule, enum or model from `tckdb_schemas` whenever it ships one. A replica in this
 repository is allowed only for a rule that exists solely in TCKDB's backend, and it carries
