@@ -1,0 +1,242 @@
+{
+ "status": "available",
+ "value": {
+  "method": "gsm",
+  "ograd_invocations": [
+   {
+    "electronic_energy_hartree": -9.8990468444,
+    "invocation_id": "0000.01",
+    "max_gradient_hartree_per_bohr": 0.0065555496747372,
+    "rms_gradient_hartree_per_bohr": 0.0023566293030838855
+   },
+   {
+    "electronic_energy_hartree": -9.88997851517,
+    "invocation_id": "0000.02",
+    "max_gradient_hartree_per_bohr": 0.051346374081037,
+    "rms_gradient_hartree_per_bohr": 0.01832184762470287
+   },
+   {
+    "electronic_energy_hartree": -9.84219711856,
+    "invocation_id": "0000.03",
+    "max_gradient_hartree_per_bohr": 0.11626824179977,
+    "rms_gradient_hartree_per_bohr": 0.03542712242948015
+   },
+   {
+    "electronic_energy_hartree": -9.77343400513,
+    "invocation_id": "0000.04",
+    "max_gradient_hartree_per_bohr": 0.18372649394473,
+    "rms_gradient_hartree_per_bohr": 0.05284714668595491
+   },
+   {
+    "electronic_energy_hartree": -9.698152779,
+    "invocation_id": "0000.05",
+    "max_gradient_hartree_per_bohr": 0.21558680558979,
+    "rms_gradient_hartree_per_bohr": 0.06009525681252232
+   },
+   {
+    "electronic_energy_hartree": -9.63682404151,
+    "invocation_id": "0000.06",
+    "max_gradient_hartree_per_bohr": 0.1729578046863,
+    "rms_gradient_hartree_per_bohr": 0.04773737811802325
+   },
+   {
+    "electronic_energy_hartree": -9.60539891127,
+    "invocation_id": "0000.07",
+    "max_gradient_hartree_per_bohr": 0.087225371910982,
+    "rms_gradient_hartree_per_bohr": 0.03448370197480881
+   },
+   {
+    "electronic_energy_hartree": -9.60301569407,
+    "invocation_id": "0000.08",
+    "max_gradient_hartree_per_bohr": 0.098393848983662,
+    "rms_gradient_hartree_per_bohr": 0.033401796399859816
+   },
+   {
+    "electronic_energy_hartree": -9.63867284285,
+    "invocation_id": "0000.09",
+    "max_gradient_hartree_per_bohr": 0.11806076241619,
+    "rms_gradient_hartree_per_bohr": 0.041064121320720744
+   },
+   {
+    "electronic_energy_hartree": -9.70143724358,
+    "invocation_id": "0000.10",
+    "max_gradient_hartree_per_bohr": 0.14665248696828,
+    "rms_gradient_hartree_per_bohr": 0.04831670395866091
+   },
+   {
+    "electronic_energy_hartree": -9.75816494223,
+    "invocation_id": "0000.11",
+    "max_gradient_hartree_per_bohr": 0.13179478642554,
+    "rms_gradient_hartree_per_bohr": 0.04343592934132049
+   },
+   {
+    "electronic_energy_hartree": -9.81063055175,
+    "invocation_id": "0000.12",
+    "max_gradient_hartree_per_bohr": 0.094274310885271,
+    "rms_gradient_hartree_per_bohr": 0.03244407133005525
+   },
+   {
+    "electronic_energy_hartree": -9.85626476976,
+    "invocation_id": "0000.13",
+    "max_gradient_hartree_per_bohr": 0.056093783832297,
+    "rms_gradient_hartree_per_bohr": 0.022327591437530686
+   },
+   {
+    "electronic_energy_hartree": -9.8877345951,
+    "invocation_id": "0000.14",
+    "max_gradient_hartree_per_bohr": 0.040158056767915,
+    "rms_gradient_hartree_per_bohr": 0.013363881186222353
+   }
+  ],
+  "parser_version": "arc-gsm-stringfile-1",
+  "points": [
+   {
+    "cumulative_com_superposed_displacement_angstrom": 0.0,
+    "geometry_xyz_text": "10\ngsm_point_0\nC       0.00551800   -0.21638800    1.29400800\nC       0.00551800    0.51487200    0.00000000\nC       0.00551800   -0.21638800   -1.29400800\nH       0.76685100   -1.00479300    1.31103400\nH      -0.95560900   -0.72160000    1.48162800\nH       0.18693500    0.44796000    2.14022300\nH      -0.19347200    1.57937000    0.00000000\nH      -0.95560900   -0.72160000   -1.48162800\nH       0.76685100   -1.00479300   -1.31103400\nH       0.18693500    0.44796000   -2.14022300",
+    "source_point_index": 0
+   },
+   {
+    "cumulative_com_superposed_displacement_angstrom": 0.4206660586602443,
+    "electronic_energy_hartree": -9.88997851517,
+    "geometry_match_displacement_angstrom": 8.749507091876274e-06,
+    "geometry_matched_ograd_invocation_id": "0000.02",
+    "geometry_xyz_text": "10\ngsm_point_1\nC      -1.02238900    0.23632700    0.72211300\nC      -0.27017300    0.05652700   -0.45396500\nC       1.12863300   -0.46077400   -0.48412400\nH      -0.29363000    0.84896200    1.46810600\nH      -1.48287000   -0.68909000    1.09597400\nH      -1.94809800    0.75941700    0.48434400\nH      -0.81634600    0.17173800   -1.38394300\nH       1.20144200   -1.46917800   -0.04865900\nH       1.80409200    0.17265500    0.10152800\nH       1.51875900   -0.52199900   -1.50137500",
+    "max_gradient_hartree_per_bohr": 0.051346374081037,
+    "rms_gradient_hartree_per_bohr": 0.01832184762470287,
+    "source_point_index": 1
+   },
+   {
+    "cumulative_com_superposed_displacement_angstrom": 0.826792100161331,
+    "electronic_energy_hartree": -9.84219711856,
+    "geometry_match_displacement_angstrom": 1.2805153147516758e-05,
+    "geometry_matched_ograd_invocation_id": "0000.03",
+    "geometry_xyz_text": "10\ngsm_point_2\nC      -1.03816600    0.16628200    0.71005300\nC      -0.25777900    0.06442900   -0.37030700\nC       1.15275400   -0.43227800   -0.43799200\nH      -0.19612800    0.81970800    1.48938500\nH      -1.67665000   -0.69933900    0.93897700\nH      -1.94742000    0.67195100    0.38103900\nH      -0.77300100    0.28249200   -1.30148700\nH       1.27025500   -1.39448500    0.08146200\nH       1.84693700    0.26456800    0.04366200\nH       1.48158300   -0.57992700   -1.46814200",
+    "max_gradient_hartree_per_bohr": 0.11626824179977,
+    "rms_gradient_hartree_per_bohr": 0.03542712242948015,
+    "source_point_index": 2
+   },
+   {
+    "cumulative_com_superposed_displacement_angstrom": 1.2343094583142542,
+    "electronic_energy_hartree": -9.77343400513,
+    "geometry_match_displacement_angstrom": 8.994575915163817e-06,
+    "geometry_matched_ograd_invocation_id": "0000.04",
+    "geometry_xyz_text": "10\ngsm_point_3\nC      -1.06036300    0.08377700    0.71086100\nC      -0.25165200    0.06389600   -0.28181000\nC       1.17173200   -0.40214200   -0.39695000\nH      -0.10079200    0.77454600    1.50876300\nH      -1.87465200   -0.67368400    0.81321600\nH      -1.93562100    0.58908200    0.25365900\nH      -0.70392300    0.39018200   -1.21602300\nH       1.34577900   -1.31660400    0.18669800\nH       1.87098500    0.34905800   -0.01591000\nH       1.44162300   -0.62186500   -1.43152800",
+    "max_gradient_hartree_per_bohr": 0.18372649394473,
+    "rms_gradient_hartree_per_bohr": 0.05284714668595491,
+    "source_point_index": 3
+   },
+   {
+    "cumulative_com_superposed_displacement_angstrom": 1.672185473871749,
+    "electronic_energy_hartree": -9.698152779,
+    "geometry_match_displacement_angstrom": 8.21766278248505e-06,
+    "geometry_matched_ograd_invocation_id": "0000.05",
+    "geometry_xyz_text": "10\ngsm_point_4\nC      -1.09529600   -0.00936000    0.73372400\nC      -0.24745600    0.06581600   -0.19290500\nC       1.18593000   -0.36737300   -0.36278100\nH      -0.01060400    0.71884300    1.51705400\nH      -2.09388000   -0.61302500    0.76116500\nH      -1.90367800    0.48886400    0.06690800\nH      -0.59280700    0.50459800   -1.12853800\nH       1.41710200   -1.24262700    0.25806400\nH       1.88046300    0.42379400   -0.06436800\nH       1.40375600   -0.63609100   -1.39816900",
+    "max_gradient_hartree_per_bohr": 0.21558680558979,
+    "rms_gradient_hartree_per_bohr": 0.06009525681252232,
+    "source_point_index": 4
+   },
+   {
+    "cumulative_com_superposed_displacement_angstrom": 2.1336899559136575,
+    "electronic_energy_hartree": -9.63682404151,
+    "geometry_match_displacement_angstrom": 8.433583333885189e-06,
+    "geometry_matched_ograd_invocation_id": "0000.06",
+    "geometry_xyz_text": "10\ngsm_point_5\nC      -1.14250900   -0.06896800    0.76952900\nC      -0.23520200    0.12032000   -0.11867900\nC       1.19001200   -0.33071900   -0.33505300\nH       0.03730700    0.70409300    1.51461400\nH      -2.27401900   -0.51995500    0.78230400\nH      -1.82856300    0.27587100   -0.16815200\nH      -0.46117600    0.64929300   -1.04530000\nH       1.43000600   -1.20653700    0.28033800\nH       1.90230200    0.45389800   -0.06380900\nH       1.36877800   -0.60465700   -1.37658000",
+    "max_gradient_hartree_per_bohr": 0.1729578046863,
+    "rms_gradient_hartree_per_bohr": 0.04773737811802325,
+    "source_point_index": 5
+   },
+   {
+    "cumulative_com_superposed_displacement_angstrom": 2.611884215437205,
+    "electronic_energy_hartree": -9.60539891127,
+    "geometry_match_displacement_angstrom": 6.406320973655893e-06,
+    "geometry_matched_ograd_invocation_id": "0000.07",
+    "geometry_xyz_text": "10\ngsm_point_6\nC      -1.17504200   -0.05277500    0.78346600\nC      -0.21366300    0.24170700   -0.06692500\nC       1.17724900   -0.29722900   -0.31235900\nH       0.01400200    0.77454100    1.53077900\nH      -2.34517900   -0.43090700    0.76442700\nH      -1.68235200   -0.03029400   -0.33032900\nH      -0.36699300    0.80999200   -0.98552600\nH       1.35775100   -1.21325900    0.26305000\nH       1.94293300    0.42412900   -0.01295900\nH       1.33211300   -0.53728800   -1.36601900",
+    "max_gradient_hartree_per_bohr": 0.087225371910982,
+    "rms_gradient_hartree_per_bohr": 0.03448370197480881,
+    "source_point_index": 6
+   },
+   {
+    "cumulative_com_superposed_displacement_angstrom": 3.1197634785588257,
+    "electronic_energy_hartree": -9.60301569407,
+    "geometry_match_displacement_angstrom": 1.0371550740690689e-05,
+    "geometry_matched_ograd_invocation_id": "0000.08",
+    "geometry_xyz_text": "10\ngsm_point_7\nC      -1.19274100    0.01259000    0.76299600\nC      -0.19220500    0.38863800   -0.03125900\nC       1.15054600   -0.25516100   -0.29442900\nH      -0.03993900    0.89901000    1.54954300\nH      -2.36985900   -0.31106400    0.64112900\nH      -1.45931000   -0.33467300   -0.37728400\nH      -0.29519200    0.96557100   -0.95164800\nH       1.24861300   -1.20687900    0.24146600\nH       1.97195200    0.38551300    0.03871400\nH       1.29237400   -0.46208100   -1.35692500",
+    "max_gradient_hartree_per_bohr": 0.098393848983662,
+    "rms_gradient_hartree_per_bohr": 0.033401796399859816,
+    "source_point_index": 7
+   },
+   {
+    "cumulative_com_superposed_displacement_angstrom": 3.6983371699498453,
+    "electronic_energy_hartree": -9.63867284285,
+    "geometry_match_displacement_angstrom": 8.719407819704887e-06,
+    "geometry_matched_ograd_invocation_id": "0000.09",
+    "geometry_xyz_text": "10\ngsm_point_8\nC      -1.17186300    0.07537400    0.62115100\nC      -0.12914600    0.38136500   -0.14740500\nC       1.19813500   -0.34271300   -0.19176300\nH      -0.15059100    1.24856900    1.25221000\nH      -2.29790800   -0.26353300    0.29879000\nH      -1.11200100   -0.86244800   -0.14777500\nH      -0.15890900    0.71398900   -1.18630800\nH       1.22735900   -1.16652200    0.53132600\nH       2.02641700    0.32798400    0.05350200\nH       1.38783200   -0.76750100   -1.17939400",
+    "max_gradient_hartree_per_bohr": 0.11806076241619,
+    "rms_gradient_hartree_per_bohr": 0.041064121320720744,
+    "source_point_index": 8
+   },
+   {
+    "cumulative_com_superposed_displacement_angstrom": 4.2551019896085815,
+    "electronic_energy_hartree": -9.70143724358,
+    "geometry_match_displacement_angstrom": 1.0808345441663034e-05,
+    "geometry_matched_ograd_invocation_id": "0000.10",
+    "geometry_xyz_text": "10\ngsm_point_9\nC      -1.17399800    0.07188400    0.56249500\nC      -0.11772200    0.48445100   -0.12158200\nC       1.16021000   -0.32228200   -0.19617900\nH      -0.23180600    1.31317500    1.26924400\nH      -2.18741900   -0.19078100    0.01922400\nH      -0.95475200   -1.01493900    0.17365000\nH      -0.10320000    0.84232800   -1.15255400\nH       1.12303500   -1.19047000    0.47238500\nH       2.02641400    0.27494800    0.10197200\nH       1.33787600   -0.69490000   -1.20684800",
+    "max_gradient_hartree_per_bohr": 0.14665248696828,
+    "rms_gradient_hartree_per_bohr": 0.04831670395866091,
+    "source_point_index": 9
+   },
+   {
+    "cumulative_com_superposed_displacement_angstrom": 4.690093566021982,
+    "electronic_energy_hartree": -9.75816494223,
+    "geometry_match_displacement_angstrom": 1.1361839826053481e-05,
+    "geometry_matched_ograd_invocation_id": "0000.11",
+    "geometry_xyz_text": "10\ngsm_point_10\nC      -1.17926800    0.01331500    0.47432000\nC      -0.10153800    0.54369200   -0.08506600\nC       1.14759900   -0.30525400   -0.19502800\nH      -0.30729800    1.33035500    1.26215500\nH      -2.07136500   -0.14038700   -0.19519200\nH      -0.93298900   -1.08118600    0.46064500\nH      -0.05693300    0.94870300   -1.09797800\nH       1.07378700   -1.20426500    0.42772500\nH       2.03286300    0.24394900    0.13698200\nH       1.31777900   -0.63171500   -1.22281700",
+    "max_gradient_hartree_per_bohr": 0.13179478642554,
+    "rms_gradient_hartree_per_bohr": 0.04343592934132049,
+    "source_point_index": 10
+   },
+   {
+    "cumulative_com_superposed_displacement_angstrom": 4.987877976611757,
+    "electronic_energy_hartree": -9.81063055175,
+    "geometry_match_displacement_angstrom": 9.519591405036415e-06,
+    "geometry_matched_ograd_invocation_id": "0000.12",
+    "geometry_xyz_text": "10\ngsm_point_11\nC      -1.19744300   -0.08212700    0.36739500\nC      -0.08357200    0.55826600   -0.04206800\nC       1.17182800   -0.28380400   -0.16889100\nH      -0.30612300    1.29624900    1.21851100\nH      -2.05087200   -0.05733700   -0.31420100\nH      -1.02739200   -1.13724800    0.57661000\nH      -0.04201400    1.04179500   -1.02098700\nH       1.11258300   -1.18078600    0.45731100\nH       2.05792200    0.27309500    0.14668900\nH       1.32742700   -0.61174200   -1.19856000",
+    "max_gradient_hartree_per_bohr": 0.094274310885271,
+    "rms_gradient_hartree_per_bohr": 0.03244407133005525,
+    "source_point_index": 11
+   },
+   {
+    "cumulative_com_superposed_displacement_angstrom": 5.325427740077494,
+    "electronic_energy_hartree": -9.85626476976,
+    "geometry_match_displacement_angstrom": 7.30734470189901e-06,
+    "geometry_matched_ograd_invocation_id": "0000.13",
+    "geometry_xyz_text": "10\ngsm_point_12\nC      -1.22711700   -0.17343300    0.24413100\nC      -0.07049800    0.55276200   -0.00554800\nC       1.20892100   -0.26164600   -0.11831200\nH      -0.24188600    1.23725000    1.15137900\nH      -2.10864800    0.04217800   -0.34596500\nH      -1.13405800   -1.21208500    0.52527100\nH      -0.04693500    1.13199000   -0.93307300\nH       1.18876800   -1.12355800    0.55627600\nH       2.08499000    0.33689500    0.14281400\nH       1.34830800   -0.64028900   -1.13285800",
+    "max_gradient_hartree_per_bohr": 0.056093783832297,
+    "rms_gradient_hartree_per_bohr": 0.022327591437530686,
+    "source_point_index": 12
+   },
+   {
+    "cumulative_com_superposed_displacement_angstrom": 5.68604739889601,
+    "electronic_energy_hartree": -9.8877345951,
+    "geometry_match_displacement_angstrom": 7.673967809405842e-06,
+    "geometry_matched_ograd_invocation_id": "0000.14",
+    "geometry_xyz_text": "10\ngsm_point_13\nC      -1.25430000   -0.24391700    0.10309900\nC      -0.06133700    0.54939000    0.02711400\nC       1.23920300   -0.24295600   -0.05662400\nH      -0.16376400    1.17747800    1.07743700\nH      -2.17573000    0.11709500   -0.33379400\nH      -1.20871600   -1.28328400    0.39563500\nH      -0.05429800    1.22463900   -0.83498600\nH       1.25382200   -1.05198800    0.67921300\nH       2.10479900    0.39437400    0.13665900\nH       1.36363400   -0.69159800   -1.04427300",
+    "max_gradient_hartree_per_bohr": 0.040158056767915,
+    "rms_gradient_hartree_per_bohr": 0.013363881186222353,
+    "source_point_index": 13
+   },
+   {
+    "cumulative_com_superposed_displacement_angstrom": 6.049844786769871,
+    "electronic_energy_hartree": -9.8990468444,
+    "geometry_match_displacement_angstrom": 9.617242219778612e-06,
+    "geometry_matched_ograd_invocation_id": "0000.01",
+    "geometry_xyz_text": "10\ngsm_point_14\nC      -1.27963600   -0.29591100   -0.02395100\nC      -0.05964000    0.54853400    0.04565400\nC       1.24723500   -0.24338500   -0.03050100\nH      -0.06499900    1.13262500    0.98115000\nH      -2.24411700    0.13697700   -0.25314700\nH      -1.25222900   -1.33645600    0.27313900\nH      -0.08602400    1.30260700   -0.74989500\nH       1.30745400   -0.97515400    0.77854200\nH       2.11405900    0.41502400    0.05023900\nH       1.32177500   -0.78560400   -0.97526400",
+    "max_gradient_hartree_per_bohr": 0.0065555496747372,
+    "rms_gradient_hartree_per_bohr": 0.0023566293030838855,
+    "source_point_index": 14
+   }
+  ],
+  "selected_source_point_index": 8,
+  "source_stringfile": "stringfile.xyz0000"
+ }
+}
