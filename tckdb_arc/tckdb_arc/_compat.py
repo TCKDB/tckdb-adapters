@@ -1,7 +1,7 @@
 """Deprecation shims for names that moved to ``tckdb_core``.
 
 ``tckdb_arc.constraints``, ``tckdb_arc.level_rules`` and ``tckdb_arc.payload_writer``
-began as ARC modules and moved to :mod:`tckdb_core` in batch L1. They stay importable:
+began as ARC modules and moved to :mod:`tckdb_core`. They stay importable:
 the names this package itself and ARC's repository use are re-exported without a
 warning, and the rest of each module's old public API is forwarded by a module
 ``__getattr__`` that emits a ``DeprecationWarning`` naming the new home. Private

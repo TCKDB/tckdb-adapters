@@ -1,4 +1,4 @@
-"""Keys ARC's output.yml does not write are not read (BRIDGE_ROADMAP A19).
+"""Keys ARC's output.yml does not write are not read.
 
 Each mapping below used to read a key ARC never exports, which looked like
 coverage but could only ever act on a hand-edited or third-party record. The

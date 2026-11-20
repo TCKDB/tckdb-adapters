@@ -9,7 +9,7 @@ project (so the exported paths are run-relative) or an ARC object built the way
 ``arc/output_schema_test.py`` builds them; the four shell-outs into the RMG environment
 are replaced exactly as ``arc.output_schema_test.build_output_document`` replaces them,
 so point groups, correction tables and Arkane provenance are fixtures, not measurements.
-The document covers batch E of the 1.3 adapter work: per-species ``levels`` under
+The document covers per-species ``levels`` under
 ``adaptive_levels``, the header job levels, a composite run, screened conformers with
 electronic energies and a force-field geometry, IRC endpoint species, a TS with IRC
 jobs and an xtb GSM path search, an isotopically substituted species, rotor scans with

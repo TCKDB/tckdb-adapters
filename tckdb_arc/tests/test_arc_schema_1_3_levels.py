@@ -1,4 +1,4 @@
-"""Output.yml schema 1.3, batch E: levels, programs, conformers, IRC endpoints, isotopes, routes.
+"""Output.yml schema 1.3: levels, programs, conformers, IRC endpoints, isotopes, routes.
 
 Schema 1.3 (ARC PR #1059) states the level of each job whose log a record exports
 (``levels``), the header levels of the other job types, the conformer provenance,
@@ -514,7 +514,7 @@ def test_gsm_before_1_3_is_still_not_filed(tmp_path):
     del doc["gsm_level"]
     warnings = []
     assert "ts_guess" not in _ts_calcs(_reaction_payload(_adapter(tmp_path), doc, warnings))
-    assert "BRIDGE_ROADMAP B3" in next(w for w in warnings if w["code"] == "ts_guess_level_not_stated")["message"]
+    assert "ARC should export the TS-guess level" in next(w for w in warnings if w["code"] == "ts_guess_level_not_stated")["message"]
 
 
 # ---------------------------------------------------------------------------

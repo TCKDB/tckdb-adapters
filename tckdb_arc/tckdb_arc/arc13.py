@@ -24,7 +24,7 @@ from dataclasses import dataclass
 from typing import Any
 
 # The isotope rule and the route-line comparison read no ARC key; they moved to
-# ``tckdb_core`` in batch L2 and keep resolving here.
+# ``tckdb_core`` and keep resolving here.
 from tckdb_core.isotopes import (  # noqa: F401
     MOST_ABUNDANT_ISOTOPE,
     _SMILES_ISOTOPE_RE,

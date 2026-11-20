@@ -1,4 +1,4 @@
-"""Adapter-only gaps from BRIDGE_ROADMAP A15 that need no ARC change.
+"""A rotor scan's log and a reaction species' conformer label.
 
 * a rotor scan's own log (``rotor_scans[].source_log``) is its calculation's
   ``output_log`` artifact;

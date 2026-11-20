@@ -253,7 +253,7 @@ def test_a_repeated_species_repeats_its_entry_and_its_energy_counts_twice(source
 
 
 def test_atoms_cite_their_sp_primary_and_a_species_on_both_sides_is_cited_from_both():
-    """The golden H2 + H <=> H + H2: an atom's primary is its own single point (batch H), and the species
+    """The golden H2 + H <=> H + H2: an atom's primary is its own single point, and the species
     blocks are shared between the sides, so reactant:2 and product:1 (H) name the one ``r1_sp``."""
     doc = yaml.safe_load((GOLDEN / "phase3_output.yml").read_text())
     ts = doc["transition_states"][0]

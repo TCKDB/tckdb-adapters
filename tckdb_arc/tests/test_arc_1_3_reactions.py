@@ -418,7 +418,7 @@ def test_a_reaction_without_a_transition_state_reports_no_atom_map_warning():
 
 def test_the_contract_has_an_atom_map_slot_on_both_routes_and_the_adapter_leaves_it_unset():
     """tckdb-schemas 0.64 added ``atom_map`` to the standalone request. ARC states no
-    participant-atom -> transition-state-atom relation (batch G), so neither route's slot is filled."""
+    participant-atom -> transition-state-atom relation, so neither route's slot is filled."""
     from tckdb_schemas import contract
     for model in ("TransitionStateUploadRequest", "ComputedReactionUploadRequest"):
         assert "atom_map" in contract.json_schema(model)["properties"]

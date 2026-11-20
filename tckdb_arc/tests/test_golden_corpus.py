@@ -9,7 +9,7 @@ built payload against the *real* published ``tckdb_schemas`` models. This is the
 regression that catches a shared-schema bump breaking the ARC↔TCKDB wire shape
 in the adapter repo — instead of months later in an ARC run.
 
-The Phase 3 cases use the checked-in, sanitized ARC ``output.yml`` and its
+The golden cases use the checked-in, sanitized ARC ``output.yml`` and its
 matching evidence sidecar from ``tests/fixtures/golden``.  The older synthetic
 cases remain useful as a compact compatibility corpus for schema 1.0 output.
 
@@ -587,7 +587,7 @@ class TestGoldenCorpus(unittest.TestCase):
         #     H2 cannot affect it -- confirmed by the unchanged hash.
         #
         # computed_reaction / transition_state changed again (computed_species
-        # did not) for a third reason: PHASE_C_PLAN.md C-3 unified two
+        # did not) for a third reason: an earlier change unified two
         # independently-rounded Hartree->kJ/mol constants
         # (adapter.py's inline ``_HARTREE_TO_KJ_MOL = 2625.4996`` vs.
         # ``_vendor.E_h_kJmol == 2625.4998583629967``) onto the single

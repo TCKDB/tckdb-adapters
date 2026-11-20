@@ -169,7 +169,7 @@ def _coerce(
     missing 'index_base' — see the module-level index-base note below).
     The caller skips.
 
-    Index base (PHASE_C_PLAN.md C-1c): a raw *mapping* — legacy
+    Index base: a raw *mapping* — legacy
     ``{'constraint_kind', 'atoms'}`` or neutral ``{'coordinate_type',
     'atom_indices'}`` — is REQUIRED to also carry ``index_base``,
     regardless of which key pair supplied ``kind``/``atoms``. ARC's own
