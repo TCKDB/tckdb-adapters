@@ -1,10 +1,7 @@
 # Workspace / dev-tooling aggregator only. Each adapter (e.g. tckdb_arc/) is an
 # independently-installable, independently-versioned package with its own
-# pyproject.toml — this top-level file is NOT a distributable package. Install a
-# specific adapter with `pip install -e ./tckdb_arc[test]`.
-
-[tool.tckdb_adapters]
-packages = ["tckdb_core", "tckdb_arc"]
+# pyproject.toml; this top-level file is not a distributable package. Install the
+# core first, then an adapter: `pip install -e ./tckdb_core -e ./tckdb_arc[test]`.
 
 # Lets `python -m pytest` run from the repo root. The outer tckdb_core/ and
 # tckdb_arc/ distribution dirs (no __init__.py) would otherwise shadow the real

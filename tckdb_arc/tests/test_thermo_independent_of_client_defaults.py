@@ -5,7 +5,7 @@ TCKDB's depositor-side tools may come to default ``enthalpy_reference_kind`` (th
 ``formation_298k`` when a builder is given enthalpy content and no kind). The adapter does not use those
 builders: it maps ARC's thermo itself and states the basis only when its guards (non-finite, magnitude,
 header-level, dispersion/solvation, light-species checks, or output 1.2's ``atom_corrections_applied``)
-let it, stripping the enthalpy otherwise (``CLAUDE.md``, "Pre-1.2 enthalpies"). A client default would
+let it, stripping the enthalpy otherwise (``AGENTS.md``, "Pre-1.2 enthalpies"). A client default would
 declare ``formation_298k`` on exactly the blocks the adapter refuses to. These tests keep the adapter
 from reaching a builder, and keep its own declaration on every block that carries enthalpy.
 """

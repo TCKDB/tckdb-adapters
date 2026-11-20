@@ -1,8 +1,7 @@
 # Benzene, B3LYP/def2-TZVP (real ARC run)
 
 `output.yml` (output schema 1.2) and `parser_evidence.json` copied verbatim
-from a real ARC run (`~/code/arcbench/debug/benzene_b3lyp_def2tzvp/output/`,
-2026-09-29; ARC 1.1.0 `c3e904ea`, Arkane 4.0.0 `e6f47b42`, Gaussian 16
+from a real ARC run (ARC 1.1.0 `c3e904ea`, Arkane 4.0.0 `e6f47b42`, Gaussian 16
 Revision C.02). Only these two files were taken; logs and other outputs were
 not. They contain run-relative paths (`calcs/Species/benzene/...`) and the run
 timestamps, and no usernames, servers, job IDs or credentials.

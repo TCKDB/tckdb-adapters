@@ -79,7 +79,7 @@ jobs:
   # ARC is a conda/PYTHONPATH install, not a PyPI package, so CI cannot
   # `pip install arc`. To exercise the arc-gated tests (freq-Hessian / IRC /
   # GSM reparse), run the suite in an environment that already has ARC on the
-  # PYTHONPATH (e.g. ARC's `arc_env` on a dev box / zeus):
+  # PYTHONPATH (for example ARC's `arc_env`):
   #
   #     conda run -n arc_env pip install -e "tckdb_arc[test]"
   #     conda run -n arc_env pytest tckdb_arc/tests -q

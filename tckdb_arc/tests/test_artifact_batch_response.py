@@ -1,4 +1,4 @@
-"""The artifact batch keeps the server's full response (BRIDGE_ROADMAP A8).
+"""The artifact batch keeps the server's full response.
 
 ``TCKDBClient.upload_artifacts`` returns only each response's parsed body, so
 the status code, request id and replay header were lost. The adapter now sends

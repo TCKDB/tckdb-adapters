@@ -1,9 +1,12 @@
 # tckdb-adapters-core
 
-The producer-agnostic core of the TCKDB upload adapters. A producer adapter
-(`tckdb_arc` today; RMG and ChemTrayzer next) reads its tool's output and builds
-TCKDB payloads. Everything after the payload exists, and every helper that every
-producer would write the same way, lives here.
+The part of a TCKDB upload adapter that does not depend on which tool produced the data. A
+producer adapter (`tckdb_arc` today) reads its tool's output and builds TCKDB payloads.
+This package takes over once a payload exists, and it also holds the helpers that every
+producer would otherwise write the same way.
+
+To write an adapter on top of it, read
+[`docs/writing_an_adapter.md`](https://github.com/TCKDB/tckdb-adapters/blob/main/docs/writing_an_adapter.md).
 
 ## What belongs here
 
@@ -15,12 +18,13 @@ TCKDB contract, and **nothing that reads a producer's output format**.
 | `payload_writer` | Writes the payload JSON once and the sidecar eagerly; sidecar and replay types. |
 | `uploader` | `TCKDBUploaderBase`: readiness probe with backoff, POST, sidecar bookkeeping (status, response, server warnings, request ids), strict mode, artifact batches. |
 | `outcomes` | `UploadOutcome`, `ArtifactUploadOutcome`, `TCKDBReadinessError`. |
-| `constants` | Route endpoints, payload kinds, the readiness retry policy, the `origin_kind` enum. |
+| `constants` | Route endpoints, payload kinds, the readiness retry policy, and the `origin_kind` values and log-file extensions read from tckdb-schemas. |
 | `idempotency` | Idempotency-key composition. The key namespace is a required argument. |
-| `config` | Config fields and defaults, API-key resolution (env, key file, dotenv file). No parser. |
-| `level_rules` | Replica of TCKDB's level-of-theory identity (aliases, folded dispersion, hash). |
+| `config` | Config fields and defaults, API-key resolution (env, key file, dotenv file), the artifact kinds read from tckdb-schemas. No parser. |
+| `level_rules` | Replica of TCKDB's level-of-theory identity (folded dispersion, hash), which tckdb-schemas does not ship. The method identity key is imported from `tckdb_schemas.method_names`. |
+| `method_families` | `method_family` and `ONE_ELECTRON_EXEMPT_FAMILIES`, a thin surface over `tckdb_schemas.method_families`. |
 | `constraints` | Held-fixed coordinate constraints and their serializer. |
-| `keys` | Bundle-local key helpers. |
+| `keys` | Bundle-local key helpers (`safe_key_part`, `local_key_for_actor`, `calc_prefix_for_actor`). |
 | `adapter_warnings` | `AdapterWarning` and `WarningSink`: the sidecar's warning dict shape, with the producer tag as a parameter. |
 | `warning_codes` | `CodedEnum` (a code string plus a one-line description), `CoreWarning` (the codes this package emits) and `registry()`. A producer defines its own codes the same way. |
 | `thermo_numerics` | `build_nasa_block`, `build_thermo_points`, `nasa_h298_kj_mol`: NASA-7 and Cp/H/S/G point shaping from neutral mappings. |
@@ -38,158 +42,136 @@ TCKDB contract, and **nothing that reads a producer's output format**.
 
 ## What does not belong here
 
-- Reading a producer's files or keys (ARC's `output.yml`, parser evidence, restart
-  files). `tests/test_core_is_producer_agnostic.py` fails if a module under
-  `tckdb_core` imports `arc` or `tckdb_arc`, or names `output.yml`,
+- Reading a producer's files or keys. `tests/test_core_is_producer_agnostic.py` fails if a
+  module under `tckdb_core` imports `arc` or `tckdb_arc`, or names `output.yml`,
   `parser_evidence`, `restart.yml` or `arc.`.
 - Chemistry mappings that depend on how a producer states its results.
 - Producer defaults. A producer sets `PRODUCER_TAG`, `PRODUCER_NAME` and
-  `IDEMPOTENCY_NAMESPACE` on its `TCKDBUploaderBase` subclass; the core has no
-  default for the tag and namespace that would be right for anyone.
+  `IDEMPOTENCY_NAMESPACE` on its `TCKDBUploaderBase` subclass. The core has no default for
+  the tag or the namespace that would be right for anyone.
+- Replicas of rules that `tckdb-schemas` ships. Import them. The replicas that remain
+  (`level_rules`, parts of `rules`) cover rules that exist only in TCKDB's backend, and
+  each has a parity test against it.
 
 ## Writing a producer
 
 ```python
+from tckdb_core.adapter_warnings import WarningSink
+from tckdb_core.constants import COMPUTED_SPECIES_ENDPOINT, COMPUTED_SPECIES_KIND
+from tckdb_core.idempotency import IdempotencyInputs, build_idempotency_key
+from tckdb_core.payload_writer import PayloadWriter
 from tckdb_core.uploader import TCKDBUploaderBase
+from tckdb_core.warning_codes import CodedEnum
+
+
+class MyToolWarning(CodedEnum):
+    REFERENCE_PRESSURE_NOT_STATED = (
+        "thermo_reference_pressure_not_stated",
+        "The source records no standard-state pressure, so reference_pressure_bar is omitted.",
+    )
+
 
 class MyToolAdapter(TCKDBUploaderBase):
     PRODUCER_TAG = "tckdb_mytool"       # sidecar warnings: source "tckdb_mytool_self_check"
     PRODUCER_NAME = "MyTool"
     IDEMPOTENCY_NAMESPACE = "mytool"    # keys: "mytool:<project>:..."
-    LOGGER_NAME = "tckdb_mytool"        # the pipeline logs to logging.getLogger(LOGGER_NAME)
+    LOGGER_NAME = "tckdb_mytool"
+
+    def _build_species_payload(self, record, warnings):
+        # The producer's own mapping. A real one builds the whole request and
+        # reports each omission through a registered code.
+        warnings.add(
+            MyToolWarning.REFERENCE_PRESSURE_NOT_STATED,
+            f"{record.label} states no standard-state pressure",
+            "thermo.reference_pressure_bar",
+            action="reference_pressure_omitted",
+        )
+        return {"species_entry": {"smiles": record.smiles}}
+
+    def submit_species(self, record):
+        if not self._config.enabled:
+            return None
+        warnings = WarningSink(self.PRODUCER_TAG)
+        payload = self._build_species_payload(record, warnings)
+        if self._config.rights is not None:
+            payload["rights"] = dict(self._config.rights)
+        key = build_idempotency_key(
+            IdempotencyInputs.from_payload(
+                project_label=self._config.project_label, species_label=record.label,
+                conformer_label="bundle", payload_kind=COMPUTED_SPECIES_KIND, payload=payload),
+            namespace=self.IDEMPOTENCY_NAMESPACE)
+        written = self._writer.write(
+            label=record.label, payload=payload, endpoint=COMPUTED_SPECIES_ENDPOINT,
+            idempotency_key=key, payload_kind=COMPUTED_SPECIES_KIND,
+            subdir=PayloadWriter.COMPUTED_SPECIES_SUBDIR,
+            base_url=self._config.base_url, warnings=warnings)
+        if not self._config.upload:
+            return self._finalize_skipped(written)
+        return self._upload(written, payload, endpoint=COMPUTED_SPECIES_ENDPOINT)
 ```
 
+The order is fixed: build the payload, write it with its sidecar, then upload. The base
+class owns everything after the write: the readiness probe with backoff, the POST, the
+sidecar's status, response, warnings and request ids, strict mode, and artifact batches
+(`_prepare_artifact_upload`, `_upload_artifact_batch`).
+
 Hooks to override when needed: `_log` (the logger the pipeline writes to),
-`_sleep_between_probes`, `_project_label_for(output_doc)`, `_log_readiness_recovery`.
+`_sleep_between_probes`, `_project_label_for(output_doc)` and `_log_readiness_recovery`.
 
 ### Logging
 
-The logger is per producer, not process state (two producers can live in one process).
+The logger belongs to the producer, so two producers can live in one process.
 `TCKDBUploaderBase` logs through `self._log`, which is `logging.getLogger(cls.LOGGER_NAME)`
-(`"tckdb_core"` by default); a producer sets `LOGGER_NAME`, or overrides the `_log` property to
-return a logger object of its own (the ARC adapter returns its module's `logger`, so a test that
-patches that module attribute intercepts every record the pipeline emits). Free functions here that
-log (`serialize_constraints`, `build_nasa_block`, `a_units_to_tckdb`, ...) take a keyword `log=`;
-a producer's wrapper passes its logger, and without one the record goes to the `tckdb_core` logger.
-The 0.1.0 `set_logger_name` (process-global, last producer wins) is gone.
+(`"tckdb_core"` by default). A producer sets `LOGGER_NAME`, or overrides the `_log`
+property to return a logger object of its own. Free functions here that log
+(`serialize_constraints`, `build_nasa_block`, `a_units_to_tckdb`, ...) take a keyword
+`log=`; without one the record goes to the `tckdb_core` logger.
 
 ### Warning codes
 
-Findings are emitted as `AdapterWarning(code, message, field, context)` (or `WarningSink.add`), which
-renders the sidecar dict `{code, message, field, context: {source: "<producer>_self_check", ...}}`.
-Codes are members of a `CodedEnum` registry; the core's own are `CoreWarning`. A producer registers
-its own enum and generates its code table from it (the ARC adapter's is
-`docs/contract/WARNING_CODES.md`).
+Findings are emitted as `AdapterWarning(code, message, field, context)` or through
+`WarningSink.add`, which renders the sidecar dict
+`{code, message, field, context: {source: "<producer>_self_check", ...}}`. Codes are
+members of a `CodedEnum` registry. The core's own are `CoreWarning`. A producer registers
+its own enum and generates its code table from it; the ARC adapter's table is
+`docs/contract/WARNING_CODES.md`.
 
 ## Test kit: `tckdb_core.testing`
 
-Importable by any adapter's tests. `tckdb_core.testing` imports `pytest` and `jsonschema` at module level, so it needs the `[test]` extra (`pip install -e ".[test]"`). `tckdb_core/__init__` does not import it, so the runtime package works without those two.
+Any adapter's tests can import it. It imports `pytest` and `jsonschema` at module level,
+so it needs the `[test]` extra. `tckdb_core/__init__` does not import it, and the runtime
+package works without those two.
 
 | Module | Use |
 |--------|-----|
-| `contract` | `contract_validate(model, payload)`, `assert_request_is_accepted`, `REQUEST_MODELS`, `ROUTE_SCHEMAS`, and `TARGET_SCHEMAS_LINE`, the one tckdb-schemas line every suite pins (`tools/tckdb_drift.py --bump` rewrites it). Validates the published pydantic model, then the shipped JSON Schema. |
-| `contract_hook` | `contract_checks_fixture(adapter_cls=..., payload_builders={"_build_x": "<schema name>", ...})`: the autouse fixture that checks every request the adapter builds; `register_markers(config)` for `payload_refused_by_contract`. An adapter's `conftest.py` names its own builders. |
-| `backend_import` | `backend_modules()` / `backend_level_hash()`: import TCKDB's backend identity rules from `TCKDB_BACKEND_PATH` (`TCKDB_REQUIRE_BACKEND=1` turns "unavailable" into a failure). |
-| `live` | The opt-in live gate's scaffolding: loopback and isolated-backend guards, retrying reads, settled row counts, the commit probe, and `live_tckdb_fixture()` for an integration `conftest.py` to register. |
+| `contract` | `contract_validate(model, payload)`, `assert_request_is_accepted`, `REQUEST_MODELS`, `ROUTE_SCHEMAS`, and `TARGET_SCHEMAS_LINE`, the one tckdb-schemas line every suite pins. Validates with the published pydantic model, then the shipped JSON Schema. |
+| `contract_hook` | `contract_checks_fixture(adapter_cls=..., payload_builders={"_build_x": "<schema name>", ...})`: the autouse fixture that checks every request the adapter builds. `register_markers(config)` registers `payload_refused_by_contract`. An adapter's `conftest.py` names its own builders. |
+| `contract_pin` | The four assertions of a package's `test_contract_pin.py`: installed tckdb-schemas line, `pyproject.toml` bound, contract document stamp, a shipped schema for every route. |
+| `stubs` | `StubClient`, `StubResponse`, `SequencedReadyzClient` and `upload_calls`: stand-ins for `TCKDBClient`, handed to an adapter through `client_factory`. |
+| `backend_import` | `backend_modules()` / `backend_level_hash()`: import TCKDB's backend identity rules from `TCKDB_BACKEND_PATH`. `TCKDB_REQUIRE_BACKEND=1` turns "unavailable" into a failure. |
+| `live` | The opt-in live gate: loopback and isolated-backend guards, retrying reads, settled row counts, the commit probe, and `live_tckdb_fixture()` for an integration `conftest.py` to register. |
 
-## API and what is not
+## Public API
 
-Public (kept stable across releases): the modules in the table above, except names with a leading
-underscore. Underscore-prefixed names (for example `uploader._skip`, `payload_writer._utcnow_iso`,
-`config._read_tckdb_api_key_from_env_file`) are shared internals of the producers in this repository;
-import them from `tckdb_core`, never through a producer package (`tckdb_arc` no longer re-exports
-them, and forwards the public names of its old modules with a `DeprecationWarning`).
+The modules in the table at the top are public, except names with a leading underscore.
+Underscore-prefixed names are internals shared by the packages in this repository and can
+change in any release. Helpers that used to carry an underscore and are now public
+(`keys.safe_key_part`, `isotopes.xyz_symbols`, `outcomes.PreparedArtifactUpload`,
+`uploader.artifact_batch_digest` and the others listed under 0.5.8 in the changelog) keep
+their old names as aliases.
 
-## What changed in 0.5.8
-
-No behaviour change in this package; released with adapter 0.15.8.
-
-## What changed in 0.5.7
-
-No behaviour change in this package; released with adapter 0.15.7. The tckdb-schemas and client bounds and `TARGET_SCHEMAS_LINE` moved to 0.175 / 0.208.
-
-## What changed in 0.5.6
-
-`TCKDBConfig.rights` holds the upload's `rights` fragment (license, the depositor's attestation, optional source terms); `None` (the default) sends none.
-
-## What changed in 0.5.5
-
-Tracks tckdb-schemas 0.174 / client 0.206 (TCKDB c20b16a9). The method-family classifier is imported from `tckdb_schemas.method_families` (the stop-gap replica is deleted; `tckdb_core.method_families` keeps `method_family` and `ONE_ELECTRON_EXEMPT_FAMILIES` as a thin surface), and `level_rules.method_identity_key` is `tckdb_schemas.method_names.method_identity_key`. No behaviour change. `TARGET_SCHEMAS_LINE` moves to `(0, 174)`.
-
-## What changed in 0.5.4
-
-`rules.kinetics_energy_level_assessment` accepts a one-electron participant's Hartree-Fock energy under a correlated kinetics level (method differs, every other identity field equal; `electron_counts` and `stated_electron_counts` are new optional arguments, and `KineticsLevelAssessment.one_electron_hf_calculations` names the substituted links), and `composition.electron_count` computes a species' electrons from its symbols and charge. With no electron counts passed the behaviour is unchanged. Mirrors a TCKDB rule not in the current pin (5557ed9a); do not pin this release before a TCKDB revision that carries it.
-
-## What changed in 0.5.3
-
-Tracks tckdb-schemas 0.170 / client 0.201 (TCKDB 5557ed9, the mirror's head). No behaviour change: the nine releases 0.162 to 0.170 in this pin (0.171 is read ahead) add refusal and warning codes, a Hessian-method refinement and read-side fields, none of which this package builds. `TARGET_SCHEMAS_LINE` moves to `(0, 170)`. The per-release verdicts are in `docs/contract/CURRENT_ARC_INTEGRATION.md`.
-
-## What changed in 0.5.2
-
-No contract change (same pin). `route_level` documents that its parser is Gaussian-only: callers compare a route with a level only when the record states the job ran in Gaussian, because an ORCA keyword line carries auxiliary-basis tokens with a slash (`aug-cc-pvtz/c`, `def2/J`) that are not a `method/basis` pair. The functions are unchanged.
-
-## What changed in 0.5.1
-
-Tracks tckdb-schemas 0.161 / client 0.189 (TCKDB cd84fb6, #870). `rules.kinetics_energy_level_assessment` (and `kinetics_energy_level_declaration`, which returns its `level`) now mirrors TCKDB's per-participant spin rule instead of requiring every linked energy at one identical level: the links must agree on every identity field except `spin_treatment`; closed-shell links never constrain spin; the open-shell links name the declared `spin_treatment`, and open-shell links with different references declare nothing and are reported in `mixed_spin_calculations`. It needs two more facts per call, `multiplicities` (calculation key to the owning participant's multiplicity) and each calculation's own `spin_diagnostic.s_squared`. Breaking for direct callers: `multiplicities` is a required argument.
-
-## What changed in 0.5.0
-
-Tracks tckdb-schemas 0.158 / client 0.187 (TCKDB 531f823, #865 typed method qualifiers). The level-identity replica (`level_rules`) follows TCKDB's hash: the `keywords` key is gone (free-text keywords left `LevelOfTheoryRef`, so every level hashes differently from before, as on the server), and `relativistic_hamiltonian`, `pno_truncation` and `ri_approximation` join the payload only when stated, as `core_treatment` does (which now also accepts `window`); an explicit `none` is a stated value. `tckdb_core.testing.backend_import.backend_level_hash` builds the same payload. A level that states no qualifier hashes as the server does (pinned to TCKDB's own literals in `tests/test_level_rules.py`).
-
-### Checking the hash against TCKDB's own function
-
-`tckdb_arc/tests/test_energy_level_declaration.py` has two backend parity tests, and they are not the same check:
-
-* `test_hash_matches_the_backend_payload_rules` runs wherever `TCKDB_BACKEND_PATH` names a TCKDB `backend/`. Without the backend's web dependencies (`arc_env` has no fastapi) it rebuilds the payload from the backend's own `app.chemistry` identity keys, so it is the replica against the replica for the final hashing step.
-* `test_hash_matches_the_real_backend_function` imports `app.services.calculation_resolution._level_of_theory_hash` and compares the replica against it over the corpus and a few thousand method x basis x dispersion x solvent x spin x core x qualifier combinations. It never falls back: it **skips**, naming the reason, when that import fails. Run it in the TCKDB environment:
-
-```bash
-TCKDB=/path/to/TCKDB_v2   # a checkout at the pinned revision (tckdb-pin.toml)
-cd tckdb_arc
-TCKDB_BACKEND_PATH=$TCKDB/backend TCKDB_REQUIRE_BACKEND=1 \
-PYTHONPATH=$TCKDB/backend:$TCKDB/schemas/python/tckdb-schemas \
-  conda run -n tckdb_env python -m pytest tests/test_energy_level_declaration.py -k hash_matches -rs
-```
-
-Both must pass (not skip) before a pin bump is trusted.
-
-## What changed in 0.4.3
-
-Tracks tckdb-schemas 0.156 / client 0.186 (TCKDB 6a91b38); no behaviour change in this package.
-
-## What changed in 0.4.2
-
-A `/readyz` preflight that fails without an HTTP response (connect timeout, connection refused) now says why: the exception text, its type chain, the `base_url` host and the request timeout, instead of nothing after the colon; HTTP-level messages are unchanged.
-
-## What changed in 0.4.1
-
-Tracks tckdb-schemas 0.154 / client 0.184 (the pin of 0.4.0); no behaviour change in this package.
-
-## What changed in 0.4.0 (batch M)
-
-New rules written against the tckdb-schemas 0.74 to 0.134 contract (the tested line is 0.154 / client 0.184). New pre-checks in `tckdb_core.rules`: `geometry_anchor_refusals` (the
-0.121 key rules, run through the shipped `bundle_source_rules` helpers), `undeclarable_input_geometries` (a replica of
-`calculation_input_geometry_mismatch`) and `kinetics_energy_level_declaration` (0.99); in `tckdb_core.isotopes`:
-`subject_isotope_multiset` and `unlabelled_point_geometries` (0.94). The uploader no longer posts artifacts for a
-calculation without a `calc_` ref (0.116), and `CoreWarning.CALCULATION_REF_NOT_RETURNED` now says so; the
-`_calculation_ref_not_returned_warning` helper is gone. `TARGET_SCHEMAS_LINE` is `(0, 154)` (set by the 0.3.0 pin bump).
-
-## What moved in 0.2.0 (batch L2)
-
-From the ARC adapter, with no behaviour change: the thermo numerics, the RMG unit tables, the
-reaction-route result flattening, the element/formula/xyz helpers and the energy constant, the isotope
-and route-line rules, the software-banner split, the TCKDB rule pre-checks (energy-level declaration,
-reaction-coordinate designation, evidence shapes and their offline replica), the contract test kit and
-the live-gate scaffolding, the warning-code registry type, and per-producer logging. What reads one of a
-producer's own keys (ARC's `ts_checks`, `xyz_isotopes`, `thermo.*` fields, level dicts) stayed in
-`tckdb_arc` and calls these with its facts as arguments.
+Import from `tckdb_core`, never through a producer package. `tckdb_arc` forwards the
+public names of its old modules with a `DeprecationWarning`.
 
 ## Tests
 
 ```bash
 pip install -e ".[test]"
-TCKDB_BACKEND_PATH=/path/to/TCKDB/backend TCKDB_REQUIRE_BACKEND=1 pytest -q
+TCKDB_BACKEND_PATH=/path/to/TCKDB/backend TCKDB_REQUIRE_BACKEND=1 python -m pytest -q
 ```
 
-Without `TCKDB_BACKEND_PATH` the backend comparison of `level_rules` skips. See "Running the tests"
-in the repository README for running both packages' suites together.
+Without `TCKDB_BACKEND_PATH` the backend comparison of `level_rules` skips.
+
+## Changes
+
+See [CHANGELOG.md](https://github.com/TCKDB/tckdb-adapters/blob/main/tckdb_core/CHANGELOG.md).

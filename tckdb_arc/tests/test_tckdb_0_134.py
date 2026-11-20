@@ -1,4 +1,4 @@
-"""The adapter's side of tckdb-schemas 0.74 to 0.134 (batch M).
+"""The adapter's side of tckdb-schemas 0.74 to 0.134.
 
 * 0.130: a Hessian's ``parser_version`` text became ``parser: {name, version}`` (``ParserStamp``).
 * 0.121 (#635): a calculation's geometry and conformer may not disagree; a ``freq``/``sp`` that

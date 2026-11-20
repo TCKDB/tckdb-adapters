@@ -325,8 +325,8 @@ if __name__ == '__main__':
 def test_sweep_itself_does_not_skip_irc_named_species():
     """The sweep never guesses from a label; skipping is the adapter's, from restart.yml.
 
-    See ``test_irc_endpoint_species.py``. ``output.yml`` carries no marker
-    (BRIDGE_ROADMAP B6), so the sweep passes every converged species on.
+    See ``test_irc_endpoint_species.py``. ``output.yml`` carries no marker,
+    so the sweep passes every converged species on.
     """
     from tckdb_arc.sweep import _run_species_sweep
 

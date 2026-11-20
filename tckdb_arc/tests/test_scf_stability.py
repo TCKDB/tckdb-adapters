@@ -1,4 +1,4 @@
-"""ARC's wavefunction stability verdict reaches the opt's ``scf_stability`` (adapter 0.6.6, roadmap A10).
+"""ARC's wavefunction stability verdict reaches the opt's ``scf_stability`` (adapter 0.6.6).
 
 ARC runs its stability analysis once per species, from the optimization job: at
 the opt level, on the geometry the opt converged to, with the opt's own

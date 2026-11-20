@@ -83,7 +83,7 @@ from tckdb_core.payload_writer import (
     _utcnow_iso,
 )
 # The producer-agnostic upload pipeline, outcome types, endpoint constants and
-# key helpers moved to ``tckdb_core`` (batch L1). Every name that lived here is
+# key helpers moved to ``tckdb_core``. Every name that lived here is
 # re-exported so ``tckdb_arc.adapter.<name>`` keeps resolving for callers and
 # tests; the leading-underscore names are part of that surface.
 from tckdb_core import composition as _composition
@@ -229,7 +229,7 @@ def _neutral_scan_result_to_tckdb(
     # coordinate kind it produces — a dihedral scan; ARC's schema pins
     # it to `const: 1`). Unlike the constraints[] route (C-1), a missing
     # key here is safe on every reachable path. But an out-of-range
-    # *explicit* value must not be applied blindly (PHASE_C_PLAN.md C-2)
+    # *explicit* value must not be applied blindly
     # — guard it the same way constraints.py does, rather than only
     # bounding via the len<=4 check below.
     try:
@@ -276,7 +276,7 @@ def _neutral_scan_result_to_tckdb(
     # degree} — a bond/cartesian scan's step is in Angstrom, not
     # degrees). Only stamp it when the coordinate's own unit says
     # degree; otherwise a distance-kind scan's Angstrom step would land
-    # in a field named degrees (PHASE_C_PLAN.md C-5). Unreachable from
+    # in a field named degrees. Unreachable from
     # real ARC output today — ARC's rotor-scan writer only ever emits
     # dihedral/degree scans, and its schema pins both as consts — but
     # this function also serves hand-written/third-party output.yml,
@@ -388,7 +388,7 @@ def _is_output_schema_1_3_or_later(output_doc: Mapping[str, Any]) -> bool:
     coordinate index, a reaction its ``reversible`` and the kinetics run's
     ``comment`` / ``atom_corrections_applied`` / ``ts_validation``, and the header
     the ``rmg_database`` identity. A document of an earlier version never states
-    these, so they are read from 1.3 documents only (BRIDGE_ROADMAP A19).
+    these, so they are read from 1.3 documents only.
     """
     version = output_doc.get("schema_version") if isinstance(output_doc, Mapping) else None
     if not isinstance(version, str):
@@ -471,7 +471,7 @@ def _correction_records_from_record(
             scheme_kind = "bac_petersson" if model == "petersson" else "bac_melius"
         else:
             continue
-        # Unit is read, never guessed (PHASE_C_PLAN.md C-6). ARC's
+        # Unit is read, never guessed. ARC's
         # producer (arc/scripts/get_species_corrections.py) always
         # hardcodes 'hartree' for atom-energy and 'kcal_mol' for both
         # bond-additivity models, so real ARC output never reaches the
@@ -610,7 +610,7 @@ def _self_check(
 
 
 # ---------------------------------------------------------------------------
-# Names that moved to ``tckdb_core`` in batch L2 (the producer-agnostic numerics, rules
+# Names that moved to ``tckdb_core`` (the producer-agnostic numerics, rules
 # and tables). Each keeps resolving here, and the functions that log do so through this
 # module's ``logger`` so ``mock.patch("tckdb_arc.adapter.logger")`` still intercepts them.
 # ---------------------------------------------------------------------------
@@ -1013,7 +1013,7 @@ def _irc_endpoint_skip(
 ) -> "UploadOutcome | None":
     """A ``skipped`` outcome when the species is one of ARC's IRC endpoints.
 
-    Output.yml 1.3 marks them (``irc_endpoint_of``, BRIDGE_ROADMAP B6/A17).
+    Output.yml 1.3 marks them (``irc_endpoint_of``).
     Older output writes no marker, but ``restart.yml`` records ``irc_label``
     (see ``RestartInfo.irc_endpoint_ts``); without ``restart.yml`` or the
     species' entry there is no answer and the species is treated as an
@@ -1929,7 +1929,7 @@ class TCKDBAdapter(TCKDBUploaderBase):
 
         Otherwise, and whenever the level lacks a program, they are omitted and
         reported once per species as ``conformer_level_not_stated`` (ARC should
-        export the conformer level, BRIDGE_ROADMAP B3). Each conformer is a bare
+        export the conformer level). Each conformer is a bare
         ``opt`` marked as a screened-conformer anchor (``tckdb_origin``), with
         no ``opt_result`` and no relative energy: ``conformer_energies`` are
         workflow-local values (the reference is the lowest of ARC's screening
@@ -6649,7 +6649,7 @@ _W_ENTHALPY_NOT_FORMATION_MAGNITUDE = ArcWarning.ENTHALPY_NOT_FORMATION_MAGNITUD
 # 1.2's ``atom_corrections_applied`` (ARC PR #1059), which supersedes them.
 #
 # Declaring ``formation_298k`` on output without the 1.2 flags is a
-# deliberate, maintainer-approved interpretation ("option (d)"), not a
+# deliberate, maintainer-approved interpretation, not a
 # default filled in for a convention ARC left unstated. Arkane's corrected
 # H298 (and the NASA fit and point H/G built from it) is a formation
 # enthalpy by construction: Arkane subtracts the atom energies of the level
@@ -7507,7 +7507,7 @@ def _scheme_data_revisions(output_doc: Mapping[str, Any]) -> dict[str, str]:
     computed by Arkane's own correction functions from the RMG-database
     ``quantum_corrections/data.py`` it loaded, so the scheme's data revision is that
     table's (``_rmg_database_data_revision``). A revised table is then a new scheme
-    identity (BRIDGE_ROADMAP B12), and an unrelated RMG-Py (Arkane) commit no longer
+    identity, and an unrelated RMG-Py (Arkane) commit no longer
     splits one: the Arkane build stays on ``scheme.workflow_tool_release`` as
     provenance only (tckdb-schemas 0.62: "send the RMG-database commit here, keep
     stamping the tool release").
@@ -9141,11 +9141,8 @@ def _build_kinetics_block(
     Raising here would abort ``_build_computed_reaction_payload``
     entirely (the call site is unguarded) and discard the reaction's
     species blocks, TS block, geometries, IRC and path-search data for
-    the sake of one optional rate-coefficient field — a wildly
-    disproportionate response to an unresolvable unit string. See
-    PHASE_C_PLAN.md C-4 for the original defect (a unitless magnitude
-    silently shipped) and its adversarial-review follow-up (this
-    proportionality fix) for why bare failure was replaced.
+    the sake of one optional rate-coefficient field — a
+    disproportionate response to an unresolvable unit string.
     """
     has_substantive_field = any(
         kinetics_record.get(k) is not None
@@ -9831,8 +9828,7 @@ def _warn_conformer_level_not_stated(
         "export that level, and the project's restart.yml does not give a "
         "usable one (no conformer_opt_level naming its program, conf_opt not "
         "run, or a species-specific adaptive level), so a calculation for "
-        "them cannot state one. ARC should export the conformer level "
-        "(BRIDGE_ROADMAP B3)."
+        "them cannot state one. ARC should export the conformer level."
     )
     logger.warning("TCKDB %s: %s", _W_CONFORMER_LEVEL_NOT_STATED, message)
     if warnings is not None:
@@ -9878,7 +9874,7 @@ def _warn_ts_guess_level_not_stated(
         "theory and a program on every calculation and the adapter does not "
         "file the path search at opt_level or under a deduced program."
         + ("" if schema_states_level else
-           " ARC should export the TS-guess level (BRIDGE_ROADMAP B3).")
+           " ARC should export the TS-guess level.")
     )
     logger.warning("TCKDB %s: %s", code, message)
     if warnings is not None:
@@ -10131,7 +10127,7 @@ def _warn_adaptive_omissions(
                 f"(it needs adaptive_levels and a species entry there). TCKDB requires "
                 f"a level on every calculation, so their {kind} calculation(s) are "
                 "omitted rather than labelled with a level they may not have run at. "
-                "ARC should export per-species levels (BRIDGE_ROADMAP B2)."
+                "ARC should export per-species levels."
             )
         logger.warning("TCKDB %s: %s", code, message)
         if warnings is not None:
@@ -10908,7 +10904,7 @@ _W_IRC_DIRECTION_NOT_STATED = ArcWarning.IRC_DIRECTION_NOT_STATED.value
 # the adapter cannot read from the project files, and the adapter *assumes* it
 # equals ``opt_level`` (true when ``opt_level`` is that same default, the
 # maintainer's adapter-0.6.0 decision). That assumption is reported on the IRC
-# calculation, until ARC exports the IRC level (BRIDGE_ROADMAP B3).
+# calculation, until ARC exports the IRC level.
 _W_IRC_LEVEL_NOT_STATED = ArcWarning.IRC_LEVEL_NOT_STATED.value
 
 
@@ -11023,7 +11019,7 @@ def _build_irc_result_payload(
     # dependency). Same constant ``path_search_result`` uses below, so
     # the two ``relative_energy_kj_mol`` fields agree bit-for-bit rather
     # than differing by the ~7e-8 relative amount a second, independently
-    # rounded inline literal introduced (see PHASE_C_PLAN.md C-3).
+    # rounded inline literal introduced.
     from tckdb_arc._vendor import E_h_kJmol, xyz_to_str
 
     points: list[dict[str, Any]] = []

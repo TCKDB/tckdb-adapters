@@ -1,6 +1,6 @@
 Output.yml schema 1.3 document written by ARC's real `write_output_yml` (ARC PR #1059,
-head `bc731fb4`) and validated against its JSON schema, for the batch E tests (levels,
-programs, conformers, IRC endpoints, composite job, isotopes, routes). `generate_fixture.py`
+head `bc731fb4`) and validated against its JSON schema, for the tests of levels,
+programs, conformers, IRC endpoints, composite job, isotopes and routes. `generate_fixture.py`
 regenerates `output.yml`, `parser_evidence.json` and the GSM files under `calcs/` from an ARC
 worktree at that commit (it needs ARC's `arc/testing` logs; see its docstring).
 

@@ -1,4 +1,4 @@
-"""Conformer mode carries statmech, applied energy corrections and rejected rotors (adapter 0.6.6, roadmap A13).
+"""Conformer mode carries statmech, applied energy corrections and rejected rotors (adapter 0.6.6).
 
 ``ConformerUploadRequest`` (tckdb-schemas 0.54) accepts ``statmech`` (with
 ``torsions[]``, whose ``invalidated_reason`` is the only home for ARC's

@@ -1,7 +1,8 @@
-"""ARC-side TCKDB integration: build, write, and optionally upload conformer/calculation payloads.
+"""The ARC adapter for TCKDB: build, write and optionally upload payloads from an ARC run.
 
-The chemistry/provenance mapping lives here in ARC. Transport lives in
-``tckdb-client``. Server-side validation/persistence lives in TCKDB.
+The mapping from ARC's output to TCKDB payloads lives in this package. The upload
+pipeline is ``tckdb_core``, the transport is ``tckdb-client``, and validation and
+storage are TCKDB's.
 """
 
 from tckdb_arc.adapter import TCKDBAdapter, UploadOutcome

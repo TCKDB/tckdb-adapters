@@ -400,8 +400,8 @@ def test_dispersion_and_solvation_fields_reach_the_species_upload(tmp_path):
     assert _shape(warnings) == [_warning("enthalpy_atom_corrections_level_unverifiable")]
 
 
-# ``arc.main._normalized_method_and_basis`` outputs captured from ARC 1977e53b
-# (feature_export_atom_corrections_applied worktree), hard-coded so drift in the
+# ``arc.main._normalized_method_and_basis`` outputs captured from ARC 1977e53b,
+# hard-coded so drift in the
 # ported normalizer fails even where the parity test below is skipped. One row
 # per branch: Gaussian's g stripped for gd2/gd3/gd3bj only, dispersion suffixes
 # in the method, the EmpiricalDispersion= prefix, the refit-year split,

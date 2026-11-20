@@ -101,7 +101,7 @@ ${SUMMARY}
 ${SINCE}
 
 To reproduce locally: \`${BUMP_CMD}\`, install both packages from TCKDB ${SHA}, then run the suite.
-Read the contract diff above (CLAUDE.md) and fix the adapter to conform before moving the pins.
+Read the contract diff above (AGENTS.md) and fix the adapter to conform before moving the pins.
 BODY
   upsert_issue "$kind" "$tmp/issue.md"
   exit 0
@@ -113,7 +113,7 @@ cat > "$tmp/pr.md" <<BODY
 Automated bump by \`tckdb-drift.yml\` (run: ${RUN_URL}).
 
 - tckdb-schemas ${SCHEMAS}, tckdb-client ${CLIENT}, TCKDB ${SHA}
-- \`tools/tckdb_drift.py --bump\` moved the pyproject bounds (\`tckdb_arc\` and \`tckdb_core\`), \`TARGET_SCHEMAS_LINE\`, \`tckdb-pin.toml\`, the README install lines and version sentences, and the adapter patch version.
+- \`tools/tckdb_drift.py --bump\` moved the pyproject bounds (\`tckdb_arc\` and \`tckdb_core\`), \`TARGET_SCHEMAS_LINE\`, \`tckdb-pin.toml\`, the README install lines and version sentences, the \`tckdb_arc/CHANGELOG.md\` line, and the adapter patch version.
 
 ### What the bot already did
 It ran the full test suite against the new packages with the target already moved, and it passed. It did not read the contract change: that is your job. Read the \`--since\` changelog below (and \`python -m tckdb_schemas.contract --print\`), decide whether the adapter handles what moved, then merge or close. CI on this PR re-runs the suite.
@@ -123,10 +123,11 @@ ${SUMMARY}
 ### \`python -m tckdb_schemas.contract --since ${OLD_SCHEMAS}\`
 ${SINCE}
 
-### Before merging (CLAUDE.md)
+### Before merging (AGENTS.md)
 - [ ] I read the \`--since\` changelog above.
 - [ ] Every changed route, field or refusal code is handled by the adapter or judged irrelevant.
 - [ ] No producer convention was defaulted to fit a new required field (refuse to build the block instead).
+- [ ] The \`tckdb-adapters-core\` version (\`tckdb_core/pyproject.toml\` and \`tckdb_core/tckdb_core/__init__.py\`) and \`tckdb_core/CHANGELOG.md\` are bumped by hand; the bot bumps only \`tckdb-arc\`.
 BODY
 
 git config user.name "$BOT_NAME"
@@ -134,7 +135,7 @@ git config user.email "$BOT_EMAIL"
 BASE_SHA="$(git rev-parse HEAD)"
 python tools/tckdb_drift.py --bump --sha "$SHA" --schemas "$SCHEMAS" --client "$CLIENT"
 git switch -C "$BRANCH"
-git add tckdb_arc/pyproject.toml tckdb_core/pyproject.toml tckdb_core/tckdb_core/testing/contract.py tckdb_arc/README.md tckdb-pin.toml README.md
+git add tckdb_arc/pyproject.toml tckdb_core/pyproject.toml tckdb_core/tckdb_core/testing/contract.py tckdb_arc/README.md tckdb_arc/CHANGELOG.md tckdb-pin.toml README.md
 git diff --cached --quiet || git commit -q -m "$TITLE"
 
 pushed=false

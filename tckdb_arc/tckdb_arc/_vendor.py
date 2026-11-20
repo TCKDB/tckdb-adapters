@@ -3,7 +3,7 @@
 These are faithful ports of the ARC originals, copied so ``tckdb_arc`` never
 needs to import ARC for the pure-dict payload paths. The element data, the xyz
 helpers and the energy constant are producer-agnostic and moved to ``tckdb_core``
-in batch L2 (:mod:`tckdb_core.xyz`, :mod:`tckdb_core.physical_constants`); they
+(:mod:`tckdb_core.xyz`, :mod:`tckdb_core.physical_constants`); they
 are re-exported here so ``tckdb_arc._vendor.<name>`` keeps resolving. What stays
 vendored in this module is ``read_yaml_file``:
 

@@ -285,7 +285,7 @@ def test_shared_rule_accepts_every_thermo_block_in_the_corpus(tmp_path):
     payloads = _corpus_payloads(tmp_path)
     blocks = [block for _model, payload in payloads for block in _thermo_blocks(payload)]
     # Non-vacuous: golden H2 (species bundle + its one reaction block: the
-    # degenerate reaction declares H2 once, BRIDGE_ROADMAP A16), the
+    # degenerate reaction declares H2 once), the
     # synthetic species, and all four synthetic reaction participants.
     assert len(blocks) == 7
     # Golden H2 (schema 1.1, no atom-correction flag) is a light species

@@ -1,6 +1,6 @@
 """Check payloads against the producer contract tckdb-schemas ships.
 
-The implementation moved to :mod:`tckdb_core.testing.contract` (batch L2) so every
+The implementation moved to :mod:`tckdb_core.testing.contract` so every
 producer adapter's tests share one copy; this module re-exports it so
 ``from _contract import contract_validate`` keeps working in this suite. The
 conftest fixture ``_contract_checks_every_built_payload`` (built by

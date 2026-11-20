@@ -170,13 +170,11 @@ class TestTCKDBConfig(unittest.TestCase):
         self.assertEqual(cfg.artifacts.kinds, ("output_log",))
 
     def test_valid_artifact_kinds_matches_server_enum(self):
-        # Sanity check: keep the ARC-side allowlist in sync with the
-        # server's ArtifactKind enum.
-        self.assertEqual(
-            VALID_ARTIFACT_KINDS,
-            frozenset({"input", "output_log", "checkpoint",
-                       "formatted_checkpoint", "ancillary"}),
-        )
+        # The allowlist is tckdb-schemas' own ArtifactKind enum, not a copy.
+        from tckdb_schemas.enums import ArtifactKind
+
+        self.assertEqual(VALID_ARTIFACT_KINDS, frozenset(kind.value for kind in ArtifactKind))
+        self.assertIn("hessian", VALID_ARTIFACT_KINDS)
 
 
 class TestTCKDBArtifactConfig(unittest.TestCase):

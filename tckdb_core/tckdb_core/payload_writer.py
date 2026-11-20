@@ -22,9 +22,12 @@ from typing import Any
 _SAFE_LABEL = re.compile(r"[^A-Za-z0-9._-]+")
 
 
-def _utcnow_iso() -> str:
+def utcnow_iso() -> str:
     """Z-suffixed UTC timestamp; the standard for sidecar timestamps."""
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+_utcnow_iso = utcnow_iso  # earlier name, kept so existing imports resolve
 
 
 def _safe_label(label: str) -> str:
@@ -60,7 +63,7 @@ class SidecarMetadata:
     idempotency_key: str
     payload_kind: str
     bundle_format_version: str = BUNDLE_FORMAT_VERSION
-    created_at: str = field(default_factory=_utcnow_iso)
+    created_at: str = field(default_factory=utcnow_iso)
     uploaded_at: str | None = None
     status: str = "pending"
     response_status_code: int | None = None
@@ -121,7 +124,7 @@ class ArtifactSidecarMetadata:
     source_path: str | None = None
     payload_kind: str = "calculation_artifact"
     bundle_format_version: str = BUNDLE_FORMAT_VERSION
-    created_at: str = field(default_factory=_utcnow_iso)
+    created_at: str = field(default_factory=utcnow_iso)
     uploaded_at: str | None = None
     status: str = "pending"
     response_status_code: int | None = None

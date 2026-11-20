@@ -26,6 +26,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from tckdb_schemas.enums import ArtifactKind
+
 
 class InputError(ValueError):
     """Raised when parsing adapter input/config fails.
@@ -63,17 +65,10 @@ VALID_UPLOAD_MODES = frozenset({
     UPLOAD_MODE_COMPUTED_TS,
 })
 
-# Mirrors the server-side ArtifactKind enum
-# (backend/app/db/models/common.py:147 in TCKDB_v2). Keeping the source
-# of truth here keeps the adapter loud-failing on unknown kinds at
-# config parse time rather than at HTTP 422 time.
-VALID_ARTIFACT_KINDS = frozenset({
-    "input",
-    "output_log",
-    "checkpoint",
-    "formatted_checkpoint",
-    "ancillary",
-})
+# The artifact kinds TCKDB accepts: the members of tckdb-schemas' ``ArtifactKind``
+# enum (not a copy of it), so an unknown kind fails when the config is parsed
+# rather than as an HTTP 422.
+VALID_ARTIFACT_KINDS = frozenset(kind.value for kind in ArtifactKind)
 
 # Subset of VALID_ARTIFACT_KINDS the shared upload path can produce.
 # Listing a valid-but-not-implemented kind in a producer's config is

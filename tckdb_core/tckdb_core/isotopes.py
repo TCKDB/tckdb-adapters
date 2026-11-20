@@ -26,10 +26,11 @@ MOST_ABUNDANT_ISOTOPE: Mapping[str, int] = {
     "Se": 80, "Br": 79, "Kr": 84,
 }
 
-_SMILES_ISOTOPE_RE = re.compile(r"\[(\d+)([A-Z][a-z]?|[bcnops])")
+SMILES_ISOTOPE_RE = re.compile(r"\[(\d+)([A-Z][a-z]?|[bcnops])")
 
 
-def _xyz_symbols(xyz_text: str | None) -> list[str] | None:
+def xyz_symbols(xyz_text: str | None) -> list[str] | None:
+    """Element symbols of an xyz string in atom order (a count/comment header is skipped); ``None`` for a non-string."""
     if not isinstance(xyz_text, str):
         return None
     symbols: list[str] = []
@@ -47,6 +48,11 @@ def _xyz_symbols(xyz_text: str | None) -> list[str] | None:
     return symbols or None
 
 
+# Earlier names of the two above, kept so existing imports resolve.
+_xyz_symbols = xyz_symbols
+_SMILES_ISOTOPE_RE = SMILES_ISOTOPE_RE
+
+
 def geometry_isotope_substitutions(
     xyz_text: str | None, isotopes: Any,
 ) -> dict[int, int] | None:
@@ -58,7 +64,7 @@ def geometry_isotope_substitutions(
     ``None`` when the list cannot be applied (not one integer per atom, or an
     element whose standard isotope is not tabulated).
     """
-    symbols = _xyz_symbols(xyz_text)
+    symbols = xyz_symbols(xyz_text)
     if symbols is None or not isinstance(isotopes, Sequence) or isinstance(isotopes, str):
         return None
     if len(isotopes) != len(symbols):
@@ -84,7 +90,7 @@ def smiles_isotope_multiset(smiles: Any) -> dict[tuple[str, int], int] | None:
     if not isinstance(smiles, str) or not smiles:
         return None
     out: dict[tuple[str, int], int] = {}
-    for mass_text, symbol in _SMILES_ISOTOPE_RE.findall(smiles):
+    for mass_text, symbol in SMILES_ISOTOPE_RE.findall(smiles):
         element = symbol[:1].upper() + symbol[1:]
         mass = int(mass_text)
         if MOST_ABUNDANT_ISOTOPE.get(element) == mass:
@@ -96,7 +102,7 @@ def smiles_isotope_multiset(smiles: Any) -> dict[tuple[str, int], int] | None:
 def geometry_isotope_multiset(
     xyz_text: str | None, substitutions: Mapping[int, int],
 ) -> dict[tuple[str, int], int]:
-    symbols = _xyz_symbols(xyz_text) or []
+    symbols = xyz_symbols(xyz_text) or []
     out: dict[tuple[str, int], int] = {}
     for index, mass in substitutions.items():
         key = (symbols[index - 1], int(mass))
@@ -247,13 +253,13 @@ def label_point_geometries(
     its geometry). Path-search points are never labelled.
     """
     isotopes = reference_geometry.get("isotopes") if isinstance(reference_geometry, Mapping) else None
-    symbols = _xyz_symbols(reference_geometry.get("xyz_text")) if isinstance(reference_geometry, Mapping) else None
+    symbols = xyz_symbols(reference_geometry.get("xyz_text")) if isinstance(reference_geometry, Mapping) else None
     can_label = bool(isotopes) and symbols is not None and str(software or "").strip().lower() in ORDER_PRESERVING_ESS
     remaining: list[tuple[str, dict[str, Any]]] = []
     for field, point in unlabelled_point_geometries(calc):
         geometry = point["geometry"]
         if (can_label and field.split(".")[0] in LABELLABLE_POINT_FIELDS
-                and _xyz_symbols(geometry.get("xyz_text")) == symbols):
+                and xyz_symbols(geometry.get("xyz_text")) == symbols):
             geometry["isotopes"] = dict(isotopes)
         else:
             remaining.append((field, point))

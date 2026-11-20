@@ -7,7 +7,7 @@ tool never edits a workflow file. Modes:
 
 ``--check``
     Read the adapter's pinned minor lines (schemas, client) and the pinned TCKDB
-    commit, resolve the mirror's ``main`` (repo from ``tckdb-pin.toml``; ``--repo``
+    commit, resolve TCKDB's ``main`` (repo from ``tckdb-pin.toml``; ``--repo``
     and ``--ref`` override), read the two package versions at that commit, and print
     a JSON summary on stdout plus one human line on stderr. Exit 0 = no drift,
     10 = drift, anything else = error.
@@ -17,8 +17,8 @@ tool never edits a workflow file. Modes:
     dependency bounds, the
     ``TARGET_SCHEMAS_LINE`` in ``tckdb_core/tckdb_core/testing/contract.py``, the ``sha`` in
     ``tckdb-pin.toml``, the install lines and "tested contract" sentence in
-    ``README.md``, the version sentence and a changelog line in
-    ``tckdb_arc/README.md``, and the adapter patch version. Idempotent: running it
+    ``README.md``, the version sentence in ``tckdb_arc/README.md``, a line in
+    ``tckdb_arc/CHANGELOG.md``, and the adapter patch version. Idempotent: running it
     again with the same values changes nothing (the patch version and changelog
     line are added only when something else moved). Refuses to move a line
     backwards unless ``--allow-downgrade``.
@@ -60,6 +60,8 @@ ADAPTER_PYPROJECT = "tckdb_arc/pyproject.toml"
 # tckdb_core pins the same two packages; it must move in lockstep with the adapter.
 CORE_PYPROJECT = "tckdb_core/pyproject.toml"
 PKG_README = "tckdb_arc/README.md"
+# The marker under which a bump adds its "tracked TCKDB ..." line.
+PKG_CHANGELOG = "tckdb_arc/CHANGELOG.md"
 CHANGELOG_MARKER = "<!-- tckdb-drift:changelog -->"
 # The one ``TARGET_SCHEMAS_LINE`` line the test suites share (tckdb_arc/tests/_contract.py re-exports it).
 CONTRACT_PY = "tckdb_core/tckdb_core/testing/contract.py"
@@ -73,7 +75,7 @@ Line = tuple[int, int]
 
 
 class DriftError(Exception):
-    """A failure that is not drift (bad input, unreachable mirror, unparsable file)."""
+    """A failure that is not drift (bad input, unreachable repository, unparsable file)."""
 
 
 # ---------------------------------------------------------------------------
@@ -160,7 +162,7 @@ def adapter_version(pyproject_text: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Reading the mirror
+# Reading the TCKDB repository
 # ---------------------------------------------------------------------------
 
 
@@ -389,7 +391,7 @@ def rewrite_pkg_readme(text: str, schemas_line: Line, client_line: Line) -> str:
 
 def add_changelog_line(text: str, line: str) -> str:
     if CHANGELOG_MARKER not in text:
-        raise DriftError(f"no {CHANGELOG_MARKER} marker in {PKG_README}")
+        raise DriftError(f"no {CHANGELOG_MARKER} marker in {PKG_CHANGELOG}")
     if line in text:
         return text
     return text.replace(CHANGELOG_MARKER, f"{CHANGELOG_MARKER}\n{line}", 1)
@@ -404,7 +406,7 @@ def run_bump(root: Path, sha: str, schemas: str, client: str, allow_downgrade: b
     def read(rel: str) -> str:
         return (root / rel).read_text()
 
-    old = {rel: read(rel) for rel in (ADAPTER_PYPROJECT, CORE_PYPROJECT, CONTRACT_PY, PIN_FILE, README, PKG_README)}
+    old = {rel: read(rel) for rel in (ADAPTER_PYPROJECT, CORE_PYPROJECT, CONTRACT_PY, PIN_FILE, README, PKG_README, PKG_CHANGELOG)}
     if not allow_downgrade:
         for package, new_line in (("tckdb-schemas", schemas_line), ("tckdb-client", client_line)):
             current = min(pinned_line(old[rel], package) for rel in (ADAPTER_PYPROJECT, CORE_PYPROJECT))
@@ -421,14 +423,15 @@ def run_bump(root: Path, sha: str, schemas: str, client: str, allow_downgrade: b
         PIN_FILE: rewrite_pin_file(old[PIN_FILE], sha),
         README: rewrite_readme(old[README], repo, sha, schemas_line, client_line),
         PKG_README: rewrite_pkg_readme(old[PKG_README], schemas_line, client_line),
+        PKG_CHANGELOG: old[PKG_CHANGELOG],
     }
     others_changed = any(new[rel] != old[rel] for rel in new) or pyproject != old[ADAPTER_PYPROJECT]
     # Bump the patch (and log it) only when something else moved, so a repeated run is a no-op.
     if others_changed:
         new[ADAPTER_PYPROJECT] = bump_patch(pyproject)
         version = adapter_version(new[ADAPTER_PYPROJECT])
-        new[PKG_README] = add_changelog_line(
-            new[PKG_README],
+        new[PKG_CHANGELOG] = add_changelog_line(
+            new[PKG_CHANGELOG],
             f"- Adapter {version}: tracked TCKDB {sha[:7]} (schemas {schemas}, client {client}).",
         )
     else:
@@ -489,11 +492,11 @@ def run_since_output(root: Path, since: str | None) -> int:
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     mode = p.add_mutually_exclusive_group(required=True)
-    mode.add_argument("--check", action="store_true", help="report drift vs the mirror (exit 10 on drift)")
+    mode.add_argument("--check", action="store_true", help="report drift vs TCKDB's main (exit 10 on drift)")
     mode.add_argument("--bump", action="store_true", help="rewrite the pins (needs --sha --schemas --client)")
     mode.add_argument("--since-output", action="store_true", help="print tckdb_schemas.contract --since <pin>")
     mode.add_argument("--install-specs", action="store_true", help="print pip specifiers from tckdb-pin.toml")
-    p.add_argument("--repo", default=None, help="TCKDB mirror, overriding the repo in tckdb-pin.toml")
+    p.add_argument("--repo", default=None, help="TCKDB repository, overriding the repo in tckdb-pin.toml")
     p.add_argument("--ref", default=DEFAULT_REF, help="branch, tag or SHA to resolve (default: %(default)s)")
     p.add_argument("--sha", help="--bump: full commit SHA to pin")
     p.add_argument("--schemas", help="--bump: available tckdb-schemas version X.Y.Z")

@@ -1,11 +1,11 @@
-"""ARC output schema 1.3, batch F: corrections, statmech, kinetics provenance, TS frequencies, parsed properties.
+"""ARC output schema 1.3: corrections, statmech, kinetics provenance, TS frequencies, parsed properties.
 
 The documents under ``fixtures/arc_1_3_thermo`` are written by ARC's own ``write_output_yml``
 (PR ReactionMechanismGenerator/ARC#1059 @ bc731fb4) and validate against its JSON Schema; see the README there.
 Every request built here is also checked against the producer contract by the conftest hook.
 
-1.3 keys are read from 1.3 documents only: a document of an earlier version never states them
-(BRIDGE_ROADMAP A19), so the same record relabelled ``1.2`` must give the pre-1.3 payload.
+1.3 keys are read from 1.3 documents only: a document of an earlier version never states them,
+so the same record relabelled ``1.2`` must give the pre-1.3 payload.
 """
 
 import copy

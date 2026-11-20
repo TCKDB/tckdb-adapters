@@ -5,7 +5,7 @@ ARC writes a level's ``args`` as ``{"keyword": {<job or "general">: "<ESS keywor
 Until TCKDB's typed method qualifiers (tckdb-schemas 0.158) the adapter flattened it into
 ``level_of_theory.keywords``; every other fixture's levels lacked ``args``, so no test saw that key.
 
-``level_args_corpus`` is the Phase 3 golden document (species, reaction, TS, kinetics) with every level
+``level_args_corpus`` is the golden document (species, reaction, TS, kinetics) with every level
 carrying ``args``, plus an energy-correction record whose scheme level carries them too:
 
 * the opt and freq levels are Gaussian, ``keyword.general`` ``int=dkh2`` (a relativistic qualifier) and

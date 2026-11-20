@@ -54,15 +54,22 @@ pip install \\
 
 Requires Python 3.11+, `tckdb-client` 0.95.x and `tckdb-schemas` 0.54.x.
 
-Tracked TCKDB releases:
+Other text.
+''',
+    "tckdb_arc/CHANGELOG.md": '''# Changelog: tckdb-arc
+
+## Tracked TCKDB releases
 
 <!-- tckdb-drift:changelog -->
+
+## 1.2.3
 
 Other text.
 ''',
     ".github/workflows/ci.yml": "name: ci\n",
     ".github/workflows/tckdb-drift.yml": "name: drift\n",
-    "CLAUDE.md": "# rules\n",
+    "AGENTS.md": "# rules\n",
+    "CLAUDE.md": "@AGENTS.md\n",
 }
 
 #: The files a bump rewrites; the rest of FILES must stay byte-identical.
@@ -73,6 +80,7 @@ BUMPED = [
     "tckdb-pin.toml",
     "README.md",
     "tckdb_arc/README.md",
+    "tckdb_arc/CHANGELOG.md",
 ]
 
 

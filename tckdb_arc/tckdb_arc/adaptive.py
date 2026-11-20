@@ -1,8 +1,8 @@
 """Read what ARC's project files say about levels that ``output.yml`` cannot.
 
 ``output.yml`` records one level per run (``opt_level``, ``freq_level``,
-``sp_level``, ``composite_method``) and does not record ``adaptive_levels``
-(BRIDGE_ROADMAP A2b, B2), nor the IRC or conformer levels (A3, A4, B3). Two
+``sp_level``, ``composite_method``) and does not record ``adaptive_levels``,
+nor the IRC or conformer levels. Two
 project files do:
 
 * ``<project>/restart.yml``, written by ARC (``arc/main.py`` ``as_dict``):

@@ -58,7 +58,7 @@ class ArtifactUploadOutcome:
 
 
 @dataclass(frozen=True)
-class _ArtifactBatchResult:
+class ArtifactBatchResult:
     """One server response to one calculation's artifact batch POST.
 
     ``response`` is the client's full ``TCKDBResponse`` (status, headers, body),
@@ -72,7 +72,7 @@ class _ArtifactBatchResult:
 
 
 @dataclass(frozen=True)
-class _PreparedArtifactUpload:
+class PreparedArtifactUpload:
     """Artifact upload plan item plus its sidecar handle."""
 
     written: WrittenArtifact
@@ -90,6 +90,11 @@ class _PreparedArtifactUpload:
     def handle(self) -> int | str:
         """What names the calculation in the URL: its ``calc_`` ref, else the integer id."""
         return self.calculation_ref if self.calculation_ref else self.calculation_id  # type: ignore[return-value]
+
+
+# Earlier names of the two classes above, kept so existing imports resolve.
+_ArtifactBatchResult = ArtifactBatchResult
+_PreparedArtifactUpload = PreparedArtifactUpload
 
 
 class TCKDBReadinessError(RuntimeError):
