@@ -7,8 +7,9 @@ fixtures, then removed):
     cp <tckdb-adapters>/tckdb_qcschema/scripts/capture_scan_read_fixtures.py \\
         backend/tests/api/test_zzz_tmp_capture_qcschema_scan_reads.py
 
-    DB_TEST_NAME=tckdb_test_scan_capture \\
-    DB_USER=tckdb DB_PASSWORD=tckdb DB_HOST=127.0.0.1 DB_PORT=5432 \\
+    # First set the test database variables (DB_USER, DB_PASSWORD, DB_HOST,
+    # DB_PORT) from TCKDB's backend/.env.example, and DB_TEST_NAME to a
+    # scratch database such as tckdb_test_scan_capture.
     TCKDB_ADAPTERS_ROOT=<tckdb-adapters> \\
     PYTHONPATH="$(pwd)/schemas/python/tckdb-schemas:${PYTHONPATH:-}" \\
         conda run -n tckdb_env pytest \\
