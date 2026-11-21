@@ -12,6 +12,7 @@ of tracked releases.
 `tools/tckdb_drift.py --bump` adds a line below the marker each time it moves the pin.
 
 <!-- tckdb-drift:changelog -->
+- Adapter 0.15.20: tracked TCKDB 292e647 (schemas 0.177.1, client 0.210.1); thermo and kinetics payloads change for a one-electron species under an `mrci+davidson` level (see 0.15.20 below).
 - Adapter 0.15.19: ASCII refusal and log messages; same pin as 0.15.18 (TCKDB b129c88).
 - Adapter 0.15.18: tracked TCKDB b129c88 (schemas 0.176.0, client 0.209.2); path searches state their coordinate unit.
 - Adapter 0.15.17: documentation-text fix in the generated warning-codes page; same pin as 0.15.7 (TCKDB d4d5346).
@@ -38,6 +39,30 @@ of tracked releases.
 - Adapter 0.10.0: tracked TCKDB 96b71b0 (schemas 0.73.0, client 0.111.0).
 - Adapter 0.6.9: tracked TCKDB f22d3a8 (schemas 0.64.0, client 0.102.0).
 - Adapter 0.6.8: tracked TCKDB a515fb9 (schemas 0.58.0, client 0.98.0).
+
+## 0.15.20
+
+Payload change under an `mrci+davidson` level. `tckdb-schemas` 0.177 classifies `mrci+davidson` as
+`multireference` (it was not classified), so the one-electron Hartree-Fock exemption, which the
+core grants only beside a `wavefunction` or `multireference` level, now applies to it. The code of
+the adapter is unchanged; two payloads differ, and a re-upload of an affected record has a new
+idempotency key, so TCKDB records it as a new deposit. Every other payload is unchanged.
+
+- Thermo: a one-electron species computed at Hartree-Fock whose `atom_corrections_level` method is
+  `mrci+davidson` (every other identity field of the two levels equal) used to be refused with
+  `enthalpy_atom_corrections_level_mismatch` and sent without its enthalpy. It now passes
+  `_one_electron_hf_substitution`: the enthalpy and `enthalpy_reference_kind: formation_298k`
+  are sent (with `reference_pressure_bar` when ARC states one), and the sidecar carries
+  `one_electron_hf_substitution`.
+- Kinetics: the energy-level assessment declared no level when a one-electron participant at
+  Hartree-Fock sat beside correlated participants at `mrci+davidson`. It now declares the shared
+  correlated level on the kinetics block's `energy_level_of_theory` and reports
+  `one_electron_hf_substitution`.
+- `gfn2` is now `semiempirical` and `wb97xd3` is `dft`, where both were unclassified
+  (method-family classification version 2). Neither family gets the exemption, as before, so no
+  payload changes for them.
+- Requires `tckdb-client>=0.210,<0.211`, `tckdb-schemas>=0.177,<0.178` and
+  `tckdb-adapters-core>=0.5.19,<0.6`; the TCKDB pin is 292e647.
 
 ## 0.15.19
 

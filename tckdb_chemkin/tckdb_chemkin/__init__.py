@@ -57,4 +57,4 @@ __all__ = [
     "build_kinetics_payload",
 ]
 
-__version__ = "0.7.7"
+__version__ = "0.7.8"
