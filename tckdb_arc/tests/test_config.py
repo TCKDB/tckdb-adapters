@@ -64,7 +64,7 @@ class TestTCKDBConfig(unittest.TestCase):
 
     def test_from_dict_rejects_bad_retry_settings(self):
         base = {"enabled": True, "base_url": "http://srv/api/v1"}
-        for bad in ({"retry_max_attempts": 0}, {"retry_max_attempts": 2.5},
+        for bad in ({"retry_max_attempts": 0}, {"retry_max_attempts": 11}, {"retry_max_attempts": 2.5},
                     {"retry_max_attempts": "3"}, {"retry_backoff_seconds": -1},
                     {"retry_backoff_seconds": float("inf")}, {"retry_backoff_seconds": "soon"}):
             with self.subTest(bad=bad), self.assertRaises(ValueError):

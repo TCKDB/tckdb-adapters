@@ -43,6 +43,17 @@ so no idempotency key moves.
   attempted up to three times, with the same idempotency key each time, instead of failing at the
   first. Set `retry_max_attempts: 1` to turn retrying off. A refusal (a 4xx other than 429) is
   never replayed. The readiness probe is not retried by the client; it keeps its own attempts.
+  `retry_max_attempts` is an integer from 1 to 10. Worst case: with the defaults one upload can take
+  up to three times `timeout_seconds` plus the waits. Each wait is jittered and capped at 30 s: the
+  first is between 0.5 and 1 times `retry_backoff_seconds`, and each later one is twice the one
+  before. When the server sends `Retry-After` the client waits at least that long, up to 120 s per
+  wait, and does not replay at all above 120 s. The readiness probe runs once per uploader, so a
+  server that degrades mid-run costs this on every remaining upload. A replay that arrives while the
+  first request with the same key is still running is refused by TCKDB with `409
+  idempotency_conflict`, and no duplicate record is created. After a client-side timeout the replay
+  can therefore come back 409, and the sidecar is `failed` with `server_error_code:
+  idempotency_conflict` although the first request may have committed. Running the upload again
+  later returns the stored response.
 - A failed upload's sidecar and outcome now record the server's error `code` as
   `server_error_code`, when the response had one.
 

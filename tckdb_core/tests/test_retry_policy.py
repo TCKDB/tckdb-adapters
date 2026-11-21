@@ -17,7 +17,7 @@ from tckdb_client.errors import TCKDBConnectionError, TCKDBHTTPError
 from tckdb_client.retry import RetryPolicy
 
 from tckdb_core import uploader
-from tckdb_core.config import TCKDBArtifactConfig, TCKDBConfig
+from tckdb_core.config import MAX_RETRY_ATTEMPTS, TCKDBArtifactConfig, TCKDBConfig
 from tckdb_core.constants import PREFLIGHT_MAX_ATTEMPTS
 from tckdb_core.outcomes import TCKDBReadinessError
 from tckdb_core.testing.stubs import StubClient, StubResponse
@@ -69,7 +69,7 @@ def test_the_defaults_are_three_attempts_and_a_one_second_backoff():
     assert (config.retry_max_attempts, config.retry_backoff_seconds) == (3, 1.0)
 
 
-@pytest.mark.parametrize("attempts", [0, -1, 2.5, "3", None, True])
+@pytest.mark.parametrize("attempts", [0, -1, 11, 100, 2.5, "3", None, True])
 def test_a_bad_attempt_count_is_rejected(attempts):
     with pytest.raises(ValueError, match="retry_max_attempts"):
         TCKDBConfig(retry_max_attempts=attempts)
@@ -79,6 +79,12 @@ def test_a_bad_attempt_count_is_rejected(attempts):
 def test_a_bad_backoff_is_rejected(backoff):
     with pytest.raises(ValueError, match="retry_backoff_seconds"):
         TCKDBConfig(retry_backoff_seconds=backoff)
+
+
+def test_the_attempt_count_range_is_one_to_ten():
+    assert MAX_RETRY_ATTEMPTS == 10
+    assert TCKDBConfig(retry_max_attempts=1).retry_max_attempts == 1
+    assert TCKDBConfig(retry_max_attempts=MAX_RETRY_ATTEMPTS).retry_max_attempts == 10
 
 
 def test_zero_backoff_and_an_integer_backoff_are_accepted():
@@ -199,6 +205,21 @@ def test_a_readiness_failure_has_no_server_code(tmp_path):
     outcome = adapter._upload(written, {"a": 1})
     assert outcome.status == "failed"
     assert outcome.server_error_code is None
+
+
+def test_a_coded_readyz_503_is_not_recorded_as_the_uploads_server_code(tmp_path):
+    """The field is the code of the failed upload request; the probe never made one."""
+    error = _http_error(503, "database_unavailable")
+    adapter = DemoAdapter(
+        _config(tmp_path, preflight=True),
+        client_factory=lambda *a, **k: StubClient(readyz_response=error))
+    adapter._sleep_between_probes = lambda _seconds: None
+    written = _written(adapter)
+    outcome = adapter._upload(written, {"a": 1})
+    sidecar = json.loads(written.sidecar_path.read_text())
+    assert outcome.status == sidecar["status"] == "failed"
+    assert outcome.server_error_code is None and sidecar["server_error_code"] is None
+    assert sidecar["preflight"]["ready"] is False and sidecar["response_status_code"] == 503
 
 
 def test_a_success_leaves_the_code_null(tmp_path):
@@ -391,9 +412,13 @@ def test_a_probe_that_never_gets_ready_makes_exactly_its_own_attempts(tmp_path, 
     adapter = DemoAdapter(_config(tmp_path, preflight=True))
     adapter._sleep_between_probes = lambda _seconds: None
     adapter._sleep_between_retries = lambda _seconds: pytest.fail("the client must not replay the probe")
-    outcome = adapter._upload(_written(adapter), {"a": 1})
+    written = _written(adapter)
+    outcome = adapter._upload(written, {"a": 1})
     assert outcome.status == "failed"
     assert len(seen) == PREFLIGHT_MAX_ATTEMPTS and all(r.url.path.endswith("/readyz") for r in seen)
+    # The probe's coded 503 is not the upload's code.
+    assert outcome.server_error_code is None
+    assert json.loads(written.sidecar_path.read_text())["server_error_code"] is None
 
 
 class _Recorder:
@@ -441,6 +466,30 @@ def test_the_probe_runs_once_per_instance_and_builds_its_client_only_then(tmp_pa
     adapter._upload(_written(adapter, "demo-key-0000000002"), {"a": 1})
     probes = [c for c in recorder.made if c.calls and c.calls[0][1] == "/readyz"]
     assert len(probes) == 1 and len(recorder.made) == 3  # two upload clients, one probe client
+
+
+def test_the_api_key_is_resolved_once_per_upload_with_the_probe_on(tmp_path, recorder):
+    adapter = DemoAdapter(_config(tmp_path, preflight=True))
+    with mock.patch.object(
+            TCKDBConfig, "resolve_api_key", autospec=True, return_value="resolved") as resolver:
+        assert adapter._upload(_written(adapter), {"a": 1}).status == "uploaded"
+    assert resolver.call_count == 1
+    upload_client, probe_client = recorder.made
+    assert probe_client.api_key == upload_client.api_key == "resolved"
+
+
+def test_a_subclass_that_overrides_make_client_does_the_probe_with_its_own_client(
+        tmp_path, recorder):
+    own = StubClient(response=StubResponse({"warnings": []}))
+
+    class Custom(DemoAdapter):
+        def _make_client(self, api_key):
+            return own
+
+    adapter = Custom(_config(tmp_path, preflight=True))
+    assert adapter._upload(_written(adapter), {"a": 1}).status == "uploaded"
+    assert recorder.made == []
+    assert [c["path"] for c in own.calls] == ["/readyz", "/uploads/conformers"]
 
 
 def test_one_attempt_probes_through_the_one_client(tmp_path, recorder):

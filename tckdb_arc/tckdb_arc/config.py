@@ -137,7 +137,7 @@ class TCKDBConfig(_CoreConfig):
             strict=bool(raw.get("strict", False)),
             validate_before_upload=bool(raw.get("validate_before_upload", True)),
             timeout_seconds=float(raw.get("timeout_seconds", DEFAULT_TIMEOUT_SECONDS)),
-            # Passed as written: the core's validation rejects a non-integer or negative value.
+            # Passed as written: the core's validation rejects a non-integer, a value below 1 or above the maximum.
             retry_max_attempts=raw.get("retry_max_attempts", DEFAULT_RETRY_MAX_ATTEMPTS),
             retry_backoff_seconds=raw.get("retry_backoff_seconds", DEFAULT_RETRY_BACKOFF_SECONDS),
             project_label=raw.get("project_label"),

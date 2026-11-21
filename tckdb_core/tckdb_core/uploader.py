@@ -752,7 +752,7 @@ class TCKDBUploaderBase(StandaloneSubmitMixin, PreUploadValidationMixin):
             return self._record_failure(written, f"client init failed: {exc}", exc)
 
         try:
-            self._ensure_ready(client)
+            self._ensure_ready(client, api_key=api_key)
             _attach_preflight(sc, self._preflight_metadata)
             response = client.request_json(
                 "POST",
@@ -902,7 +902,7 @@ class TCKDBUploaderBase(StandaloneSubmitMixin, PreUploadValidationMixin):
             retry=self._retry_policy(),
         )
 
-    def _ensure_ready(self, client: Any) -> None:
+    def _ensure_ready(self, client: Any, *, api_key: str | None = None) -> None:
         """Run the optional TCKDB readyz preflight once per adapter instance.
 
         The probe is retried up to :data:`PREFLIGHT_MAX_ATTEMPTS` times
@@ -914,6 +914,9 @@ class TCKDBUploaderBase(StandaloneSubmitMixin, PreUploadValidationMixin):
         ``self._preflight_error`` set and raised. The single-check-per-
         instance semantics are preserved — the whole retry loop runs once,
         and the final error is cached so later calls re-raise it cheaply.
+
+        ``api_key`` is the key the upload already resolved; it is used only to build the probe's
+        own client (see :meth:`_make_probe_client`), so the key is looked up once per upload.
         """
         if not self._config.preflight:
             return
@@ -921,7 +924,7 @@ class TCKDBUploaderBase(StandaloneSubmitMixin, PreUploadValidationMixin):
             raise self._preflight_error
         if self._preflight_checked:
             return
-        probe_client = self._make_probe_client(client)
+        probe_client = self._make_probe_client(client, api_key)
         self._preflight_checked = True
         try:
             self._probe_until_ready(probe_client)
@@ -929,19 +932,26 @@ class TCKDBUploaderBase(StandaloneSubmitMixin, PreUploadValidationMixin):
             if probe_client is not client:
                 _close_quietly(probe_client, "after readiness probe", self._log)
 
-    def _make_probe_client(self, client: Any) -> Any:
+    def _make_probe_client(self, client: Any, api_key: str | None = None) -> Any:
         """The client the readiness probe goes through.
 
         The probe loop owns its attempts and its sleeps, so a client that also replays a ``GET``
         would multiply them. When the core built ``client`` with a retry policy, the probe gets a
-        second client without one (same URL, key and timeout); the caller closes it. With a
-        ``client_factory``, or with ``retry_max_attempts = 1``, the probe uses ``client`` itself.
+        second client without one (same URL, the given key and the same timeout); the caller
+        closes it. The probe uses ``client`` itself when a ``client_factory`` built it, when a
+        subclass overrides ``_make_client`` (that client is the subclass's to build), when
+        ``retry_max_attempts`` is 1, and when no key was passed.
         """
-        if self._client_factory is not None or self._retry_policy() is None:
+        if (
+            self._client_factory is not None
+            or type(self)._make_client is not TCKDBUploaderBase._make_client
+            or self._retry_policy() is None
+            or api_key is None
+        ):
             return client
         return TCKDBClient(
             self._config.base_url,
-            api_key=self._config.resolve_api_key(),
+            api_key=api_key,
             timeout=self._config.timeout_seconds,
             retry=None,
         )
@@ -1404,7 +1414,7 @@ class TCKDBUploaderBase(StandaloneSubmitMixin, PreUploadValidationMixin):
             )
 
         try:
-            self._ensure_ready(client)
+            self._ensure_ready(client, api_key=api_key)
             for item in prepared:
                 _attach_preflight(item.written.sidecar, self._preflight_metadata)
             batch_results = self._post_artifact_batches(

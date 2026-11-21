@@ -347,8 +347,9 @@ the core's own pin test requires an endpoint constant for every entry.
 Other limits of the core that an adapter author should know:
 
 - **Retries.** The client the core builds carries a `tckdb_client.retry.RetryPolicy` made from
-  `config.retry_max_attempts` (3, the first attempt included) and `config.retry_backoff_seconds`
-  (1.0 s before the first replay, doubling). The client replays a `GET`, or a `POST` that carries
+  `config.retry_max_attempts` (3, the first attempt included; 1 to 10) and
+  `config.retry_backoff_seconds` (1.0; each wait is jittered and capped at 30 s, the first between
+  0.5 and 1 times this and each later one twice the one before). The client replays a `GET`, or a `POST` that carries
   an `Idempotency-Key` (every upload does), after a connection failure, a timeout, or a 429, 502,
   503 or 504; a refusal is not replayed, nor is a status whose error `code` is on the client's
   non-retryable list. Every replay carries the same key and payload. All of that is the client's
@@ -359,6 +360,19 @@ Other limits of the core that an adapter author should know:
   does the probe itself). The wait between replays goes through
   `TCKDBUploaderBase._sleep_between_retries`; a test rebinds it, as it does
   `_sleep_between_probes`. Give your config parser both keys.
+  Worst case: with the defaults one upload can take up to three times `timeout_seconds` plus the
+  waits. Each wait is jittered and capped at 30 s: the first is between 0.5 and 1 times
+  `retry_backoff_seconds`, and each later one is twice the one before. When the server sends
+  `Retry-After` the client waits at least that long, up to 120 s per wait, and does not replay at
+  all above 120 s. The readiness probe runs once per uploader, so a server that degrades mid-run
+  costs this on every remaining upload.
+  A replay that arrives while the first request with the same key is still running is refused by
+  TCKDB with `409 idempotency_conflict`, and no duplicate record is created. After a client-side
+  timeout the replay can therefore come back 409, and the sidecar is `failed` with
+  `server_error_code: idempotency_conflict` although the first request may have committed. Running
+  the upload again later returns the stored response.
+  Inject a client through `client_factory`, which is the supported way: a subclass that
+  overrides `_make_client` instead gets no second client for the probe, so its own client does it.
 - **Failure codes.** When a failed upload's exception carries a `code` (`TCKDBHTTPError.code`,
   the server's own error code), the sidecar's `server_error_code` and the outcome's
   `server_error_code` hold it, for conformer and bundle uploads, the standalone routes and

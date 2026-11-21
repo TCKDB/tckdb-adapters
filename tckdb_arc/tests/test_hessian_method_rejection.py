@@ -100,8 +100,11 @@ def test_a_contradiction_refusal_is_never_retried_without_the_parameter(tmp_path
     cfg = TCKDBConfig(enabled=True, base_url="http://localhost:8000/api/v1", payload_dir=str(tmp_path / "p2"),
                       api_key_env="X_TCKDB_API_KEY", project_label="hessian", upload_mode="computed_species")
     own_client = TCKDBAdapter(cfg, project_directory=str(tmp_path))._make_client("k")
-    assert isinstance(own_client, TCKDBClient)
-    assert own_client._retry is not None and not own_client._retry.status_is_retryable(422)
+    try:
+        assert isinstance(own_client, TCKDBClient)
+        assert own_client._retry is not None and not own_client._retry.status_is_retryable(422)
+    finally:
+        own_client.close()
 
 
 @pytest.mark.payload_refused_by_contract

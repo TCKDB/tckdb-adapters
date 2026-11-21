@@ -41,6 +41,8 @@ class InputError(ValueError):
 DEFAULT_PAYLOAD_DIR = "tckdb_payloads"
 DEFAULT_TIMEOUT_SECONDS = 30.0
 DEFAULT_RETRY_MAX_ATTEMPTS = 3
+#: The most attempts ``retry_max_attempts`` may ask for; a larger number is rejected.
+MAX_RETRY_ATTEMPTS = 10
 DEFAULT_RETRY_BACKOFF_SECONDS = 1.0
 DEFAULT_API_KEY_ENV = "TCKDB_API_KEY"
 
@@ -131,9 +133,11 @@ class TCKDBConfig:
     #: second record when replayed: a ``GET``, or a ``POST`` that carries an ``Idempotency-Key``
     #: (every upload does). Only a connection failure, a timeout, or a 429/502/503/504 is
     #: replayed, never a refusal. ``1`` sends no retry policy to the client, so nothing is replayed.
+    #: An integer from 1 to :data:`MAX_RETRY_ATTEMPTS`.
     retry_max_attempts: int = DEFAULT_RETRY_MAX_ATTEMPTS
-    #: Seconds before the first replay; each later one waits twice as long as the one before
-    #: (``tckdb_client.retry.RetryPolicy.backoff_base``). A ``Retry-After`` the server sends is honoured.
+    #: The client's ``RetryPolicy.backoff_base``. Each wait is jittered and capped at 30 s: the
+    #: first is between 0.5 and 1 times this, and each later one is twice the one before it. A
+    #: ``Retry-After`` the server sends is honoured, up to 120 s per wait (above that, no replay).
     retry_backoff_seconds: float = DEFAULT_RETRY_BACKOFF_SECONDS
     project_label: str | None = field(
         default=None,
@@ -159,9 +163,14 @@ class TCKDBConfig:
 
     def __post_init__(self) -> None:
         attempts = self.retry_max_attempts
-        if not isinstance(attempts, int) or isinstance(attempts, bool) or attempts < 1:
+        if (
+            not isinstance(attempts, int)
+            or isinstance(attempts, bool)
+            or not 1 <= attempts <= MAX_RETRY_ATTEMPTS
+        ):
             raise ValueError(
-                f"tckdb.retry_max_attempts must be an integer >= 1; got {attempts!r}."
+                f"tckdb.retry_max_attempts must be an integer from 1 to {MAX_RETRY_ATTEMPTS}; "
+                f"got {attempts!r}."
             )
         backoff = self.retry_backoff_seconds
         if (

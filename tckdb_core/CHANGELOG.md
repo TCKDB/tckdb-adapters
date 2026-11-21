@@ -11,17 +11,29 @@ No payload any route builds changes, so no idempotency key changes.
 - The client `TCKDBUploaderBase._make_client` builds now carries a `tckdb_client.retry.RetryPolicy`.
   New config fields `retry_max_attempts` (default 3, the first attempt included) and
   `retry_backoff_seconds` (default 1.0, the client's `backoff_base`); the first must be an integer
-  of at least 1 and the second a finite number of at least 0, or `TCKDBConfig` raises
+  from 1 to 10 (`config.MAX_RETRY_ATTEMPTS`) and the second a finite number of at least 0, or `TCKDBConfig` raises
   `ValueError`. An upload therefore now makes up to three attempts when it meets a connection
   failure, a timeout, or a 429, 502, 503 or 504, and each replay carries the same
   `Idempotency-Key`. Which requests, statuses and error codes are replayed, the jitter, the cap and
   the `Retry-After` handling are the client's own defaults and are not set here.
   `retry_max_attempts = 1` sends no policy and restores the earlier behaviour.
 - A `client_factory` still builds the whole client; the core passes it no policy.
+- Worst case: with the defaults one upload can take up to three times `timeout_seconds` plus the
+  waits. Each wait is jittered and capped at 30 s: the first is between 0.5 and 1 times
+  `retry_backoff_seconds`, and each later one is twice the one before. When the server sends
+  `Retry-After` the client waits at least that long, up to 120 s per wait, and does not replay at
+  all above 120 s. The readiness probe runs once per uploader, so a server that degrades mid-run
+  costs this on every remaining upload.
+- A replay that arrives while the first request with the same key is still running is refused by
+  TCKDB with `409 idempotency_conflict`, and no duplicate record is created. After a client-side
+  timeout the replay can therefore come back 409, and the sidecar is `failed` with
+  `server_error_code: idempotency_conflict` although the first request may have committed. Running
+  the upload again later returns the stored response.
 - The readiness probe is not retried by the client: it keeps its own five attempts and its own
   waits, so its worst case is what it was. When the core builds the client and a policy is set,
   the probe goes through a second client without one (same URL, key and timeout), closed when the
-  probe ends; with a `client_factory`, or `retry_max_attempts = 1`, the probe uses the one client.
+  probe ends; with a `client_factory`, a subclass that overrides `_make_client`, or `retry_max_attempts = 1`,
+  the probe uses the one client. The API key is resolved once and handed to the probe client.
 - `TCKDBUploaderBase._sleep_between_retries(seconds)` (backed by `uploader.retry_sleep`) is the
   wait between the client's replays; a test rebinds it, as it does `_sleep_between_probes`.
 - When a failed upload's exception carries a `code` string (`TCKDBHTTPError.code`), the sidecar
