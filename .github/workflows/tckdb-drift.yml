@@ -2,7 +2,7 @@ name: tckdb-drift
 
 # Tracks tckdb-schemas / tckdb-client releases in TCKDB. When TCKDB's main
 # ships a newer minor line than the adapter pins, the `test` job bumps the pins in
-# its runner and runs the suite with a read-only token; the `publish` job (the only
+# its runner and runs every package's suite with a read-only token; the `publish` job (the only
 # one with write access) opens a PR (tests pass) or an issue (tests fail).
 # See docs/tckdb_pin.md.
 
@@ -70,18 +70,23 @@ jobs:
             --client "${{ steps.check.outputs.client }}"
           git diff --stat
 
-      - name: Install the new TCKDB packages and run the suite
+      - name: Install the new TCKDB packages and run every package's suite
         id: test
         if: steps.check.outputs.drift == 'true'
         run: |
           result=pass
+          # The packages come from the tool. As in ci.yml, each suite runs from its own
+          # directory (the chemkin and qcschema tests share module names with the others').
+          mapfile -t packages < <(python tools/tckdb_drift.py --list-packages)
+          editable=()
+          for dir in "${packages[@]}"; do editable+=(-e "./${dir}[test]"); done
           {
+            [ "${#packages[@]}" -gt 0 ] &&
             python tools/tckdb_drift.py --install-specs > "$RUNNER_TEMP/specs" &&
             python -m pip install --upgrade pip &&
             pip install "$(sed -n 's/^TCKDB_CLIENT_SPEC=//p' "$RUNNER_TEMP/specs")" \
                         "$(sed -n 's/^TCKDB_SCHEMAS_SPEC=//p' "$RUNNER_TEMP/specs")" &&
-            pip install -e "./tckdb_core[test]" &&
-            pip install -e "./tckdb_arc[test]"
+            pip install "${editable[@]}"
           } > "$RUNNER_TEMP/install.log" 2>&1 || result=install-failed
 
           # The contract changelog from the PRE-bump schemas line.
@@ -90,13 +95,23 @@ jobs:
             || echo "(could not produce the --since output; see the run log)" >> "$RUNNER_TEMP/since.md"
 
           if [ "$result" = pass ]; then
-            (cd tckdb_arc && pytest -q -rfE -p no:cacheprovider tests ../tckdb_core/tests) > "$RUNNER_TEMP/pytest.log" 2>&1 || result=fail
+            # Every suite runs, so one failure does not hide another; any failure fails the run.
+            for dir in "${packages[@]}"; do
+              (cd "$dir" && pytest -q -rfE -p no:cacheprovider) > "$RUNNER_TEMP/pytest-${dir//\//_}.log" 2>&1 || result=fail
+            done
             {
               echo '```'
-              grep -E '^(FAILED|ERROR) ' "$RUNNER_TEMP/pytest.log" | head -40 | cut -c1-300
-              tail -n 1 "$RUNNER_TEMP/pytest.log"
+              for dir in "${packages[@]}"; do
+                # Prefix each failing test with its package: the same test path occurs in several.
+                { grep -E '^(FAILED|ERROR) ' "$RUNNER_TEMP/pytest-${dir//\//_}.log" || true; } \
+                  | head -40 | cut -c1-300 | sed -E "s#^(FAILED|ERROR) #\1 ${dir}/#"
+              done
+              for dir in "${packages[@]}"; do
+                echo "${dir}: $(tail -n 1 "$RUNNER_TEMP/pytest-${dir//\//_}.log")"
+              done
               echo '```'
             } > "$RUNNER_TEMP/summary.md"
+            for dir in "${packages[@]}"; do tail -n 3 "$RUNNER_TEMP/pytest-${dir//\//_}.log"; done
           else
             {
               echo 'Installing the new packages with the bumped pins failed:'
@@ -105,7 +120,6 @@ jobs:
               echo '```'
             } > "$RUNNER_TEMP/summary.md"
           fi
-          tail -n 5 "$RUNNER_TEMP/pytest.log" 2>/dev/null || true
           echo "result=$result" >> "$GITHUB_OUTPUT"
 
       - name: Keep the changelog and test summary for the publish job

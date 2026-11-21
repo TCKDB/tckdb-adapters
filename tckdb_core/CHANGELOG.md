@@ -3,6 +3,23 @@
 Releases are listed newest first. Each `tckdb-arc` release names the core version it needs in its
 own changelog.
 
+## 0.5.19
+
+Tracks TCKDB 292e647 (tckdb-schemas 0.177.1, tckdb-client 0.210.1). Requires
+`tckdb-client>=0.210,<0.211` and `tckdb-schemas>=0.177,<0.178` (were `>=0.209,<0.210` and
+`>=0.176,<0.177`). The contract kit's `TARGET_SCHEMAS_LINE` is 0.177. The core's code is unchanged, but
+`method_families.method_family` takes its answer from
+`tckdb_schemas.method_families.classify_method`, whose table is version 2 in `tckdb-schemas` 0.177: `gfn2` is `semiempirical`, `wb97xd3` is `dft`
+and `mrci+davidson` is `multireference`.
+
+One result changes. The one-electron Hartree-Fock exemption (`ONE_ELECTRON_EXEMPT_FAMILIES`) now
+applies under an `mrci+davidson` level, so `rules.kinetics_energy_level_assessment` returns a
+declared level, and `one_electron_hf_calculations`, for a one-electron Hartree-Fock participant
+beside `mrci+davidson` participants, where it returned none. A payload built from that
+declaration (the ARC adapter's kinetics block) differs from the one built before, so its
+idempotency key differs and TCKDB records a re-upload of the same record as a new deposit. The
+core builds no payload of its own.
+
 ## 0.5.18
 
 No payload, idempotency key or sidecar change. Comment and README wording only: the

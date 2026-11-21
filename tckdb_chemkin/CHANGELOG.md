@@ -3,6 +3,11 @@
 Releases are listed newest first. Releases up to 0.7.5 were made from the TCKDB repository, and
 their entries are in [TCKDB's changelog](https://github.com/TCKDB/TCKDB/blob/main/CHANGELOG.md).
 
+## 0.7.8
+
+Tracks TCKDB 292e647 (tckdb-schemas 0.177.1, tckdb-client 0.210.1). Requires
+`tckdb-client>=0.210,<0.211` (was `>=0.209,<0.210`). Package code is unchanged.
+
 ## 0.7.7
 
 Requires `tckdb-client>=0.209,<0.210` (was `>=0.208,<0.209`). Parsing, identity resolution,

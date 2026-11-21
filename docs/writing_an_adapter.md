@@ -97,9 +97,11 @@ In `pyproject.toml`, depend on `tckdb-adapters-core` and bound `tckdb-schemas` a
 `pyproject.toml`, which is what lets `pytest` find it from the repository root, to the
 CI workflow, and to the install lines in `AGENTS.md` ("Running tests") and `CONTRIBUTING.md`.
 
-`tools/tckdb_drift.py --bump` currently rewrites the bounds of `tckdb_core` and
-`tckdb_arc` only. Add your `pyproject.toml` to it, and to the file list in
-`tools/tckdb_drift_publish.sh`, so the three packages move together.
+`tools/tckdb_drift.py --bump` moves the bounds, the patch version and the changelog of every
+package in its `PACKAGES` table. Add your package to that table (its directory and its
+import name); the publish script and the drift workflow take the files and directories from
+the tool. A test fails when a package that depends on `tckdb-client` or `tckdb-schemas` is
+missing from the table.
 
 ### 2. The uploader subclass
 

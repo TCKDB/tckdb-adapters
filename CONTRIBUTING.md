@@ -72,6 +72,6 @@ The live gate accepts only an isolated backend on the local machine.
 ## Changelogs
 
 Each package keeps its own `CHANGELOG.md`, newest release first, one section per version.
-`tools/tckdb_drift.py --bump` adds the line for a pin bump to `tckdb_arc/CHANGELOG.md`.
+`tools/tckdb_drift.py --bump` adds the entry for a pin bump to the `CHANGELOG.md` of each package it releases.
 The repository has no changelog of its own; documentation and tooling changes are
 described in commit messages.

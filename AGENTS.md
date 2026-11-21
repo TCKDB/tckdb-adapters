@@ -105,9 +105,9 @@ a parity test (`tckdb_core.testing.backend_import`). Build thermo blocks in the 
    `tests/`.
 2. Add the package to `pythonpath` and `testpaths` under `[tool.pytest.ini_options]` in the
    root `pyproject.toml` (that is what makes a root `pytest` run find it), to
-   `.github/workflows/ci.yml`, to `tools/tckdb_drift.py --bump` and to the `git add` list
-   in `tools/tckdb_drift_publish.sh`. Add it to the install lines in "Running tests" below
-   and in `CONTRIBUTING.md`.
+   `.github/workflows/ci.yml`, to the `PACKAGES` table of `tools/tckdb_drift.py` (what
+   `--bump` moves; the publish script and the drift workflow read the packages and files from
+   it). Add it to the install lines in "Running tests" below and in `CONTRIBUTING.md`.
 3. Add it to the documentation site: stub pages under `docs/adapters/<tool>/`, `mkdocs.yml`,
    `docs/adapters/index.md`, `.github/workflows/docs.yml` and the root `README.md`. The steps
    are in section 7 of `docs/writing_an_adapter.md`.
@@ -167,7 +167,7 @@ and pin the tckdb-schemas version the tests ran against.
 
 A scheduled workflow proposes pin bumps as a pull request or issue. The contract-reading
 rule applies to that pull request: a green suite shows only that today's payloads still
-validate. Move `TARGET_SCHEMAS_LINE`, both `pyproject.toml` bounds and `tckdb-pin.toml`
+validate. Move `TARGET_SCHEMAS_LINE`, the `pyproject.toml` bounds of every package and `tckdb-pin.toml`
 together with `python tools/tckdb_drift.py --bump`, never by hand in one place.
 
 ## Live integration gate
