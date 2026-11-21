@@ -12,6 +12,7 @@ of tracked releases.
 `tools/tckdb_drift.py --bump` adds a line below the marker each time it moves the pin.
 
 <!-- tckdb-drift:changelog -->
+- Adapter 0.15.17: tracked TCKDB b129c88 (schemas 0.176.0, client 0.209.2); path searches state their coordinate unit.
 - Adapter 0.15.16: the payload builders moved out of the adapter module; same pin as 0.15.7 (TCKDB d4d5346).
 - Adapter 0.15.15: the adapter module split into sibling modules; same pin as 0.15.7 (TCKDB d4d5346).
 - Adapter 0.15.14: artifact requests over 64 MiB are split by `tckdb-adapters-core` 0.5.15; same pin as 0.15.7 (TCKDB d4d5346).
@@ -35,6 +36,21 @@ of tracked releases.
 - Adapter 0.10.0: tracked TCKDB 96b71b0 (schemas 0.73.0, client 0.111.0).
 - Adapter 0.6.9: tracked TCKDB f22d3a8 (schemas 0.64.0, client 0.102.0).
 - Adapter 0.6.8: tracked TCKDB a515fb9 (schemas 0.58.0, client 0.98.0).
+
+## 0.15.17
+
+Payload change for path searches. A `path_search_result` whose points carry a `path_coordinate`
+now also sends `path_coordinate_unit: "angstrom"`, so its request body and idempotency key differ
+from 0.15.16's, and TCKDB records a re-upload as a new deposit. Every other payload is unchanged.
+
+- ORCA NEB: the coordinate is the band summary's `Dist.(Ang.)` column.
+- xtb GSM: the coordinate is the cumulative displacement along the string in Angstrom, from ARC's
+  parser evidence or the Kabsch-aligned arc length.
+- A search that falls back to the single TS-guess point has no coordinate and sends no unit.
+- The token is `tckdb_schemas.fragments.calculation.PathCoordinateUnit.angstrom`, which
+  `tckdb-schemas` 0.176.0 ships; earlier releases refuse the field.
+- Requires `tckdb-client>=0.209,<0.210`, `tckdb-schemas>=0.176,<0.177` and
+  `tckdb-adapters-core>=0.5.16,<0.6`; the TCKDB pin is b129c88.
 
 ## 0.15.16
 
