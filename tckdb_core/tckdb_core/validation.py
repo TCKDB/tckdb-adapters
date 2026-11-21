@@ -430,8 +430,8 @@ class PreUploadValidationMixin:
 
         Each item is checked with what ``ArtifactIn`` validates (kind, filename, sha256, byte
         count, non-empty content) taken from the prepared metadata, so no file is read or encoded
-        a second time. Every item is checked before any batch is posted, so a plan spanning
-        several calculations is sent whole or not at all.
+        a second time. Every item is checked before the first request is posted, so a plan
+        with a refused item sends no request at all.
         """
         if not self._config.validate_before_upload:  # type: ignore[attr-defined]
             return None

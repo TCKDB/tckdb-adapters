@@ -166,17 +166,31 @@ def _summarize_artifact_batch_results(batch_results: Any) -> Any:
     return batch_results
 
 
+class _ArtifactPlanError(Exception):
+    """A file of a plan could not be sized or read; ``items`` are the items of the request it belongs to."""
+
+    def __init__(self, items: list[PreparedArtifactUpload]):
+        super().__init__("an artifact file could not be sized or read")
+        self.items = items
+
+
 def _artifact_batch_requests(
     prepared: list[PreparedArtifactUpload],
-) -> list[tuple[int | str, list[PreparedArtifactUpload]]]:
+) -> Iterator[tuple[int | str, list[PreparedArtifactUpload]]]:
     """The artifact requests a plan becomes: one per calculation, more when its files are large.
 
     Items are grouped by calculation (first-seen order) and each group is cut into requests the
     way ``TCKDBClient.upload_artifacts(batch_by_calculation=True)`` cuts it: a request starts
     again when adding the next file would take the group's running total of file sizes on disk
-    (``stat().st_size``, not the encoded size) past the client's inline budget
-    (``tckdb_client.builders.artifact.INLINE_TOTAL_BUDGET_BYTES``, read at call time). A file
+    (``stat().st_size``, not the encoded size or the prepared ``bytes``) past the client's inline
+    budget (``tckdb_client.builders.artifact.INLINE_TOTAL_BUDGET_BYTES``, read at call time). A file
     over the budget on its own is sent alone. Item order is kept.
+
+    Requests are produced one at a time, and a file is sized when its turn comes, so the requests
+    that closed before a file that has gone missing are already out. Such a file raises
+    :class:`_ArtifactPlanError` carrying the items of the request it would have joined: that
+    request's cut is not known without the file's size, and a request sent without it would carry
+    a different set of files under the key the complete plan uses.
     """
     from tckdb_client.builders import artifact as client_artifact
 
@@ -184,19 +198,20 @@ def _artifact_batch_requests(
     groups: dict[int | str, list[PreparedArtifactUpload]] = {}
     for item in prepared:
         groups.setdefault(item.handle, []).append(item)
-    requests: list[tuple[int | str, list[PreparedArtifactUpload]]] = []
     for handle, items in groups.items():
         current: list[PreparedArtifactUpload] = []
         used = 0
         for item in items:
-            size = item.path.stat().st_size
+            try:
+                size = item.path.stat().st_size
+            except Exception as exc:
+                raise _ArtifactPlanError([*current, item]) from exc
             if current and used + size > budget:
-                requests.append((handle, current))
+                yield handle, current
                 current, used = [], 0
             current.append(item)
             used += size
-        requests.append((handle, current))
-    return requests
+        yield handle, current
 
 
 def _artifact_batch_bodies(
@@ -207,12 +222,11 @@ def _artifact_batch_bodies(
     Requests are those of :func:`_artifact_batch_requests`; each artifact carries its kind,
     filename, base64 content and the declared sha256 and byte count. A body is read and encoded
     only when it is asked for, so one calculation's several requests are not all in memory together.
+    A file that cannot be read raises :class:`_ArtifactPlanError` for its request.
     """
     for handle, group in _artifact_batch_requests(prepared):
-        yield (
-            handle,
-            group,
-            {"artifacts": [
+        try:
+            artifacts = [
                 {
                     "kind": item.kind,
                     "filename": item.filename,
@@ -221,8 +235,10 @@ def _artifact_batch_bodies(
                     "bytes": item.bytes,
                 }
                 for item in group
-            ]},
-        )
+            ]
+        except Exception as exc:
+            raise _ArtifactPlanError(group) from exc
+        yield handle, group, {"artifacts": artifacts}
 
 
 @dataclasses.dataclass(frozen=True)
@@ -1539,14 +1555,16 @@ class TCKDBUploaderBase(StandaloneSubmitMixin, PreUploadValidationMixin):
         (see :func:`_artifact_batch_requests`). The first request of a calculation is keyed
         ``<prefix>:<first calculation key>:artifact-batch``, later ones ``...:artifact-batch-2``,
         ``-3``, and so on, each through ``validate_idempotency_key``. Sending through
-        ``request_json`` instead of ``upload_artifacts`` returns the full ``TCKDBResponse``
-        (headers included), keeps a ``calc_`` ref without an integer id, and lets the failure of
-        one request be recorded against exactly the items it concerns.
+        ``request_json`` instead of ``upload_artifacts`` returns the full ``TCKDBResponse``, headers
+        included, where ``upload_artifacts`` returns the body with the status code, request id
+        and replay flag but without the headers; it also keeps a ``calc_`` ref without an integer
+        id, and lets the failure of one request be recorded against exactly the items it concerns.
 
         Returns ``(sent, failure)``: the items and result of every request the server answered,
         and ``None`` or, for the first request that raised, the error with its items and the
-        items of the requests that were not sent after it. Each request is stored or refused
-        whole by the server, so ``sent`` is stored whatever came after.
+        items of the requests that were not sent after it. A file that cannot be sized or read
+        fails its own request the same way. Each request is stored or refused whole by the
+        server, so ``sent`` is stored whatever came after.
         """
         from tckdb_client.idempotency import validate_idempotency_key
 
@@ -1559,7 +1577,13 @@ class TCKDBUploaderBase(StandaloneSubmitMixin, PreUploadValidationMixin):
                 handle, group, body = next(bodies)
             except StopIteration:
                 return sent, None
-            except Exception as exc:  # a file that cannot be read or sized: nothing more is sent
+            except _ArtifactPlanError as plan_error:
+                # A file that cannot be sized or read: its request fails, the ones after it are not sent.
+                covered.update(id(item) for item in plan_error.items)
+                rest = [item for item in prepared if id(item) not in covered]
+                return sent, _ArtifactPostFailure(
+                    plan_error.__cause__ or plan_error, failed=plan_error.items, not_sent=rest)
+            except Exception as exc:  # the plan itself could not be made: nothing more is sent
                 rest = [item for item in prepared if id(item) not in covered]
                 return sent, _ArtifactPostFailure(exc, failed=rest, not_sent=[])
             covered.update(id(item) for item in group)
@@ -1579,6 +1603,7 @@ class TCKDBUploaderBase(StandaloneSubmitMixin, PreUploadValidationMixin):
                 rest = [item for item in prepared if id(item) not in covered]
                 return sent, _ArtifactPostFailure(exc, failed=list(group), not_sent=rest)
             made[handle] = number
+            del body  # the next request's body is not built while this one is still alive
             sent.append((group, ArtifactBatchResult(
                 handle=handle,
                 calculation_keys=tuple(item.calculation_key for item in group),

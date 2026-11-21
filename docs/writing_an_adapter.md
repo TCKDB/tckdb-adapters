@@ -393,7 +393,15 @@ Other limits of the core that an adapter author should know:
   transition-state and standalone kinds as unknown, since it dispatches on four kinds only.
 - **Artifacts.** Only the `output_log` and `input` kinds are implemented. The size limit is
   per file. A calculation whose files total more than 64 MiB (the client's inline budget) is sent
-  as several requests, each stored or refused whole by the server.
+  as several requests, each stored or refused whole by the server. Only the first request's
+  idempotency key carries the digest of the whole plan; a later request is keyed by the kind and
+  the sha256 prefix of its first file (`...:artifact-batch-2`, `-3`). So a later run that sends a
+  different set of files in a later request, with the same first file, repeats that key with a
+  different body, and TCKDB answers 409 `idempotency_conflict` for it. A calculation over 64 MiB
+  that an earlier core version stored as one request meets the same 409 on its first request,
+  now a smaller body under the old key. `tckdb-client`'s `upload_artifacts` derives its keys the
+  same way. In strict mode a failure on a later request raises although the sidecars of the
+  earlier requests say `uploaded`.
 - **Payload validation at run time.** Every request is checked before its POST, artifact batches
   included. For the conformer, computed-species, computed-reaction and transition-state routes and
   for the items of an artifact batch the published pydantic model alone decides, because that is

@@ -1,12 +1,12 @@
 """The artifact batch keeps the server's full response.
 
-``TCKDBClient.upload_artifacts`` returns only each response's parsed body, so
-the status code, request id and replay header were lost. The adapter now sends
-each calculation's batch through the public ``request_json`` (which returns the
-full ``TCKDBResponse``), the way bundle uploads already are, and records the
-same fields for artifacts: status, request id, replay flag and the response's
-``warnings``. These tests run the real ``TCKDBClient`` over an httpx mock
-transport so the envelope is the client's, not a stub's.
+``TCKDBClient.upload_artifacts`` returns each response's body with its status code, request
+id, replay flag and ``warnings``, but not the response headers. The adapter sends each of a
+calculation's requests through the public ``request_json`` (which returns the full
+``TCKDBResponse``), the way bundle uploads already are, and records the same fields for
+artifacts: status, request id, replay flag and the response's ``warnings``. These tests run
+the real ``TCKDBClient`` over an httpx mock transport so the envelope is the client's, not a
+stub's.
 """
 
 import base64

@@ -30,6 +30,29 @@ def test_artifact_bodies_group_by_calculation(tmp_path):
     assert bodies[0]["artifacts"][0]["filename"] == "a.log" and bodies[0]["artifacts"][0]["sha256"] == "x"
 
 
+def test_artifact_bodies_of_a_plan_of_refs_alone_are_cut_by_ref(tmp_path):
+    from types import SimpleNamespace
+
+    path = tmp_path / "a.log"
+    path.write_text("a")
+    items = [SimpleNamespace(kind="output_log", path=str(path), calculation_id=None, calculation_ref="calc_1"),
+             SimpleNamespace(kind="input", path=str(path), calculation_id=None, calculation_ref="calc_2"),
+             SimpleNamespace(kind="input", path=str(path), calculation_id=None, calculation_ref="calc_1")]
+    assert [len(b["artifacts"]) for b in contract.artifacts_request_bodies(items)] == [2, 1]
+
+
+def test_artifact_bodies_are_cut_by_the_clients_budget(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+
+    from tckdb_client.builders import artifact as client_artifact
+
+    path = tmp_path / "a.log"
+    path.write_text("aaaa")
+    items = [SimpleNamespace(kind="output_log", path=str(path), calculation_id=1, calculation_ref="calc_1")] * 3
+    monkeypatch.setattr(client_artifact, "INLINE_TOTAL_BUDGET_BYTES", 8)
+    assert [len(b["artifacts"]) for b in contract.artifacts_request_bodies(items)] == [2, 1]
+
+
 def test_the_loopback_guard_and_commit_probe():
     assert live.assert_loopback_url("http://127.0.0.1:58010/api/v1")
     for bad in ("https://tckdb.example.org/api/v1", "http://127.0.0.1:8010/api/v1"):

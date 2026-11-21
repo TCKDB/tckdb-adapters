@@ -142,9 +142,10 @@ def artifacts_request_bodies(prepared: Any) -> list[dict[str, Any]]:
     """The ``ArtifactsUploadRequest`` bodies an artifact plan becomes.
 
     Mirrors ``TCKDBClient.upload_artifacts(batch_by_calculation=True)``: one
-    body per calculation, cut into several when its files exceed the client's
-    inline budget, each item carrying the kind, filename, base64 content and
-    the declared sha256/bytes the adapter prepared.
+    body per calculation (by its ``calc_`` ref, else its id), cut into several
+    when its files exceed the client's inline budget, each item carrying the
+    kind, filename, base64 content and the declared sha256/bytes the adapter
+    prepared.
     """
     import base64
     from pathlib import Path
@@ -152,9 +153,10 @@ def artifacts_request_bodies(prepared: Any) -> list[dict[str, Any]]:
     from tckdb_client.builders import artifact as client_artifact
 
     budget = client_artifact.INLINE_TOTAL_BUDGET_BYTES
-    groups: dict[int, list[Any]] = {}
+    groups: dict[Any, list[Any]] = {}
     for item in prepared:
-        groups.setdefault(item.calculation_id, []).append(item)
+        # The core addresses a calculation by its ref, so a plan of refs alone is cut by ref.
+        groups.setdefault(getattr(item, "calculation_ref", None) or item.calculation_id, []).append(item)
     bodies: list[dict[str, Any]] = []
     for items in groups.values():
         current: list[dict[str, Any]] = []

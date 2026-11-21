@@ -410,3 +410,94 @@ def test_the_core_sends_what_the_client_sends_for_the_same_plan(tmp_path, sized,
     adapter._post_artifact_batches(_recording_client(from_core), prepared, idempotency_key_prefix=prefix)
     assert from_core == from_client
     assert len(from_core) == {100: 1, 12: 1, 11: 2, 4: 3}.get(budget, len(from_core))
+
+
+# --------------------------------------------------------------------------- files that go wrong
+
+
+def test_a_file_that_has_gone_missing_fails_the_request_it_would_join_and_the_rest_are_not_sent(
+        tmp_path, sized, monkeypatch):
+    """A file is sized when its turn comes; requests closed before it are out, the one it would join is not."""
+    _budget(monkeypatch, 8)
+    for name in "de":
+        sized[name] = tmp_path / f"{name}.log"
+        sized[name].write_bytes(name.encode() * 4)
+    adapter, client = _adapter(tmp_path)
+    prepared = _plan(adapter, "abcde", sized)
+    sized["d"].unlink()
+    outcomes = adapter._upload_artifact_batch(prepared=prepared, idempotency_key_prefix=PREFIX)
+    # a and b closed as a request before d was sized; c waits for d, so c and d fail together.
+    assert _requests(client) == [(["a.log", "b.log"], _keys(prepared, [0, 1])[0])]
+    assert [o.status for o in outcomes] == ["uploaded", "uploaded", "failed", "failed", "failed"]
+    sidecars = [json.loads(o.sidecar_path.read_text()) for o in outcomes]
+    assert [s["status"] for s in sidecars[:2]] == ["uploaded", "uploaded"]
+    assert all("d.log" in s["last_error"] and not s["last_error"].startswith("not sent") for s in sidecars[2:4])
+    assert sidecars[4]["last_error"].startswith("not sent: an earlier request for the same calculation failed: ")
+
+
+def test_a_missing_file_in_the_first_request_sends_nothing(tmp_path, sized, monkeypatch):
+    adapter, client = _adapter(tmp_path)
+    prepared = _plan(adapter, "abc", sized)
+    sized["a"].unlink()
+    outcomes = adapter._upload_artifact_batch(prepared=prepared, idempotency_key_prefix=PREFIX)
+    assert client.calls == []
+    assert [o.status for o in outcomes] == ["failed"] * 3
+    assert "a.log" in outcomes[0].error and outcomes[1].error.startswith("not sent: ")
+
+
+def test_a_file_that_cannot_be_read_fails_its_own_request(tmp_path, sized, monkeypatch):
+    _budget(monkeypatch, 4)
+    adapter, client = _adapter(tmp_path)
+    prepared = _plan(adapter, "abc", sized)
+    real = type(sized["b"]).read_bytes
+
+    def read_bytes(self):
+        if self.name == "b.log":
+            raise PermissionError(13, "Permission denied", str(self))
+        return real(self)
+
+    monkeypatch.setattr(type(sized["b"]), "read_bytes", read_bytes)
+    outcomes = adapter._upload_artifact_batch(prepared=prepared, idempotency_key_prefix=PREFIX)
+    assert [names for names, _ in _requests(client)] == [["a.log"]]
+    assert [o.status for o in outcomes] == ["uploaded", "failed", "failed"]
+    assert "Permission denied" in outcomes[1].error and outcomes[2].error.startswith("not sent: ")
+
+
+def test_a_missing_file_of_a_later_calculation_leaves_the_earlier_one_uploaded(tmp_path, files):
+    adapter, client = _adapter(tmp_path)
+    prepared = [
+        adapter._prepare_artifact_upload(
+            output_doc={}, species_label="CH4", calculation_id=None, calculation_ref=ref,
+            kind=kind, file_path=path, artifact_cfg=adapter._config.artifacts)
+        for ref, kind, path in (("calc_a", "output_log", files[0]), ("calc_b", "input", files[1]))
+    ]
+    files[1].unlink()
+    outcomes = adapter._upload_artifact_batch(prepared=prepared, idempotency_key_prefix=PREFIX)
+    assert [c["path"] for c in upload_calls(client)] == ["/calculations/calc_a/artifacts"]
+    assert [o.status for o in outcomes] == ["uploaded", "failed"]
+
+
+def test_the_server_error_code_lands_on_the_failed_request_only(tmp_path, sized, monkeypatch):
+    from tckdb_client.errors import TCKDBHTTPError
+
+    _budget(monkeypatch, 4)
+    refusal = TCKDBHTTPError(
+        "HTTP 409", status_code=409, code="idempotency_conflict",
+        response_json={"code": "idempotency_conflict", "detail": "same key, different body"})
+    adapter, client = _adapter(tmp_path, client=_FailsOnTheNthUpload(2, refusal))
+    outcomes = adapter._upload_artifact_batch(prepared=_plan(adapter, "abc", sized), idempotency_key_prefix=PREFIX)
+    assert [o.status for o in outcomes] == ["uploaded", "failed", "failed"]
+    assert [o.server_error_code for o in outcomes] == [None, "idempotency_conflict", None]
+    sidecars = [json.loads(o.sidecar_path.read_text()) for o in outcomes]
+    assert [s["server_error_code"] for s in sidecars] == [None, "idempotency_conflict", None]
+    assert sidecars[1]["response_status_code"] == 409 and sidecars[2]["response_status_code"] is None
+
+
+def test_the_split_uses_the_size_on_disk_when_the_request_is_made_not_the_prepared_size(tmp_path, sized, monkeypatch):
+    _budget(monkeypatch, 8)
+    adapter, client = _adapter(tmp_path)
+    prepared = _plan(adapter, "ab", sized)
+    assert sum(item.bytes for item in prepared) == 8  # at the budget: one request, by the prepared sizes
+    sized["b"].write_bytes(b"b" * 6)  # grown after it was prepared: 10 bytes on disk
+    adapter._upload_artifact_batch(prepared=prepared, idempotency_key_prefix=PREFIX)
+    assert [names for names, _ in _requests(client)] == [["a.log"], ["b.log"]]

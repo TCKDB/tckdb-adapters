@@ -12,6 +12,7 @@ of tracked releases.
 `tools/tckdb_drift.py --bump` adds a line below the marker each time it moves the pin.
 
 <!-- tckdb-drift:changelog -->
+- Adapter 0.15.14: artifact requests over 64 MiB are split by `tckdb-adapters-core` 0.5.15; same pin as 0.15.7 (TCKDB d4d5346).
 - Adapter 0.15.13: retries transient failures through the client's retry policy, records the server's error code; same pin as 0.15.7 (TCKDB d4d5346).
 - Adapter 0.15.12: pre-POST contract check, `validate_before_upload`; same pin as 0.15.7 (TCKDB d4d5346).
 - Adapter 0.15.11: submit methods share one write-and-upload template in `tckdb_core`; same pin as 0.15.7 (TCKDB d4d5346).
@@ -32,6 +33,17 @@ of tracked releases.
 - Adapter 0.10.0: tracked TCKDB 96b71b0 (schemas 0.73.0, client 0.111.0).
 - Adapter 0.6.9: tracked TCKDB f22d3a8 (schemas 0.64.0, client 0.102.0).
 - Adapter 0.6.8: tracked TCKDB a515fb9 (schemas 0.58.0, client 0.98.0).
+
+## 0.15.14
+
+Needs `tckdb-adapters-core` `>=0.5.15,<0.6`. No ARC code change and no payload change: every
+payload is byte-identical, so no idempotency key moves.
+
+- With core 0.5.15 a calculation whose artifacts total more than 64 MiB goes out as several
+  requests instead of one, the first under the old key and the rest under new keys (see the core
+  changelog, including the 409 `idempotency_conflict` a re-upload of such a calculation can meet).
+  ARC sends only `output_log` and `input` artifacts, each capped by `max_size_mb`, so this is
+  reached only with large logs.
 
 ## 0.15.13
 
