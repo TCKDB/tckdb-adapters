@@ -23,6 +23,8 @@ from tckdb_core.config import (  # noqa: F401  (re-exported for backward compati
     DEFAULT_ARTIFACT_KINDS,
     DEFAULT_ARTIFACT_MAX_SIZE_MB,
     DEFAULT_PAYLOAD_DIR,
+    DEFAULT_RETRY_BACKOFF_SECONDS,
+    DEFAULT_RETRY_MAX_ATTEMPTS,
     DEFAULT_TIMEOUT_SECONDS,
     IMPLEMENTED_ARTIFACT_KINDS,
     UPLOAD_MODE_COMPUTED_REACTION,
@@ -135,6 +137,9 @@ class TCKDBConfig(_CoreConfig):
             strict=bool(raw.get("strict", False)),
             validate_before_upload=bool(raw.get("validate_before_upload", True)),
             timeout_seconds=float(raw.get("timeout_seconds", DEFAULT_TIMEOUT_SECONDS)),
+            # Passed as written: the core's validation rejects a non-integer, a value below 1 or above the maximum.
+            retry_max_attempts=raw.get("retry_max_attempts", DEFAULT_RETRY_MAX_ATTEMPTS),
+            retry_backoff_seconds=raw.get("retry_backoff_seconds", DEFAULT_RETRY_BACKOFF_SECONDS),
             project_label=raw.get("project_label"),
             upload_mode=upload_mode,
             artifacts=TCKDBArtifactConfig.from_dict(raw.get("artifacts")),

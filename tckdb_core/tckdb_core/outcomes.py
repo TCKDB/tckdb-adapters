@@ -35,6 +35,9 @@ class UploadOutcome:
     # bundle-local calculation key -> ``calc_`` ref map.
     submission_ref: str | None = None
     calculation_key_refs: dict[str, str] = field(default_factory=dict)
+    # The ``code`` TCKDB sent with the refusal or outage that made this upload ``failed``
+    # (the sidecar's ``server_error_code``); ``None`` when the failure carried none.
+    server_error_code: str | None = None
 
 
 @dataclass(frozen=True)
@@ -55,6 +58,8 @@ class ArtifactUploadOutcome:
     # (e.g. ``software_release_version_filled_from_artifact``,
     # ``multiplicity_mismatch``), the same list the sidecar records.
     warnings: list[dict[str, Any]] = field(default_factory=list)
+    # As on :class:`UploadOutcome`: the server's error ``code`` for a failed upload.
+    server_error_code: str | None = None
 
 
 @dataclass(frozen=True)

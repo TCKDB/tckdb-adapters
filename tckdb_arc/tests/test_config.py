@@ -53,6 +53,22 @@ class TestTCKDBConfig(unittest.TestCase):
         self.assertTrue(cfg.preflight)
         self.assertFalse(cfg.strict)
         self.assertTrue(cfg.validate_before_upload)
+        self.assertEqual((cfg.retry_max_attempts, cfg.retry_backoff_seconds), (3, 1.0))
+
+    def test_from_dict_reads_the_retry_settings(self):
+        cfg = TCKDBConfig.from_dict(
+            {"enabled": True, "base_url": "http://srv/api/v1",
+             "retry_max_attempts": 1, "retry_backoff_seconds": 0.25}
+        )
+        self.assertEqual((cfg.retry_max_attempts, cfg.retry_backoff_seconds), (1, 0.25))
+
+    def test_from_dict_rejects_bad_retry_settings(self):
+        base = {"enabled": True, "base_url": "http://srv/api/v1"}
+        for bad in ({"retry_max_attempts": 0}, {"retry_max_attempts": 11}, {"retry_max_attempts": 2.5},
+                    {"retry_max_attempts": "3"}, {"retry_backoff_seconds": -1},
+                    {"retry_backoff_seconds": float("inf")}, {"retry_backoff_seconds": "soon"}):
+            with self.subTest(bad=bad), self.assertRaises(ValueError):
+                TCKDBConfig.from_dict({**base, **bad})
 
     def test_from_dict_reads_validate_before_upload(self):
         cfg = TCKDBConfig.from_dict(

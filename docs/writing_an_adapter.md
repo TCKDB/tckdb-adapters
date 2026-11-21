@@ -346,9 +346,44 @@ the core's own pin test requires an endpoint constant for every entry.
 
 Other limits of the core that an adapter author should know:
 
-- **Retries.** A failed POST is recorded in the sidecar and not retried. Only the
-  readiness probe retries. `tckdb-client` has a `RetryPolicy`; the core does not pass one
-  yet.
+- **Retries.** The client the core builds carries a `tckdb_client.retry.RetryPolicy` made from
+  `config.retry_max_attempts` (3, the first attempt included; 1 to 10) and
+  `config.retry_backoff_seconds` (1.0; each wait is jittered and capped at 30 s, the first between
+  0.5 and 1 times this, and the un-jittered wait doubles each time; each wait is jittered
+  separately). The client replays a `GET`, or a `POST` that carries
+  an `Idempotency-Key` (every upload does), after a connection failure, a timeout, or a 429, 502,
+  503 or 504; a refusal is not replayed, nor is a status whose error `code` is on the client's
+  non-retryable list. Every replay carries the same key and payload. All of that is the client's
+  logic with its own defaults; the core only builds the policy. `retry_max_attempts = 1` passes
+  none. A custom `client_factory` builds the whole client, so the core sets nothing on it. The
+  readiness probe has its own attempts loop and is not retried by the client: when the core builds
+  the client it sends `GET /readyz` through a second client without a policy (a factory's client
+  does the probe itself). The wait between replays goes through
+  `TCKDBUploaderBase._sleep_between_retries`; a test rebinds it, as it does
+  `_sleep_between_probes`. Give your config parser both keys.
+  `timeout_seconds` applies to each phase of a request (connect, each read), not to the whole
+  request. A request that makes no progress is given up after `timeout_seconds`, so with the
+  defaults one upload can then take about three such timeouts plus the waits; a slow but progressing
+  large upload can run longer on each attempt. Each wait is jittered separately and capped at 30 s:
+  the first is between 0.5 and 1 times `retry_backoff_seconds`, and the un-jittered wait doubles
+  each time. When the server sends `Retry-After` the client waits at least that long, up to 120 s
+  per wait, and does not replay at all above 120 s. The readiness probe runs once per uploader, so a
+  server that degrades mid-run costs this on every remaining upload. TCKDB does not lock an
+  idempotency key while a request is in progress. After a client-side timeout both the original
+  request and the replay can run, and whichever commits second is refused with `409
+  idempotency_conflict` and rolled back, so no duplicate record is created. Either the original or
+  the replay can be the one refused, so the sidecar can be `failed` with `server_error_code:
+  idempotency_conflict` although the data was stored. Running the upload again later returns the
+  stored response when the server stored a receipt for the write; a response that carries
+  `Idempotency-Receipt: failed` means it did not, and a later run executes the write again.
+  Inject a client through `client_factory`, which is the supported way: a subclass that
+  overrides `_make_client` instead gets no second client for the probe, so its own client does it.
+- **Failure codes.** When a failed upload's exception carries a `code` (`TCKDBHTTPError.code`,
+  the server's own error code), the sidecar's `server_error_code` and the outcome's
+  `server_error_code` hold it, for conformer and bundle uploads, the standalone routes and
+  artifact batches alike. It is `null` for a connection failure, a readiness failure and a
+  request the adapter refused locally (those carry no server code), and for a success. The
+  client does not report how many attempts it made, so the sidecar does not record a count.
 - **Client replay.** The sidecars are replayed by re-running the adapter. `tckdb-client`'s own
   replay tool (0.208) does not replay any sidecar the core writes: it accepts only an integer
   `bundle_format_version` of 1, and the core writes the string `"0"`. It would also report the
