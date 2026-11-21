@@ -240,21 +240,29 @@ def test_a_missing_package_list_is_a_distinct_setup_failure_not_an_install_failu
     assert "Installing the new packages" not in summary
 
 
-def test_packages_on_different_lines_are_reported_without_a_bump_or_a_suite(run):
-    """The drift check names the lines; the step turns that into a setup failure (an issue) instead of
-    a bump that would refuse, an install that would conflict, and a red run with no signal."""
+def test_a_package_that_lags_is_repaired_by_the_bump_and_the_suites_run(run):
+    """The bump moves every package to the target, so a package behind the others is caught up."""
+    run.move_package("adapters/tckdb_qcschema", schemas=(0, 53), client=(0, 94))
+    assert fx.drift.lines_note(fx.drift.read_pyprojects(run.root))  # the lines differ going in
+    assert run.run() == {"result": "pass"}
+    assert fx.drift.lines_note(fx.drift.read_pyprojects(run.root)) == ""  # and agree coming out
+    assert len(run.log("pytest.log").splitlines()) == len(DIRECTORIES)
+
+
+def test_a_package_ahead_of_the_target_is_a_setup_failure_naming_the_package_file_and_lines(run):
+    """The refusal text is what a person acts on: which package, which file, from which line to which."""
     run.move_package("adapters/tckdb_qcschema", schemas=(0, 60))
     note = fx.drift.lines_note(fx.drift.read_pyprojects(run.root))
     assert "0.60 in adapters/tckdb_qcschema" in note
-    run.set_drift_json(note)
+    run.set_drift_json(note)  # --check names the lines too, but the step does not act on it
     before = run.pin_sha()
     assert run.run() == {"result": "setup-failed"}
     assert run.pin_sha() == before  # not bumped
     assert run.log("pip.log") == "" and run.log("pytest.log") == ""
     summary = run.summary()
-    assert note in summary  # exactly which package is on which line
-    assert "A person must bring them onto one line by hand" in summary
-    assert "stopped before it ran any suite" in summary
+    assert "refusing to move tckdb-schemas in adapters/tckdb_qcschema/pyproject.toml back from 0.60 to 0.58" in summary
+    assert "which package, in which file, from which line to which" in summary
+    assert "stopped before it ran any suite" in summary and "tckdb-schemas 0.58.0 and tckdb-client 0.98.0" in summary
     for wrong in ("Installing the new packages", "Fetching TCKDB", "could not be installed"):
         assert wrong not in summary
 

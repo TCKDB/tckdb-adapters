@@ -119,7 +119,7 @@ BODY
 reproduce() {  # prints the steps that rerun this job's suites on a developer machine
   local steps
   steps="$(cat <<'REPRO'
-To reproduce locally, in a clean virtualenv at a checkout of this repository (paste into bash or zsh). The suites run one at a time and each from its own package directory, as the workflow runs them: the chemkin and qcschema suites are not part of a root `pytest` run (AGENTS.md, "Running tests").
+To reproduce locally, in a clean virtualenv at a checkout of this repository (paste into bash or zsh). The suites run one at a time and each from its own package directory, as the workflow runs them: the chemkin and qcschema suites are not part of a root `pytest` run (AGENTS.md, "Running tests"). The block has no comment lines, so it pastes into an interactive zsh as well. Its last command fetches TCKDB's backend identity rules at that commit into a fresh directory (the comparison tests skip without them) and runs the suites only if the fetch worked.
 
 ```bash
 @BUMP_CMD@
@@ -128,8 +128,6 @@ spec() { sed -n "s/^$1=//p" "$specs"; }
 pip install "$(spec TCKDB_CLIENT_SPEC)" "$(spec TCKDB_SCHEMAS_SPEC)"
 editable=(); for d in $(python tools/tckdb_drift.py --list-packages); do editable+=(-e "./${d}[test]"); done
 pip install "${editable[@]}"
-# TCKDB's backend identity rules at that commit, fetched into a fresh directory (the comparison tests
-# skip without them). The suites run only if the fetch worked.
 backend_env="$(mktemp)" && bash tools/fetch_tckdb_backend.sh "$(spec TCKDB_SCHEMAS_SPEC)" "$(mktemp -d)/tckdb" > "$backend_env" \
   && [ -s "$backend_env" ] && export $(cat "$backend_env") \
   && for d in $(python tools/tckdb_drift.py --list-packages); do

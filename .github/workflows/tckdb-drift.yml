@@ -71,41 +71,35 @@ jobs:
           #   fail           a suite failed: an issue with the failing tests
           #   install-failed pip could not install the new packages: an issue with the pip log
           #   setup-failed   the job stopped before any suite ran, for a reason that is not a test
-          #                  and not pip: the packages here already state different TCKDB lines,
-          #                  the bump was refused or failed, the package list was empty or failed,
-          #                  or TCKDB's backend could not be fetched. An issue with the reason.
+          #                  and not pip: the bump was refused (a package is ahead of the target) or
+          #                  failed, the package list was empty or failed, or TCKDB's backend could
+          #                  not be fetched. An issue with the reason.
           # Every value but `pass` is a failure of the run, never a pass.
           result=pass
           packages=()
           : > "$RUNNER_TEMP/setup.log"
 
-          # Packages that state different lines cannot be installed into one environment, and the
-          # bump would refuse to move the ones that are ahead: say so instead of trying.
-          lines_differ="$(jq -r '.lines_differ // ""' "$RUNNER_TEMP/drift.json")"
-          if [ -n "$lines_differ" ]; then
+          # A package behind the others is repaired by the bump (every package moves to the target); one
+          # ahead of the target makes the bump refuse, and the refusal below names the package, its
+          # file and the lines.
+          bump_rc=0
+          python tools/tckdb_drift.py --bump \
+            --sha "${{ steps.check.outputs.sha }}" \
+            --schemas "${{ steps.check.outputs.schemas }}" \
+            --client "${{ steps.check.outputs.client }}" > "$RUNNER_TEMP/bump.log" 2>&1 || bump_rc=$?
+          cat "$RUNNER_TEMP/bump.log"
+          if [ "$bump_rc" -ne 0 ]; then
             result=setup-failed
             {
-              echo "The packages in this repository already state different TCKDB lines, so the bump was not tried and no suite was run:"
-              echo "$lines_differ"
-              echo "They cannot be installed into one environment. A person must bring them onto one line by hand (the pyproject.toml bounds and TARGET_SCHEMAS_LINE, docs/tckdb_pin.md), then a later run can test TCKDB's newer line."
+              echo "python tools/tckdb_drift.py --bump exited $bump_rc, so the pins were not moved and no suite was run. Its output:"
+              cat "$RUNNER_TEMP/bump.log"
+              if grep -q 'refusing to move' "$RUNNER_TEMP/bump.log"; then
+                echo "TCKDB's main has tckdb-schemas ${{ steps.check.outputs.schemas }} and tckdb-client ${{ steps.check.outputs.client }}, and a package here is already on a newer line than that for a bound: the target is behind the pins."
+                echo "The refusal above says which package, in which file, from which line to which."
+                echo "Either TCKDB went back or that package was moved by hand. A person must decide which, and bring the package back or move the others up."
+                echo "(The bump with --allow-downgrade moves every package to TCKDB's line.)"
+              fi
             } > "$RUNNER_TEMP/setup.log"
-          else
-            bump_rc=0
-            python tools/tckdb_drift.py --bump \
-              --sha "${{ steps.check.outputs.sha }}" \
-              --schemas "${{ steps.check.outputs.schemas }}" \
-              --client "${{ steps.check.outputs.client }}" > "$RUNNER_TEMP/bump.log" 2>&1 || bump_rc=$?
-            cat "$RUNNER_TEMP/bump.log"
-            if [ "$bump_rc" -ne 0 ]; then
-              result=setup-failed
-              {
-                echo "python tools/tckdb_drift.py --bump exited $bump_rc, so the pins were not moved and no suite was run. Its output:"
-                cat "$RUNNER_TEMP/bump.log"
-                if grep -q 'refusing to move' "$RUNNER_TEMP/bump.log"; then
-                  echo "TCKDB's main has tckdb-schemas ${{ steps.check.outputs.schemas }} and tckdb-client ${{ steps.check.outputs.client }}, and a package here already pins a newer line than that for one of them: the target is behind the pins. A person must look (TCKDB may have gone back, or a pin was moved by hand)."
-                fi
-              } > "$RUNNER_TEMP/setup.log"
-            fi
           fi
 
           # The packages come from the tool. As in ci.yml, each suite runs from its own

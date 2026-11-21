@@ -447,6 +447,17 @@ class Repro:
         return [line.split("|") for line in path.read_text().splitlines()] if path.exists() else []
 
 
+def test_the_reproduction_block_has_no_comment_lines_and_no_unbalanced_quote(env):
+    """An interactive zsh does not treat `#` as a comment (interactive_comments is off by default), so
+    a comment line pasted into it is run as a command, and an apostrophe in one opens a quote that
+    swallows the rest. The block's claim to paste into zsh therefore rests on this check: the zsh
+    tests below run it with `zsh -c`, which accepts comments, and cannot catch that."""
+    for line in reproduction_block(env):
+        assert not line.lstrip().startswith("#"), line
+        assert " #" not in line, line  # nor a trailing comment
+        assert line.count("'") % 2 == 0, line
+
+
 @pytest.mark.parametrize("shell", ["bash", "zsh"])
 def test_the_reproduction_block_exports_the_backend_variables_every_time_it_is_pasted(env, tmp_path, shell):
     if shutil.which(shell) is None:

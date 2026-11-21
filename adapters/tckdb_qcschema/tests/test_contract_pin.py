@@ -77,11 +77,35 @@ def test_every_stated_bound_is_the_installed_line():
         )
 
 
-def test_each_distribution_is_pointed_at_its_own_changelog():
+class _Metadata:
+    """What ``metadata.metadata(name)`` returns, with the ``Project-URL`` values a test chooses."""
+
+    def __init__(self, urls):
+        self.urls = urls
+
+    def get_all(self, field):
+        assert field == "Project-URL"
+        return self.urls
+
+
+def test_each_distribution_is_pointed_at_its_own_changelog(monkeypatch):
+    """The pointer logic, independent of what the installed tckdb-client's metadata says."""
     assert what_to_read("tckdb-schemas", (0, 177)) == "`python -m tckdb_schemas.contract --since 0.177.0`"
+
+    def fake_metadata(urls):
+        monkeypatch.setattr(metadata, "metadata", lambda name: _Metadata(urls))
+
+    # The metadata states a changelog: the message names that URL, and never the schemas command.
+    fake_metadata(["Homepage, https://example.test/home", "Changelog, https://example.test/changes"])
     client = what_to_read("tckdb-client", (0, 210))
-    assert "tckdb_schemas.contract" not in client and "tckdb-client changelog" in client  # never the schemas command
-    assert "CHANGELOG.md" in client
+    assert "https://example.test/changes" in client and "tckdb_schemas.contract" not in client
+    fake_metadata(["changelog,https://example.test/lower-case"])
+    assert "https://example.test/lower-case" in what_to_read("tckdb-client", (0, 210))
+    # The metadata states none (or no URLs at all): the message names the path in the TCKDB repository.
+    for urls in (["Homepage, https://example.test/home"], [], None):
+        fake_metadata(urls)
+        client = what_to_read("tckdb-client", (0, 210))
+        assert "clients/python/CHANGELOG.md" in client and "tckdb_schemas.contract" not in client
 
 
 def test_the_checks_fail_on_a_loose_bound_or_a_wrong_line():
