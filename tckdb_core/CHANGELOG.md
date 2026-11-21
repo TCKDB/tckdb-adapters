@@ -3,6 +3,12 @@
 Releases are listed newest first. Each `tckdb-arc` release names the core version it needs in its
 own changelog.
 
+## 0.5.17
+
+No payload, idempotency key or sidecar change. Log messages from the thermo numerics and the
+constraint builder use `--` where they had an em dash, so every string the core raises or logs is
+ASCII (`tools/check_runtime_ascii.py`).
+
 ## 0.5.16
 
 Requires `tckdb-client>=0.209,<0.210` and `tckdb-schemas>=0.176,<0.177` (were `>=0.208,<0.209`

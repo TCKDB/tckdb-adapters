@@ -1802,7 +1802,7 @@ class TCKDBAdapter(TCKDBUploaderBase):
         if not species_record.get("coarse_opt_output_xyz"):
             logger.debug(
                 "TCKDB: coarse_opt_log present but coarse_opt_output_xyz "
-                "is null for label=%s — falling back to single-stage opt "
+                "is null for label=%s -- falling back to single-stage opt "
                 "bundle.",
                 species_record.get("label"),
             )
@@ -2976,7 +2976,7 @@ class TCKDBAdapter(TCKDBUploaderBase):
             )
             if path_search_payload is None:
                 logger.warning(
-                    "TCKDB computed-reaction: ts_guess (%s) calc skipped — "
+                    "TCKDB computed-reaction: ts_guess (%s) calc skipped -- "
                     "could not build path_search_result.points (no parseable "
                     "log and no fallback xyz).",
                     ts_guess_method,

@@ -46,12 +46,12 @@ def build_nasa_block(
     high_coeffs = nasa_high.get("coeffs")
     if not isinstance(low_coeffs, list) or len(low_coeffs) != 7:
         log.warning(
-            "TCKDB thermo: NASA block skipped — nasa_low.coeffs must be a list of 7 floats."
+            "TCKDB thermo: NASA block skipped -- nasa_low.coeffs must be a list of 7 floats."
         )
         return None
     if not isinstance(high_coeffs, list) or len(high_coeffs) != 7:
         log.warning(
-            "TCKDB thermo: NASA block skipped — nasa_high.coeffs must be a list of 7 floats."
+            "TCKDB thermo: NASA block skipped -- nasa_high.coeffs must be a list of 7 floats."
         )
         return None
     t_low = nasa_low.get("tmin_k")
@@ -60,7 +60,7 @@ def build_nasa_block(
     t_high = nasa_high.get("tmax_k")
     if None in (t_low, t_mid_low, t_mid_high, t_high):
         log.warning(
-            "TCKDB thermo: NASA block skipped — temperature bounds incomplete."
+            "TCKDB thermo: NASA block skipped -- temperature bounds incomplete."
         )
         return None
     try:
@@ -68,11 +68,11 @@ def build_nasa_block(
             float(t_low), float(t_mid_low), float(t_mid_high), float(t_high)
         )
     except (TypeError, ValueError) as exc:
-        log.warning("TCKDB thermo: NASA block skipped — non-numeric bounds (%s).", exc)
+        log.warning("TCKDB thermo: NASA block skipped -- non-numeric bounds (%s).", exc)
         return None
     if t_mid_low_f != t_mid_high_f:
         log.warning(
-            "TCKDB thermo: NASA block skipped — nasa_low.tmax_k=%s != nasa_high.tmin_k=%s.",
+            "TCKDB thermo: NASA block skipped -- nasa_low.tmax_k=%s != nasa_high.tmin_k=%s.",
             t_mid_low_f, t_mid_high_f,
         )
         return None
@@ -80,7 +80,7 @@ def build_nasa_block(
         low_floats = [float(c) for c in low_coeffs]
         high_floats = [float(c) for c in high_coeffs]
     except (TypeError, ValueError) as exc:
-        log.warning("TCKDB thermo: NASA block skipped — non-numeric coefficient (%s).", exc)
+        log.warning("TCKDB thermo: NASA block skipped -- non-numeric coefficient (%s).", exc)
         return None
     block: dict[str, Any] = {
         "t_low": t_low_f,
@@ -111,30 +111,30 @@ def build_thermo_points(thermo_points: Any, *, log=None) -> list[dict[str, Any]]
     points: list[dict[str, Any]] = []
     for i, raw in enumerate(thermo_points):
         if not isinstance(raw, Mapping):
-            log.warning("TCKDB thermo: thermo_points[%d] skipped — not a mapping.", i)
+            log.warning("TCKDB thermo: thermo_points[%d] skipped -- not a mapping.", i)
             continue
         t = raw.get("temperature_k")
         if t is None:
-            log.warning("TCKDB thermo: thermo_points[%d] skipped — missing temperature_k.", i)
+            log.warning("TCKDB thermo: thermo_points[%d] skipped -- missing temperature_k.", i)
             continue
         try:
             t_f = float(t)
         except (TypeError, ValueError) as exc:
             log.warning(
-                "TCKDB thermo: thermo_points[%d] skipped — non-numeric temperature_k=%r (%s).",
+                "TCKDB thermo: thermo_points[%d] skipped -- non-numeric temperature_k=%r (%s).",
                 i, t, exc,
             )
             continue
         if t_f <= 0:
             log.warning(
-                "TCKDB thermo: thermo_points[%d] skipped — temperature_k must be > 0 (got %s).",
+                "TCKDB thermo: thermo_points[%d] skipped -- temperature_k must be > 0 (got %s).",
                 i, t_f,
             )
             continue
         if t_f in seen_temps:
             # Server enforces uniqueness by temperature_k; skip duplicates here.
             log.warning(
-                "TCKDB thermo: thermo_points[%d] skipped — duplicate temperature_k=%s.",
+                "TCKDB thermo: thermo_points[%d] skipped -- duplicate temperature_k=%s.",
                 i, t_f,
             )
             continue
@@ -153,7 +153,7 @@ def build_thermo_points(thermo_points: Any, *, log=None) -> list[dict[str, Any]]
                 point[dst_key] = float(v)
             except (TypeError, ValueError) as exc:
                 log.warning(
-                    "TCKDB thermo: thermo_points[%d].%s dropped — non-numeric %r (%s).",
+                    "TCKDB thermo: thermo_points[%d].%s dropped -- non-numeric %r (%s).",
                     i, src_key, v, exc,
                 )
         points.append(point)

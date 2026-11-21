@@ -216,7 +216,7 @@ def _coerce(
         log.warning(
             "TCKDB constraint: missing 'index_base' in %r; refusing to "
             "assume the atom indices are already 1-based (ARC's Gaussian "
-            "and ORCA parsers disagree on this) — dropping. Callers with "
+            "and ORCA parsers disagree on this) -- dropping. Callers with "
             "already-normalized indices should pass a "
             "TCKDBCalculationConstraint instance instead of a bare dict.",
             raw,

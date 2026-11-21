@@ -174,8 +174,15 @@ jobs:
       - name: Check the distribution metadata
         run: python -m twine check --strict dist/*/*
 
-      - name: Test the publish workflow and release tool
+      - name: Test the publish workflow, release tool and non-ASCII check
         run: python -m pytest -q -p no:cacheprovider tools/tests
+
+      - name: Non-ASCII in runtime strings
+        # Raised, logged and accumulated-warning strings in the four packages stay ASCII;
+        # --audit fails on a source file that is neither scanned nor declared out of scope.
+        run: |
+          python tools/check_runtime_ascii.py
+          python tools/check_runtime_ascii.py --audit
 
   # ── ARC-coupled leg (documented, NOT run in CI) ──────────────────────────
   # ARC is a conda/PYTHONPATH install, not a PyPI package, so CI cannot

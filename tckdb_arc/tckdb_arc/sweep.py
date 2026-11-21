@@ -283,7 +283,7 @@ def _run_reaction_sweep(*, adapter, output_doc, tckdb_config):
             submit_record['ts_label'] = None
             submit_record['kinetics'] = None
             logger.info(
-                'TCKDB reaction %r: TS %r missing/non-converged — writing '
+                'TCKDB reaction %r: TS %r missing/non-converged -- writing '
                 'partial sidecar (ts_label and kinetics stripped).',
                 label, ts_label,
             )

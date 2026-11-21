@@ -12,6 +12,7 @@ of tracked releases.
 `tools/tckdb_drift.py --bump` adds a line below the marker each time it moves the pin.
 
 <!-- tckdb-drift:changelog -->
+- Adapter 0.15.19: ASCII refusal and log messages; same pin as 0.15.18 (TCKDB b129c88).
 - Adapter 0.15.18: tracked TCKDB b129c88 (schemas 0.176.0, client 0.209.2); path searches state their coordinate unit.
 - Adapter 0.15.17: documentation-text fix in the generated warning-codes page; same pin as 0.15.7 (TCKDB d4d5346).
 - Adapter 0.15.16: the payload builders moved out of the adapter module; same pin as 0.15.7 (TCKDB d4d5346).
@@ -37,6 +38,12 @@ of tracked releases.
 - Adapter 0.10.0: tracked TCKDB 96b71b0 (schemas 0.73.0, client 0.111.0).
 - Adapter 0.6.9: tracked TCKDB f22d3a8 (schemas 0.64.0, client 0.102.0).
 - Adapter 0.6.8: tracked TCKDB a515fb9 (schemas 0.58.0, client 0.98.0).
+
+## 0.15.19
+
+No payload change. Three refusal messages of the freq builder and three log messages use `--`
+where they had an em dash, so every string the adapter raises, logs or records as a warning is
+ASCII (`tools/check_runtime_ascii.py`). The refusals fire exactly as before.
 
 ## 0.15.18
 

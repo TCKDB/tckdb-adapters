@@ -51,6 +51,8 @@ mkdocs build --strict    # the check CI runs; writes site/
 - The regenerated warning-code page (`docs/contract/WARNING_CODES.md` for ARC) when a warning
   code is added or changed (`python tools/gen_warning_codes.py`).
 - An updated `docs/contract/ARC_MAPPING.md` when the ARC mapping changes.
+- ASCII in every string the code raises, logs or records as a warning
+  (`python tools/check_runtime_ascii.py`).
 
 Run the full suite once before opening the pull request. CI runs every package's suite on Python
 3.11 and 3.12 with the TCKDB packages installed from the pinned commit, and builds every
