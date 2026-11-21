@@ -47,8 +47,8 @@ TCKDB packages come from the TCKDB commit this repository is tested against:
 
 ```bash
 pip install \
-  "tckdb-client @ git+https://github.com/TCKDB/TCKDB.git@b129c88909a69221d45eaa18c6754b807a261f50#subdirectory=clients/python" \
-  "tckdb-schemas @ git+https://github.com/TCKDB/TCKDB.git@b129c88909a69221d45eaa18c6754b807a261f50#subdirectory=schemas/python/tckdb-schemas"
+  "tckdb-client @ git+https://github.com/TCKDB/TCKDB.git@292e6471109071df1696d81bc21083424be375a5#subdirectory=clients/python" \
+  "tckdb-schemas @ git+https://github.com/TCKDB/TCKDB.git@292e6471109071df1696d81bc21083424be375a5#subdirectory=schemas/python/tckdb-schemas"
 pip install -e tckdb_core -e tckdb_arc
 pip install -e tckdb_chemkin -e tckdb_qcschema   # the file-format adapters, as needed
 ```
@@ -97,7 +97,7 @@ TCKDB backend running on the same machine and reads the stored rows back. See
 
 ## The TCKDB pin
 
-The tested contract is `tckdb-client` 0.209.x with `tckdb-schemas` 0.176.x. Both packages
+The tested contract is `tckdb-client` 0.210.x with `tckdb-schemas` 0.177.x. Both packages
 bound the two dependencies to those release lines, and `tckdb-pin.toml` names the TCKDB
 commit that CI installs them from.
 

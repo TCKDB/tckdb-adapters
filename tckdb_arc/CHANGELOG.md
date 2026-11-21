@@ -12,6 +12,7 @@ of tracked releases.
 `tools/tckdb_drift.py --bump` adds a line below the marker each time it moves the pin.
 
 <!-- tckdb-drift:changelog -->
+- Adapter 0.15.20: tracked TCKDB 292e647 (schemas 0.177.1, client 0.210.1).
 - Adapter 0.15.19: ASCII refusal and log messages; same pin as 0.15.18 (TCKDB b129c88).
 - Adapter 0.15.18: tracked TCKDB b129c88 (schemas 0.176.0, client 0.209.2); path searches state their coordinate unit.
 - Adapter 0.15.17: documentation-text fix in the generated warning-codes page; same pin as 0.15.7 (TCKDB d4d5346).
