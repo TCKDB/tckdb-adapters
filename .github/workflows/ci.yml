@@ -75,6 +75,108 @@ jobs:
         working-directory: tckdb_core
         run: pytest -q
 
+  # tckdb-chemkin and tckdb-qcschema are file-format adapters: they build on
+  # tckdb-client (and tckdb-schemas) directly, not on tckdb-adapters-core. Each
+  # suite runs from its own directory: their tests/conftest.py and test_uploader.py
+  # share module names with tckdb_core's and tckdb_arc's, so a root run fails at
+  # collection.
+  tckdb-chemkin:
+    name: tckdb-chemkin
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    defaults:
+      run:
+        working-directory: tckdb_chemkin
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Read the TCKDB pin
+        run: python ../tools/tckdb_drift.py --install-specs >> "$GITHUB_ENV"
+
+      - name: Install the TCKDB packages (tested source revision)
+        run: |
+          python -m pip install --upgrade pip
+          pip install "$TCKDB_CLIENT_SPEC" "$TCKDB_SCHEMAS_SPEC"
+
+      - name: Install tckdb-chemkin (test extra; brings the RDKit wheel)
+        run: pip install -e ".[test]"
+
+      - name: Run the tckdb-chemkin test suite
+        # The six Cantera comparison tests skip without cantera, as they do in
+        # TCKDB's CI.
+        run: pytest -q
+
+  tckdb-qcschema:
+    name: tckdb-qcschema
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    defaults:
+      run:
+        working-directory: tckdb_qcschema
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Read the TCKDB pin
+        run: python ../tools/tckdb_drift.py --install-specs >> "$GITHUB_ENV"
+
+      - name: Install the TCKDB packages (tested source revision)
+        run: |
+          python -m pip install --upgrade pip
+          pip install "$TCKDB_CLIENT_SPEC" "$TCKDB_SCHEMAS_SPEC"
+
+      - name: Install tckdb-qcschema (test extra; qcelemental pinned exactly)
+        run: pip install -e ".[test]"
+
+      - name: Run the tckdb-qcschema test suite
+        run: pytest -q
+
+  package-metadata:
+    # Metadata rot fails a pull request, not the release: every distribution
+    # tools/python_release.py publishes is built and checked here.
+    name: Package build and metadata check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build tools
+        run: python -m pip install "build>=1.2" "twine>=6.1" pytest PyYAML
+
+      - name: Build every distribution
+        run: |
+          for dir in tckdb_core tckdb_arc tckdb_chemkin tckdb_qcschema; do
+            python -m build --outdir "dist/$dir" "$dir"
+          done
+
+      - name: Check the distribution metadata
+        run: python -m twine check --strict dist/*/*
+
+      - name: Test the publish workflow and release tool
+        run: python -m pytest -q -p no:cacheprovider tools/tests
+
   # ── ARC-coupled leg (documented, NOT run in CI) ──────────────────────────
   # ARC is a conda/PYTHONPATH install, not a PyPI package, so CI cannot
   # `pip install arc`. To exercise the arc-gated tests (freq-Hessian / IRC /
