@@ -16,7 +16,7 @@ TCKDB contract, and **nothing that reads a producer's output format**.
 | Module | What it holds |
 |--------|---------------|
 | `payload_writer` | Writes the payload JSON once and the sidecar eagerly, in one subdirectory per payload kind; sidecar and replay types. |
-| `uploader` | `TCKDBUploaderBase`: readiness probe with backoff, POST, sidecar bookkeeping (status, response, server warnings, request ids), strict mode, artifact batches. |
+| `uploader` | `TCKDBUploaderBase`: readiness probe with backoff, the client's retry policy, POST, sidecar bookkeeping (status, response, server warnings, request ids, the server's error code on a failure), strict mode, artifact batches. |
 | `standalone` | `submit_standalone` (a method of `TCKDBUploaderBase`) and `STANDALONE_ROUTES`: posts a finished thermo, kinetics, statmech, transport, reaction, network or pressure-dependent network request. It validates the request against the route's shipped JSON Schema (shape only), attaches `config.rights`, writes the payload and sidecar, and uploads with the same readiness, idempotency and strict-mode behaviour as the other routes. It builds none of these requests. |
 | `validation` | `ROUTE_SCHEMAS` (the one endpoint-to-contract table, read by `standalone` and the test kit), the cached validators, `request_findings` (the published pydantic model where there is one, as the server runs it; the JSON Schema for the standalone routes) and `PayloadContractError`. `TCKDBUploaderBase` runs it before every POST, artifact batches included; a request that fails is not posted and its sidecar is `failed` with `payload_failed_local_validation`. `config.validate_before_upload = False` turns it off. |
 | `outcomes` | `UploadOutcome`, `ArtifactUploadOutcome`, `TCKDBReadinessError`. |
@@ -122,8 +122,16 @@ file_path=...)`, or `submit_artifact_batch_for_calculation(...)` for several fil
 batch per calculation. It reads the project label from the config, else from your
 `_project_label_for(output_doc)`.
 
+The client the base class builds carries a retry policy made from `config.retry_max_attempts`
+(default 3, the first attempt included; `1` sends no policy) and `config.retry_backoff_seconds`
+(default 1.0). `tckdb-client` decides what is replayed: a `GET`, or a `POST` that carries an
+`Idempotency-Key`, after a connection failure, a timeout, or a 429, 502, 503 or 504. A
+`client_factory` builds the whole client, so the core sets nothing on it. When an upload fails
+with a server error `code`, the sidecar and the outcome record it as `server_error_code`.
+
 Hooks to override when needed: `_log` (the logger the pipeline writes to),
-`_sleep_between_probes`, `_project_label_for(output_doc)` and `_log_readiness_recovery`.
+`_sleep_between_probes`, `_sleep_between_retries` (the wait between the client's replays),
+`_project_label_for(output_doc)` and `_log_readiness_recovery`.
 
 ### Logging
 

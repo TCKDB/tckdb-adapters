@@ -19,6 +19,7 @@ order; an env var always wins so a temporary override on the command
 line still works regardless of the producer's input file.
 """
 
+import math
 import os
 import shlex
 from collections.abc import Mapping
@@ -39,6 +40,8 @@ class InputError(ValueError):
 
 DEFAULT_PAYLOAD_DIR = "tckdb_payloads"
 DEFAULT_TIMEOUT_SECONDS = 30.0
+DEFAULT_RETRY_MAX_ATTEMPTS = 3
+DEFAULT_RETRY_BACKOFF_SECONDS = 1.0
 DEFAULT_API_KEY_ENV = "TCKDB_API_KEY"
 
 # Upload-mode switch. ``conformer`` (default) keeps the existing
@@ -124,6 +127,14 @@ class TCKDBConfig:
     #: ``False`` posts whatever was built and leaves the check to the server.
     validate_before_upload: bool = True
     timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS
+    #: Total attempts (the first included) the client makes at one request that cannot create a
+    #: second record when replayed: a ``GET``, or a ``POST`` that carries an ``Idempotency-Key``
+    #: (every upload does). Only a connection failure, a timeout, or a 429/502/503/504 is
+    #: replayed, never a refusal. ``1`` sends no retry policy to the client, so nothing is replayed.
+    retry_max_attempts: int = DEFAULT_RETRY_MAX_ATTEMPTS
+    #: Seconds before the first replay; each later one waits twice as long as the one before
+    #: (``tckdb_client.retry.RetryPolicy.backoff_base``). A ``Retry-After`` the server sends is honoured.
+    retry_backoff_seconds: float = DEFAULT_RETRY_BACKOFF_SECONDS
     project_label: str | None = field(
         default=None,
         metadata={"help": "Optional project/run label baked into idempotency keys."},
@@ -145,6 +156,23 @@ class TCKDBConfig:
     #: The upload's ``rights`` fragment (license, the depositor's attestation, optional source terms), sent with
     #: every upload this configuration makes. ``None`` sends none.
     rights: Mapping[str, Any] | None = None
+
+    def __post_init__(self) -> None:
+        attempts = self.retry_max_attempts
+        if not isinstance(attempts, int) or isinstance(attempts, bool) or attempts < 1:
+            raise ValueError(
+                f"tckdb.retry_max_attempts must be an integer >= 1; got {attempts!r}."
+            )
+        backoff = self.retry_backoff_seconds
+        if (
+            not isinstance(backoff, (int, float))
+            or isinstance(backoff, bool)
+            or not math.isfinite(backoff)
+            or backoff < 0
+        ):
+            raise ValueError(
+                f"tckdb.retry_backoff_seconds must be a finite number >= 0; got {backoff!r}."
+            )
 
     def resolve_api_key(self) -> str | None:
         """Resolve the API key from env or configured local files.

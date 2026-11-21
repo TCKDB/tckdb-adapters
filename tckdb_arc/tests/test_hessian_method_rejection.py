@@ -94,12 +94,14 @@ def test_a_contradiction_refusal_is_never_retried_without_the_parameter(tmp_path
     assert [c["path"] for c in posts] == [COMPUTED_SPECIES_ENDPOINT]
     freq = [c for c in posts[0]["json"]["conformers"][0]["additional_calculations"] if c["type"] == "freq"]
     assert [p["canonical_value"] for p in freq[0]["parameters"] if p["canonical_key"] == "freq.hessian_method"] == [ANALYTIC]
-    # The real client the adapter builds (no client_factory) has no retry policy, so the transport cannot repeat it either.
+    # The real client the adapter builds (no client_factory) carries a retry policy, but it replays only
+    # a transient status (429, 502, 503, 504) or a connection failure; a 422 is never one, so the transport
+    # cannot repeat the refusal either.
     cfg = TCKDBConfig(enabled=True, base_url="http://localhost:8000/api/v1", payload_dir=str(tmp_path / "p2"),
                       api_key_env="X_TCKDB_API_KEY", project_label="hessian", upload_mode="computed_species")
     own_client = TCKDBAdapter(cfg, project_directory=str(tmp_path))._make_client("k")
     assert isinstance(own_client, TCKDBClient)
-    assert own_client._retry is None
+    assert own_client._retry is not None and not own_client._retry.status_is_retryable(422)
 
 
 @pytest.mark.payload_refused_by_contract

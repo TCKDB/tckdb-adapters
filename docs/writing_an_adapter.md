@@ -346,9 +346,25 @@ the core's own pin test requires an endpoint constant for every entry.
 
 Other limits of the core that an adapter author should know:
 
-- **Retries.** A failed POST is recorded in the sidecar and not retried. Only the
-  readiness probe retries. `tckdb-client` has a `RetryPolicy`; the core does not pass one
-  yet.
+- **Retries.** The client the core builds carries a `tckdb_client.retry.RetryPolicy` made from
+  `config.retry_max_attempts` (3, the first attempt included) and `config.retry_backoff_seconds`
+  (1.0 s before the first replay, doubling). The client replays a `GET`, or a `POST` that carries
+  an `Idempotency-Key` (every upload does), after a connection failure, a timeout, or a 429, 502,
+  503 or 504; a refusal is not replayed, nor is a status whose error `code` is on the client's
+  non-retryable list. Every replay carries the same key and payload. All of that is the client's
+  logic with its own defaults; the core only builds the policy. `retry_max_attempts = 1` passes
+  none. A custom `client_factory` builds the whole client, so the core sets nothing on it. The
+  readiness probe has its own attempts loop and is not retried by the client: when the core builds
+  the client it sends `GET /readyz` through a second client without a policy (a factory's client
+  does the probe itself). The wait between replays goes through
+  `TCKDBUploaderBase._sleep_between_retries`; a test rebinds it, as it does
+  `_sleep_between_probes`. Give your config parser both keys.
+- **Failure codes.** When a failed upload's exception carries a `code` (`TCKDBHTTPError.code`,
+  the server's own error code), the sidecar's `server_error_code` and the outcome's
+  `server_error_code` hold it, for conformer and bundle uploads, the standalone routes and
+  artifact batches alike. It is `null` for a connection failure, a readiness failure and a
+  request the adapter refused locally (those carry no server code), and for a success. The
+  client does not report how many attempts it made, so the sidecar does not record a count.
 - **Client replay.** The sidecars are replayed by re-running the adapter. `tckdb-client`'s own
   replay tool (0.208) does not replay any sidecar the core writes: it accepts only an integer
   `bundle_format_version` of 1, and the core writes the string `"0"`. It would also report the

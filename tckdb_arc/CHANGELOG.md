@@ -12,6 +12,7 @@ of tracked releases.
 `tools/tckdb_drift.py --bump` adds a line below the marker each time it moves the pin.
 
 <!-- tckdb-drift:changelog -->
+- Adapter 0.15.13: retries transient failures through the client's retry policy, records the server's error code; same pin as 0.15.7 (TCKDB d4d5346).
 - Adapter 0.15.12: pre-POST contract check, `validate_before_upload`; same pin as 0.15.7 (TCKDB d4d5346).
 - Adapter 0.15.11: submit methods share one write-and-upload template in `tckdb_core`; same pin as 0.15.7 (TCKDB d4d5346).
 - Adapter 0.15.10: artifact submit methods moved to `tckdb_core`; same pin as 0.15.7 (TCKDB d4d5346).
@@ -31,6 +32,19 @@ of tracked releases.
 - Adapter 0.10.0: tracked TCKDB 96b71b0 (schemas 0.73.0, client 0.111.0).
 - Adapter 0.6.9: tracked TCKDB f22d3a8 (schemas 0.64.0, client 0.102.0).
 - Adapter 0.6.8: tracked TCKDB a515fb9 (schemas 0.58.0, client 0.98.0).
+
+## 0.15.13
+
+Needs `tckdb-adapters-core` `>=0.5.14,<0.6`. No payload change: every payload is byte-identical,
+so no idempotency key moves.
+
+- New `tckdb` config keys `retry_max_attempts` (default `3`) and `retry_backoff_seconds` (default
+  `1.0`). An upload that meets a connection failure, a timeout, or a 429, 502, 503 or 504 is now
+  attempted up to three times, with the same idempotency key each time, instead of failing at the
+  first. Set `retry_max_attempts: 1` to turn retrying off. A refusal (a 4xx other than 429) is
+  never replayed. The readiness probe is not retried by the client; it keeps its own attempts.
+- A failed upload's sidecar and outcome now record the server's error `code` as
+  `server_error_code`, when the response had one.
 
 ## 0.15.12
 

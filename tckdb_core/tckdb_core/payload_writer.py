@@ -75,6 +75,10 @@ class SidecarMetadata:
     idempotency_replayed: bool | None = None
     last_error: str | None = None
     base_url: str | None = None
+    # The error ``code`` TCKDB sent with a refusal or an outage (``TCKDBHTTPError.code``). Only
+    # a server sends one: a request the adapter refused locally has none, and neither has a
+    # connection failure. ``None`` when the upload did not fail on a coded response.
+    server_error_code: str | None = None
     # Phase-1 partial-upload marker. False for any record that
     # represents a complete TCKDB-uploadable bundle. True for records
     # the producer knows are deliberately incomplete (e.g. a
@@ -138,6 +142,10 @@ class ArtifactSidecarMetadata:
     warnings: list[dict[str, Any]] = field(default_factory=list)
     last_error: str | None = None
     base_url: str | None = None
+    # The error ``code`` TCKDB sent with a refusal or an outage (``TCKDBHTTPError.code``). Only
+    # a server sends one: a request the adapter refused locally has none, and neither has a
+    # connection failure. ``None`` when the upload did not fail on a coded response.
+    server_error_code: str | None = None
 
     def to_json(self) -> dict[str, Any]:
         return asdict(self)
