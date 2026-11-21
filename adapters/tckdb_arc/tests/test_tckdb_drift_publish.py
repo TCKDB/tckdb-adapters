@@ -7,6 +7,7 @@ network: the "remote" is a local bare repo and ``gh`` only records its arguments
 
 import hashlib
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -23,6 +24,15 @@ SHA_1 = "1" * 40
 SHA_2 = "2" * 40
 GH_SHIM = """#!/bin/bash
 echo "$@" >> "$FAKE/gh.log"
+# Keep every body that is sent (--body-file contents and --body values), one file each.
+mkdir -p "$FAKE/bodies"
+args=("$@")
+for ((i = 0; i < ${#args[@]}; i++)); do
+  case "${args[$i]}" in
+    --body-file) cp "${args[$((i + 1))]}" "$FAKE/bodies/$(date +%s%N)-$$" ;;
+    --body) printf '%s' "${args[$((i + 1))]}" > "$FAKE/bodies/$(date +%s%N)-$$" ;;
+  esac
+done
 case "$1 $2" in
   "label list") cat "$FAKE/labels" 2>/dev/null ;;
   "issue list") cat "$FAKE/issues" 2>/dev/null ;;
@@ -43,7 +53,7 @@ def git(cwd, *args, **kw):
 
 
 class Env:
-    def __init__(self, tmp: Path):
+    def __init__(self, tmp: Path, seed_edit=None):
         self.tmp = tmp
         self.remote = tmp / "remote.git"
         self.fake = tmp / "fake"
@@ -58,6 +68,8 @@ class Env:
         seed = tmp / "seed"
         seed.mkdir()
         fx.build(seed)  # synthetic pins (0.54 / 0.95): the suite never depends on the real ones
+        if seed_edit is not None:
+            seed_edit(seed)
         for rel in ("tools/tckdb_drift.py", "tools/tckdb_drift_publish.sh"):  # code under test, not data
             dest = seed / rel
             dest.parent.mkdir(parents=True, exist_ok=True)
@@ -72,13 +84,15 @@ class Env:
     def set(self, name, text):
         (self.fake / name).write_text(text)
 
-    def run(self, sha=SHA_2, result="pass", drift="true", summary="```\n1 passed\n```\n"):
+    def run(self, sha=SHA_2, result="pass", drift="true", summary="```\n1 passed\n```\n",
+            since="# Changes\nsome text\n", extra_env=None):
         self.runs += 1
         work = self.tmp / f"work{self.runs}"
         git(self.tmp, "clone", "-q", str(self.remote), str(work))
-        (self.tmp / "since.md").write_text("# Changes\nsome text\n")
+        (self.tmp / "since.md").write_text(since)
         (self.tmp / "summary.md").write_text(summary)
         (self.fake / "gh.log").write_text("")
+        shutil.rmtree(self.fake / "bodies", ignore_errors=True)
         env = {
             **os.environ,
             "PATH": f"{self.bin}:{os.environ['PATH']}",
@@ -89,12 +103,18 @@ class Env:
             "SCHEMAS": "0.58.0", "CLIENT": "0.98.0", "SCHEMAS_LINE": "0.58", "CLIENT_LINE": "0.98",
             "OLD_SCHEMAS": "0.54.0",
             "SINCE_FILE": str(self.tmp / "since.md"), "SUMMARY_FILE": str(self.tmp / "summary.md"),
+            **(extra_env or {}),
         }
         self.work = work
         proc = subprocess.run(["bash", str(work / "tools" / "tckdb_drift_publish.sh")], cwd=work, env=env,
                               capture_output=True, text=True)
         assert proc.returncode == 0, proc.stderr
         return proc
+
+    def bodies(self) -> list[str]:
+        """Every body the run sent to gh (issue, pull request or comment), as text."""
+        folder = self.fake / "bodies"
+        return [path.read_text() for path in sorted(folder.iterdir())] if folder.exists() else []
 
     def gh_log(self):
         return (self.fake / "gh.log").read_text()
@@ -205,3 +225,150 @@ def test_a_passing_bump_closes_drift_issues_and_marks_older_prs_superseded(env):
     log = env.gh_log()
     assert "issue close 5" in log
     assert "pr comment 3" in log and "Superseded" in log
+
+
+# ---- body size: whatever the inputs, nothing over GitHub's limit is sent ------------------------
+
+GITHUB_LIMIT = 65536
+MARKER = re.compile(r"tckdb-drift-state:([0-9a-f]{16})")
+
+
+def failing_summary(count=160, width=300, last_changed=False):
+    """What a drift run with four failing packages produces at its caps: 40 lines of 300 characters each."""
+    lines = []
+    for i in range(count):
+        line = f"FAILED pkg{i % 4}/tests/test_module_{i}.py::test_case - "
+        lines.append(line + "y" * (width - len(line)))
+    if last_changed:
+        lines[-1] = lines[-1][:-1] + "z"
+    return "```\n" + "\n".join(lines) + "\n" + "\n".join(f"pkg{i}: 1 failed in 3s" for i in range(4)) + "\n```\n"
+
+
+def oversized_since():
+    return "# Contract changes\n" + "".join(f"## Route {i}\n" + "a long line of the changelog " * 20 + "\n" for i in range(2000))
+
+
+def assert_all_under_the_limit(env):
+    bodies = env.bodies()
+    assert bodies, "nothing was sent"
+    for body in bodies:
+        assert len(body) <= GITHUB_LIMIT and len(body.encode()) <= GITHUB_LIMIT, len(body)
+    return bodies
+
+
+def test_an_oversized_failure_issue_is_cut_with_a_marker_and_keeps_its_state_marker(env):
+    env.run(result="fail", summary=failing_summary(), since=oversized_since(), extra_env={"RUN_URL": "http://run/" + "u" * 100000})
+    (body,) = assert_all_under_the_limit(env)
+    assert "[... truncated:" in body  # the whole body was cut at its limit
+    assert MARKER.search(body) and body.rstrip().endswith("-->")  # the dedup marker survives the cut
+    assert body.count("```") % 2 == 0
+
+
+def test_an_oversized_failure_issue_with_normal_urls_keeps_the_whole_tail(env):
+    env.run(result="fail", summary=failing_summary(), since=oversized_since())
+    (body,) = assert_all_under_the_limit(env)
+    assert "[... truncated:" in body and MARKER.search(body)  # the summary and the --since output were cut
+    assert "Read the contract diff above" in body and "fetch_tckdb_backend.sh" in body
+    assert "### Failing summary" in body and "```bash" in body and body.count("```") % 2 == 0
+
+
+def test_an_oversized_pull_request_body_is_cut_and_keeps_its_checklist(env):
+    env.run(summary=failing_summary(), since=oversized_since(), extra_env={"RUN_URL": "http://run/" + "u" * 100000})
+    (body,) = assert_all_under_the_limit(env)
+    assert "[... truncated:" in body
+    env.set("pr_head", "7\n")  # an edit of the existing pull request: the same limit
+    env.run(summary=failing_summary(), since=oversized_since())
+    (body,) = assert_all_under_the_limit(env)
+    assert "### Before merging (AGENTS.md)" in body and "Each package's changelog entry is complete" in body
+
+
+def test_a_comment_is_capped_too(env):
+    env.set("issues", "5\n")
+    env.set("issue_body", "body <!-- tckdb-drift-state:stale -->")
+    env.run(result="fail", summary=failing_summary(), extra_env={"RUN_URL": "http://run/" + "u" * 100000})
+    bodies = assert_all_under_the_limit(env)
+    assert len(bodies) == 2 and "issue comment 5" in env.gh_log()  # the edited body and the comment
+    assert any(body.startswith("Updated for TCKDB") and "[... truncated:" in body for body in bodies)
+
+
+def state_of(env, **kwargs):
+    env.run(result="fail", **kwargs)
+    (body,) = env.bodies()
+    return MARKER.search(body).group(1)
+
+
+def test_the_dedup_marker_covers_every_failing_line_not_only_the_displayed_ones(env):
+    full = failing_summary()
+    lines = "\n".join(line for line in full.splitlines() if line.startswith("FAILED"))
+    expected = hashlib.sha256(f"0.58.0\n0.98.0\nfail\n{lines}\n".encode()).hexdigest()[:16]
+    assert state_of(env, summary=full) == expected  # the same bytes as before the cap existed
+    assert state_of(env, summary=full) == expected  # and stable from run to run
+    # A failure that differs only in a line beyond the displayed part still changes it.
+    assert state_of(env, summary=failing_summary(last_changed=True)) != expected
+    # The marker ignores what is not a failing line (the tail lines carry timings).
+    assert state_of(env, summary=full.replace("1 failed in 3s", "1 failed in 9s")) == expected
+
+
+def test_a_stored_marker_of_an_oversized_run_stops_the_repeat_comment(env):
+    full = failing_summary()
+    marker = state_of(env, summary=full)
+    env.set("issues", "5\n")
+    env.set("issue_body", f"body <!-- tckdb-drift-state:{marker} -->")
+    env.run(result="fail", summary=full)
+    assert "issue edit 5" in env.gh_log() and "issue comment" not in env.gh_log()
+
+
+# ---- what the bodies say ------------------------------------------------------------------------
+
+
+def test_the_failure_issue_gives_reproduction_steps_that_fit_four_suites(env):
+    env.run(result="fail", summary="```\nFAILED a\n```\n")
+    (body,) = env.bodies()
+    assert "install both packages" not in body
+    for needle in (
+        "python tools/tckdb_drift.py --bump --sha " + SHA_2,
+        "python tools/tckdb_drift.py --install-specs",
+        "python tools/tckdb_drift.py --list-packages",
+        "bash tools/fetch_tckdb_backend.sh",
+        "python -m pytest -p no:xdist -p no:cacheprovider",
+        'cd "$d"',
+        "not part of a root `pytest` run",
+    ):
+        assert needle in body, needle
+
+
+def test_a_setup_failure_is_its_own_kind_of_issue(env):
+    env.run(result="setup-failed", summary="```\nthe list was empty\n```\n")
+    assert "TCKDB drift: schemas 0.58 / client 0.98 setup failed" in env.gh_log()
+    (body,) = env.bodies()
+    assert "the drift job's own setup failed before any suite ran" in body
+    assert env.remote_branch() is None
+
+
+def test_the_pull_request_body_describes_each_changelog_style_and_the_floor_raise(env):
+    env.run()
+    (body,) = env.bodies()
+    assert "raised the `tckdb-adapters-core` floor of each package that requires it" in body
+    item = next(line for line in body.splitlines() if "changelog entry is complete" in line)
+    assert "writes a section that names the TCKDB commit, the bounds that moved and that the package's code is unchanged" in item
+    assert "writes one line under the tracked-releases marker" in item and "says nothing about the code" in item
+    assert "different lines" not in body  # the packages agree here
+    # The branch's ARC changelog line is what the body says it is, floor included.
+    changelog = git(env.remote, "show", f"{env.remote_branch()}:adapters/tckdb_arc/CHANGELOG.md")
+    assert "requires tckdb-adapters-core>=0.1.1." in changelog
+
+
+def test_a_package_ahead_of_the_bump_is_left_alone_and_the_pull_request_says_so(tmp_path):
+    def ahead(seed):
+        path = seed / "adapters/tckdb_qcschema/pyproject.toml"
+        path.write_text(path.read_text().replace(">=0.54,<0.55", ">=0.60,<0.61"))
+
+    env = Env(tmp_path, seed_edit=ahead)
+    env.run()
+    (body,) = env.bodies()
+    assert "### The packages are on different lines" in body
+    assert "tckdb-schemas lines: 0.58 in tckdb_core, adapters/tckdb_arc; 0.60 in adapters/tckdb_qcschema" in body
+    assert "leaves one that is already ahead where it is" in body
+    assert env.remote_branch()  # not refused: the run went on to push the branch
+    qcschema = git(env.remote, "show", f"{env.remote_branch()}:adapters/tckdb_qcschema/pyproject.toml")
+    assert "tckdb-schemas>=0.60,<0.61" in qcschema and "tckdb-client>=0.98,<0.99" in qcschema

@@ -108,9 +108,10 @@ a parity test (`tckdb_core.testing.backend_import`). Build thermo blocks in the 
    `README.md`, `CHANGELOG.md`, the package `tckdb_<producer>/` and `tests/`.
 2. Add the package to `pythonpath` and `testpaths` under `[tool.pytest.ini_options]` in the
    root `pyproject.toml` (that is what makes a root `pytest` run find it), to
-   `.github/workflows/ci.yml`, to the `PACKAGES` table of `tools/tckdb_drift.py` (what
-   `--bump` moves; the publish script and the drift workflow read the packages and files from
-   it; its `directory` is `adapters/tckdb_<producer>`). Add it to the install lines in "Running tests" below and in `CONTRIBUTING.md`.
+   `.github/workflows/ci.yml`, and add one row to the `PACKAGES` table of `tools/tckdb_drift.py`
+   (what `--bump` moves; the `Package` class documents the fields, and the publish script, the
+   drift workflow and the drift tests are all built from the table). Add it to the install lines
+   in "Running tests" below and in `CONTRIBUTING.md`.
 3. Add it to the documentation site: stub pages under `docs/adapters/<tool>/`, `mkdocs.yml`,
    `docs/adapters/index.md`, `.github/workflows/docs.yml` and the root `README.md`. The steps
    are in section 7 of `docs/writing_an_adapter.md`.

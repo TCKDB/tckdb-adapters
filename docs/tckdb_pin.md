@@ -9,17 +9,30 @@ how the scheduled workflow moves it, and what a person must still do when it mov
 |---|---|
 | `tckdb-pin.toml` | The TCKDB repository URL, the commit `sha`, and the subdirectories of the two packages. CI reads it at run time, so no workflow file contains a commit. |
 | `pyproject.toml` of `tckdb_core`, `tckdb_arc`, `tckdb_chemkin` and `tckdb_qcschema` | The `tckdb-schemas` and `tckdb-client` bounds, each one minor release line (`>=X.Y,<X.(Y+1)`). A package states only the ones it depends on: `tckdb-chemkin` has no `tckdb-schemas` bound. |
-| `tckdb_core/tckdb_core/testing/contract.py` | `TARGET_SCHEMAS_LINE`, the `tckdb-schemas` line the test suites target. It exists once. Each package's `test_contract_pin.py` fails when the installed version or a `pyproject.toml` bound disagrees with it. |
+| `tckdb_core/tckdb_core/testing/contract.py` | `TARGET_SCHEMAS_LINE`, the `tckdb-schemas` line the test suites target. It exists once. The core's and the ARC adapter's `test_contract_pin.py` fail when the installed `tckdb-schemas` or their own `pyproject.toml` bound disagrees with it. `tckdb-chemkin` and `tckdb-qcschema` do not depend on the core, so their `tests/test_contract_pin.py` check the bounds each one states (`tckdb-client`, and for `tckdb-qcschema` `tckdb-schemas`) against the installed packages. `tools/tests/test_pin_lines.py` checks that every package states the core's lines, `tckdb-client` bounds included. |
 | `README.md`, `adapters/tckdb_arc/README.md` | The install lines and the sentences that name the tested versions. |
 
 The packages `--bump` moves are the rows of the `PACKAGES` table in `tools/tckdb_drift.py`.
-Each row gives the package's directory and its import name, and every path the tool touches
-comes from those two fields. The drift workflow and the publish script ask the tool for the
-directories and files (`--list-packages`, `--bumped-files`) instead of repeating them.
-`tools/python_release.py` has its own table, of what is published to PyPI; a test checks that
-the two name the same directories. Another test fails when any `pyproject.toml` in the
-repository that depends on `tckdb-client` or `tckdb-schemas` is not in the drift table, or a row
-of the table has no package on disk.
+A row is a `Package` with these fields (its docstring says the same):
+
+| Field | Holds |
+|---|---|
+| `directory`, `module` | The package's directory and its import name; every path the tool touches comes from them. |
+| `dist` | The distribution name in its `pyproject.toml`. |
+| `version_in_init` | Whether `<module>/__init__.py` holds a `__version__` that must equal the `pyproject.toml` version. |
+| `readme_sentence` | Whether the package's `README.md` has the "`tckdb-client` A.B.x and `tckdb-schemas` X.Y.x" sentence. |
+| `changelog_style` | `marker` (one line under `<!-- tckdb-drift:changelog -->`) or `sections` (a `## X.Y.Z` section, newest first). |
+| `note` | What a `sections` entry says about the package itself. |
+
+The drift workflow and the publish script ask the tool for the directories and files
+(`--list-packages`, `--bumped-files`) instead of repeating them, and the drift tests build their
+synthetic repository and their list of directories from the table, so adding a package is adding
+its row and nothing else in `tools/` or the drift tests. (The real package needs the files its
+row names: a `CHANGELOG.md` with the marker or version headings, the `__version__` line, the
+README sentence.) `tools/python_release.py` has its own table, of what is published to PyPI; a
+test checks that the two name the same directories. Another test fails when any `pyproject.toml`
+in the repository that depends on `tckdb-client` or `tckdb-schemas` is not in the drift table, or
+a row of the table has no package on disk.
 
 ## Moving the pin is a reading task
 
@@ -42,23 +55,50 @@ adapter refuses to build that block; it does not fill a default to make the suit
 `.github/workflows/tckdb-drift.yml` runs daily and on demand.
 
 Its `test` job has a read-only token. It compares the pinned release lines with the `main`
-branch of the TCKDB repository named in `tckdb-pin.toml`. On a newer line it bumps the
-pins in the runner, installs both TCKDB packages from that commit and every package of this
-repository, and runs each package's suite from its own directory, as `ci.yml` does. A failure in
-any of them makes the run a failed one.
+branch of the TCKDB repository named in `tckdb-pin.toml`. On a newer line it:
+
+1. bumps the pins in the runner;
+2. installs both TCKDB packages from the new commit and every package of this repository;
+3. fetches TCKDB's `backend/app/chemistry` at that new commit (`tools/fetch_tckdb_backend.sh`,
+   the script `ci.yml` uses at the old one) and exports `TCKDB_BACKEND_PATH` and
+   `TCKDB_REQUIRE_BACKEND=1` to the suites, so the comparisons with TCKDB's own code (the
+   level-of-theory hash, the energy-level declaration, the method families) run and cannot skip;
+4. runs each package's suite from its own directory.
+
+The suites are `ci.yml`'s, with these real differences: one Python version (3.12; `ci.yml` runs
+3.11 and 3.12), all four packages installed into one environment (`ci.yml` installs what each job
+needs, so a conflict between the packages shows up only here), and none of the
+`package-metadata` job (the builds, `twine check`, `tools/tests` and the non-ASCII check). The
+`result` is `pass` or `fail` (a suite failed), or a failure of the job itself that says nothing about
+the adapter and is never a pass: `install-failed` (pip) or `setup-failed` (the package list from
+`--list-packages` was empty or failed, or the backend could not be fetched).
 
 Its `publish` job is the only one with write access (`tools/tckdb_drift_publish.sh`):
 
 - **The tests pass.** It pushes the branch `chore/tckdb-drift-schemas-<X.Y>-client-<A.B>`
   and opens or updates the pull request "Track TCKDB: schemas X.Y.Z / client A.B.C (TCKDB
   <sha7>)", then starts `ci.yml` on the branch. The body carries the output of
-  `python -m tckdb_schemas.contract --since <old pin>` and a checklist. The checklist asks the
-  reviewer to complete each package's changelog entry: the tool writes only that the pin moved.
+  `python -m tckdb_schemas.contract --since <old pin>`, what `--bump` did (the floor raise
+  included), a note when the packages ended up on different lines, and a checklist. The
+  checklist asks the reviewer to complete each package's changelog entry (the two styles are
+  described under "The tool").
 - **The tests fail.** It opens or updates the issue "TCKDB drift: schemas X.Y / client A.B
-  breaks the adapter" with the failing tests. An install failure is titled "... install
+  breaks the adapter" with the failing tests and the steps to reproduce them (the `--bump`
+  command, the two TCKDB requirements from `--install-specs`, every package from
+  `--list-packages` installed editable with `[test]`, the backend fetch, and each suite run
+  from its own directory with `python -m pytest -p no:xdist -p no:cacheprovider`; the chemkin
+  and qcschema suites are not part of a root run, see `AGENTS.md`, "Running tests"). An install
+  failure is titled "... install failed", and a failure of the job's own setup "... setup
   failed".
 - **The tests pass but no pull request could be made.** The issue "TCKDB drift: schemas
   X.Y / client A.B is ready to adopt" names the branch or the `--bump` command.
+
+Every body the script sends to `gh` (issue, pull request, comment) is under GitHub's limit of
+65,536 characters, whatever the inputs: the failing-test summary and the `--since` output are each
+cut to 20,000 bytes, and the finished body to 60,000, with a marker that says how much was
+omitted (`tckdb_drift.py --cap-text`; the issue's state marker is added after the first cut so it
+always survives). The summary the test job writes is itself capped, and the dedup state below
+is computed from the failing-test lines of the whole summary, not from the displayed part.
 
 The bot's pull request does not run the docs build, because the bot dispatches only
 `ci.yml`; the docs build for its README changes first runs on `main` after the merge.
@@ -85,6 +125,7 @@ python tools/tckdb_drift.py --check --repo /path/or/url --ref some-branch
 python tools/tckdb_drift.py --bump --sha <40-hex> --schemas X.Y.Z --client A.B.C
 python tools/tckdb_drift.py --since-output --from <old X.Y.0>
 python tools/tckdb_drift.py --install-specs
+python tools/tckdb_drift.py --lines-note
 ```
 
 `--check` prints a JSON summary on stdout and one line on stderr. It exits 0 for no drift,
@@ -101,15 +142,27 @@ patch release inside the pinned line is already allowed by the bounds.
 - the install lines and the "tested contract" sentence in `README.md`;
 - the version sentence in `adapters/tckdb_arc/README.md`.
 
+Each package moves up to the target line and no further. A package already on or ahead of the
+target keeps its line: that is not a downgrade, so one package hand-moved to a newer line does
+not stop the others from following TCKDB. The bump is refused (exit 2) only when the target is
+behind *every* package that states the bound, unless `--allow-downgrade`, which moves every
+package to the target. `TARGET_SCHEMAS_LINE` moves up the same way. When the packages end up on
+different lines the tool says so on its output, `--lines-note` prints the same sentences, the
+bot's pull request carries them, and `tools/tests/test_pin_lines.py` fails until the lines agree
+again: someone decides whether the others follow the newer line or it is brought back.
+`--check` counts the oldest package as the pin, so it keeps reporting drift until every package
+has caught up.
+
 A package is released when one of its own files changed in that: its `pyproject.toml` bounds,
 for `tckdb_arc` its README sentence, for the core also `TARGET_SCHEMAS_LINE`. For each package
 released the tool:
 
 - bumps the patch version in `pyproject.toml` and, where the package has one (`tckdb_core`,
   `tckdb_chemkin`, `tckdb_qcschema`), in `__version__`, so the two stay equal;
-- adds a changelog entry: one line under the `<!-- tckdb-drift:changelog -->` marker in
-  `adapters/tckdb_arc/CHANGELOG.md`, and a `## X.Y.Z` section above the newest version heading in the
-  others.
+- adds a changelog entry in the package's style (`changelog_style`): `sections`, a `## X.Y.Z` section
+  above the newest version heading (a heading that already starts with that version, such as
+  `## X.Y.Z (unreleased)`, stops the bump instead of adding a second one); or `marker`, one line
+  under the `<!-- tckdb-drift:changelog -->` marker.
 
 When the core is released, a package that requires it (`tckdb_arc`) gets its
 `tckdb-adapters-core` floor raised to the new core version, and that releases it as well: the
@@ -118,18 +171,26 @@ predates them. A package nothing changed in is not released: a bump that moves o
 (the same release lines) releases no package, and a bump that moves only the `tckdb-schemas`
 line does not release `tckdb_chemkin`, which has no such bound.
 
-Running it twice changes nothing. It refuses to move any package's line backwards unless given
-`--allow-downgrade`.
+Running it twice changes nothing.
 
-What the generated entries say is limited to what the tool knows: that the pin moved, which
-bounds changed, and that the package's code is unchanged. The `tckdb-qcschema` entry also says
-its request body differs from the previous release's, because the payload records the adapter
-version, and its idempotency keys do not. The tool cannot know what a new contract does to a
-package's behaviour or payloads (a new refusal, a rule that now applies, a changed payload and
-the idempotency-key consequence). That is something only the reviewer can write; add it to the
-entries it applies to in the same pull request. The publish script's checklist says the same.
+What the generated entries say is limited to what the tool knows, and differs by style:
 
-`--since-output` needs the new `tckdb-schemas` installed. After a bump, pass `--from` the
+- A `sections` entry (`tckdb_core`, `tckdb-chemkin`, `tckdb-qcschema`) names the TCKDB commit, the
+  bounds that moved (and the core floor, when it was raised) and says the package's code is
+  unchanged. The `tckdb-qcschema` entry also says its request body differs from the previous
+  release's, because the payload records the adapter version, and its idempotency keys do not.
+  The core's says what `TARGET_SCHEMAS_LINE` is now.
+- A `marker` entry (`tckdb-arc`) is one line that names the TCKDB commit and the schemas and client
+  versions and, when the core was released and the tool raised the package's `tckdb-adapters-core`
+  floor, that floor (`; requires tckdb-adapters-core>=X.Y.Z`). It says nothing about the code.
+
+The tool cannot know what a new contract does to a package's behaviour or payloads (a new
+refusal, a rule that now applies, a changed payload and the idempotency-key consequence). That is
+something only the reviewer can write; add it to the entries it applies to in the same pull
+request. The publish script's checklist says the same.
+
+`--cap-text LIMIT` copies stdin to stdout cut to LIMIT bytes with a marker (the workflow and the
+publish script use it). `--since-output` needs the new `tckdb-schemas` installed. After a bump, pass `--from` the
 line the pin had before. `--install-specs` prints the two pip requirement strings built
 from `tckdb-pin.toml`.
 
@@ -143,7 +204,7 @@ and they are different checks:
 - `test_hash_matches_the_backend_payload_rules` runs wherever `TCKDB_BACKEND_PATH` names a
   TCKDB `backend/` directory. It needs only the backend's pure `app.chemistry` modules, so
   it rebuilds the hashed payload from TCKDB's identity keys and compares the final hashing
-  step replica against replica. CI runs this one.
+  step replica against replica. CI runs this one, and so does the drift job (at the new commit).
 - `test_hash_matches_the_real_backend_function` imports TCKDB's own
   `_level_of_theory_hash` and compares the replica with it over the test corpora and a few
   thousand combinations of method, basis, dispersion, solvent, spin and qualifiers. It

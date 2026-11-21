@@ -43,16 +43,10 @@ jobs:
         # pure modules. Same repo and sha as the install above (read from the spec, so
         # a --bump moves both). TCKDB_REQUIRE_BACKEND=1 makes the comparison fail, not
         # skip, if this step is ever removed. Locally: export TCKDB_BACKEND_PATH to a
-        # TCKDB checkout's backend/ (the comparison skips without it).
-        run: |
-          spec="${TCKDB_SCHEMAS_SPEC#*git+}"
-          repo="${spec%%@*}"
-          sha="${spec#*@}"; sha="${sha%%#*}"
-          git clone --quiet --filter=blob:none --no-checkout "$repo" "$RUNNER_TEMP/tckdb"
-          git -C "$RUNNER_TEMP/tckdb" sparse-checkout set backend/app/chemistry
-          git -C "$RUNNER_TEMP/tckdb" checkout --quiet "$sha"
-          echo "TCKDB_BACKEND_PATH=$RUNNER_TEMP/tckdb/backend" >> "$GITHUB_ENV"
-          echo "TCKDB_REQUIRE_BACKEND=1" >> "$GITHUB_ENV"
+        # TCKDB checkout's backend/ (the comparison skips without it). The fetch is
+        # tools/fetch_tckdb_backend.sh, which tckdb-drift.yml runs too; it prints the two
+        # variables.
+        run: bash ../../tools/fetch_tckdb_backend.sh "$TCKDB_SCHEMAS_SPEC" "$RUNNER_TEMP/tckdb" >> "$GITHUB_ENV"
 
       - name: Install tckdb-adapters-core (editable, before tckdb-arc)
         # tckdb-arc depends on tckdb-adapters-core (not on PyPI yet); the editable
