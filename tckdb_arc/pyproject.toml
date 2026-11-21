@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tckdb-arc"
-version = "0.15.16"
+version = "0.15.17"
 description = "ARC adapter for TCKDB: builds species, reaction and transition-state upload payloads from an ARC run and uploads them."
 requires-python = ">=3.11"
 readme = "README.md"
