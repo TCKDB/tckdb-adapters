@@ -2,8 +2,11 @@
 
 The twin of ``adapters/tckdb_arc/tests/test_contract_pin.py``: both read the one
 ``TARGET_SCHEMAS_LINE`` in :mod:`tckdb_core.testing.contract`, so a bump that moves it
-(``tools/tckdb_drift.py --bump``) is checked against every package's ``pyproject.toml``.
-The assertions are :mod:`tckdb_core.testing.contract_pin`.
+(``tools/tckdb_drift.py --bump``) is checked against the ``pyproject.toml`` of the core and of
+the ARC adapter, the two packages that use the kit. ``tckdb-chemkin`` and ``tckdb-qcschema`` do
+not depend on the core: each checks the bounds it states against the installed packages in its
+own ``tests/test_contract_pin.py``, and ``tools/tests/test_pin_lines.py`` checks that every
+package states the core's lines. The assertions are :mod:`tckdb_core.testing.contract_pin`.
 """
 
 from pathlib import Path
