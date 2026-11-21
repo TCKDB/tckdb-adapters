@@ -3,6 +3,13 @@
 Releases are listed newest first. Each `tckdb-arc` release names the core version it needs in its
 own changelog.
 
+## 0.5.18
+
+No payload, idempotency key or sidecar change. Comment and README wording only: the
+`PRODUCER_TAG` comment and the README example no longer say every sidecar self-check warning
+carries the producer's tag. The producer's own warnings do, when it passes the tag to
+`WarningSink`; the core's pre-POST check writes its two codes with `tckdb_core_self_check`.
+
 ## 0.5.17
 
 No payload, idempotency key or sidecar change. Log messages from the thermo numerics and the
