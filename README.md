@@ -53,10 +53,10 @@ local TCKDB checkout you can install the two TCKDB packages from its `clients/py
 Each adapter has its own README with its settings and its command; for ARC that is
 [`tckdb_arc/README.md`](tckdb_arc/README.md). Every adapter writes each payload to disk
 before it makes any request, next to a sidecar file that records the idempotency key, the
-server's answer and every warning. Running an adapter again sends the same keys, so a
-repeated upload does not create a second deposit. The ARC adapter's mapping, what each ARC
-field becomes in TCKDB and what is left out, is in
-[`docs/contract/ARC_MAPPING.md`](docs/contract/ARC_MAPPING.md).
+server's answer and every warning. Running the same adapter release on the same output again
+sends the same keys, so a repeated upload does not create a second deposit. Each adapter's
+README links the document that says what each source field becomes in TCKDB and what is
+left out.
 
 ## Run the tests
 

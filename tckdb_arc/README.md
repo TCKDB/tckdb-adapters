@@ -14,7 +14,7 @@ Requires Python 3.11+, `tckdb-client` 0.208.x and `tckdb-schemas` 0.175.x, and
 ## Use
 
 ARC runs the adapter at the end of a run when the project's `input.yml` has an enabled
-`tckdb` block. The smallest block that uploads:
+`tckdb` block. A block that uploads computed species:
 
 ```yaml
 tckdb:
@@ -24,9 +24,12 @@ tckdb:
   upload: true                    # false writes the payloads and sends nothing
 ```
 
-Put the API key in the `TCKDB_API_KEY` environment variable. The same sweep can be run
-later on a finished project. Build and inspect first with `--offline`, which makes no
-request, then upload by leaving it off:
+Only `enabled` and `base_url` are required. `upload` defaults to `true` and `upload_mode`
+to `conformer`.
+
+Put the API key in the `TCKDB_API_KEY` environment variable; the `api_key_*` keys in the
+table below name other places to keep it. The same sweep can be run later on a finished
+project. Build and inspect first with `--offline`, then upload by leaving it off:
 
 ```bash
 tckdb-arc-upload /path/to/project/input.yml --offline
