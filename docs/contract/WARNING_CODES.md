@@ -77,3 +77,5 @@ and the sidecar carries the server's own warnings beside these.
 | Code | Meaning |
 |------|---------|
 | `calculation_ref_not_returned` | The upload response carried no `calculation_ref`, so a calculation's artifacts were not uploaded: TCKDB (0.116) addresses a calculation by its `calc_` ref only and refuses an integer id. |
+| `payload_failed_local_validation` | A request did not match the tckdb-schemas contract for its route, so it was not posted: the payload file stays on disk and the sidecar is `failed`. This is the adapter's own check, not a server refusal; `validate_before_upload = false` turns it off. |
+| `payload_local_validation_unavailable` | The adapter's own pre-POST contract check raised an error of its own, so the request was posted unchecked: an internal checker failure is not a verdict on the request. |

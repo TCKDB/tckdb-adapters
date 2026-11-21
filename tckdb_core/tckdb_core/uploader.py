@@ -60,6 +60,7 @@ from tckdb_core.payload_writer import (
 )
 from tckdb_core.adapter_warnings import AdapterWarning
 from tckdb_core.standalone import StandaloneSubmitMixin
+from tckdb_core.validation import PreUploadValidationMixin
 from tckdb_core.warning_codes import CoreWarning
 
 # Upload modes whose bundle payload already carries input/output_log
@@ -540,7 +541,7 @@ def _close_quietly(client: Any, context: str, log: Any = None) -> None:
         resolve_log(log).debug("TCKDB client close errored %s", context, exc_info=True)
 
 
-class TCKDBUploaderBase(StandaloneSubmitMixin):
+class TCKDBUploaderBase(StandaloneSubmitMixin, PreUploadValidationMixin):
     """The producer-agnostic upload, sidecar and readiness pipeline.
 
     A producer adapter subclasses this, builds its payload, writes it with
@@ -709,6 +710,9 @@ class TCKDBUploaderBase(StandaloneSubmitMixin):
         endpoint: str = CONFORMER_UPLOAD_ENDPOINT,
     ) -> UploadOutcome:
         sc = written.sidecar
+        refused = self._refuse_invalid_payload(written, endpoint, payload)
+        if refused is not None:
+            return refused
         api_key = self._config.resolve_api_key()
         if not api_key:
             msg = (
@@ -1310,6 +1314,9 @@ class TCKDBUploaderBase(StandaloneSubmitMixin):
         prepared: list[PreparedArtifactUpload],
         idempotency_key_prefix: str,
     ) -> list[ArtifactUploadOutcome]:
+        refused = self._refuse_invalid_artifact_batch(prepared)
+        if refused is not None:
+            return refused
         api_key = self._config.resolve_api_key()
         if not api_key:
             msg = (

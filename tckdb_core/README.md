@@ -18,6 +18,7 @@ TCKDB contract, and **nothing that reads a producer's output format**.
 | `payload_writer` | Writes the payload JSON once and the sidecar eagerly, in one subdirectory per payload kind; sidecar and replay types. |
 | `uploader` | `TCKDBUploaderBase`: readiness probe with backoff, POST, sidecar bookkeeping (status, response, server warnings, request ids), strict mode, artifact batches. |
 | `standalone` | `submit_standalone` (a method of `TCKDBUploaderBase`) and `STANDALONE_ROUTES`: posts a finished thermo, kinetics, statmech, transport, reaction, network or pressure-dependent network request. It validates the request against the route's shipped JSON Schema (shape only), attaches `config.rights`, writes the payload and sidecar, and uploads with the same readiness, idempotency and strict-mode behaviour as the other routes. It builds none of these requests. |
+| `validation` | `ROUTE_SCHEMAS` (the one endpoint-to-contract table, read by `standalone` and the test kit), the cached validators, `request_findings` (the published pydantic model where there is one, as the server runs it; the JSON Schema for the standalone routes) and `PayloadContractError`. `TCKDBUploaderBase` runs it before every POST, artifact batches included; a request that fails is not posted and its sidecar is `failed` with `payload_failed_local_validation`. `config.validate_before_upload = False` turns it off. |
 | `outcomes` | `UploadOutcome`, `ArtifactUploadOutcome`, `TCKDBReadinessError`. |
 | `constants` | Route endpoints and payload kinds (the four built routes, artifacts and the seven standalone record routes), the readiness retry policy, and the `origin_kind` values and log-file extensions read from tckdb-schemas. |
 | `idempotency` | Idempotency-key composition. The key namespace is a required argument. |
@@ -79,7 +80,10 @@ class MyToolAdapter(TCKDBUploaderBase):
 
     def _build_species_payload(self, record, warnings):
         # The producer's own mapping. A real one builds the whole request and
-        # reports each omission through a registered code.
+        # reports each omission through a registered code. This request is a
+        # placeholder: before the POST the core checks the finished request against
+        # the contract (`validate_before_upload`), and a real one is a whole
+        # ComputedSpeciesUploadRequest.
         warnings.add(
             MyToolWarning.REFERENCE_PRESSURE_NOT_STATED,
             f"{record.label} states no standard-state pressure",
@@ -147,7 +151,7 @@ without `pytest`. (`jsonschema` is a runtime dependency since 0.5.11, for `stand
 
 | Module | Use |
 |--------|-----|
-| `contract` | `contract_validate(model, payload)`, `assert_request_is_accepted`, `REQUEST_MODELS` (only the routes whose request model tckdb-schemas publishes), `ROUTE_SCHEMAS` (every route the core carries), and `TARGET_SCHEMAS_LINE`, the one tckdb-schemas line every suite pins. Validates with the published pydantic model when there is one, then the shipped JSON Schema. |
+| `contract` | `contract_validate(model, payload)`, `assert_request_is_accepted`, `REQUEST_MODELS` (only the routes whose request model tckdb-schemas publishes), `ROUTE_SCHEMAS` (every route the core carries; the same table `tckdb_core.validation` checks requests with before the POST), and `TARGET_SCHEMAS_LINE`, the one tckdb-schemas line every suite pins. Validates with the published pydantic model when there is one, then the shipped JSON Schema. |
 | `contract_hook` | `contract_checks_fixture(adapter_cls=..., payload_builders={"_build_x": "<schema name>", ...})`: the autouse fixture that checks every request the adapter builds. `register_markers(config)` registers `payload_refused_by_contract`. An adapter's `conftest.py` names its own builders. |
 | `contract_pin` | The four assertions of a package's `test_contract_pin.py`: installed tckdb-schemas line, `pyproject.toml` bound, contract document stamp, a shipped schema for every route. |
 | `stubs` | `StubClient`, `StubResponse`, `SequencedReadyzClient` and `upload_calls`: stand-ins for `TCKDBClient`, handed to an adapter through `client_factory`. |

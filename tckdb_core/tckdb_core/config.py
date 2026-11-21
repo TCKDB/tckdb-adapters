@@ -119,6 +119,10 @@ class TCKDBConfig:
     upload: bool = True
     preflight: bool = True
     strict: bool = False
+    #: Check every request against the shipped tckdb-schemas contract before it is posted; a request
+    #: that fails is not posted and its sidecar is ``failed`` (``payload_failed_local_validation``).
+    #: ``False`` posts whatever was built and leaves the check to the server.
+    validate_before_upload: bool = True
     timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS
     project_label: str | None = field(
         default=None,

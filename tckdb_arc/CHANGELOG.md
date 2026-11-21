@@ -12,6 +12,7 @@ of tracked releases.
 `tools/tckdb_drift.py --bump` adds a line below the marker each time it moves the pin.
 
 <!-- tckdb-drift:changelog -->
+- Adapter 0.15.12: pre-POST contract check, `validate_before_upload`; same pin as 0.15.7 (TCKDB d4d5346).
 - Adapter 0.15.11: submit methods share one write-and-upload template in `tckdb_core`; same pin as 0.15.7 (TCKDB d4d5346).
 - Adapter 0.15.10: artifact submit methods moved to `tckdb_core`; same pin as 0.15.7 (TCKDB d4d5346).
 - Adapter 0.15.9: public names for core helpers and artifact kinds read from tckdb-schemas; same pin as 0.15.7 (TCKDB d4d5346).
@@ -31,6 +32,15 @@ of tracked releases.
 - Adapter 0.6.9: tracked TCKDB f22d3a8 (schemas 0.64.0, client 0.102.0).
 - Adapter 0.6.8: tracked TCKDB a515fb9 (schemas 0.58.0, client 0.98.0).
 
+## 0.15.12
+
+Needs `tckdb-adapters-core` `>=0.5.13,<0.6`. No payload change.
+
+- New `tckdb` config key `validate_before_upload` (default `true`). Every request is now checked
+  against the shipped tckdb-schemas contract just before it is posted (the published model where there is one, as the server runs it); a request that fails is not
+  posted and its sidecar is `failed` with `payload_failed_local_validation` (see the core's 0.5.13
+  entry). `false` posts whatever was built. ARC's own payloads all pass: the whole suite built and
+  checked them with no change to a builder.
 ## 0.15.11
 
 Needs `tckdb-adapters-core` `>=0.5.12,<0.6`. No payload change.

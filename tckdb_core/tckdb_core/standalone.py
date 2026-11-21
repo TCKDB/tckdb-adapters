@@ -12,7 +12,10 @@ For one request it
 
 1. attaches ``config.rights`` when the request states none (a request that states
    different rights is refused);
-2. validates the request against the route's shipped JSON Schema, and raises
+2. validates the request against the route's contract with :mod:`tckdb_core.validation` (the
+   shipped JSON Schema: these routes have no published model). This check stays on whatever
+   ``config.validate_before_upload`` says: that switch governs only the check
+   :meth:`~tckdb_core.uploader.TCKDBUploaderBase._upload` makes just before the POST. It raises
    :class:`StandalonePayloadError` before anything is written when TCKDB's contract
    would refuse it;
 3. hands the finished request to
@@ -32,14 +35,9 @@ Nothing here reads a producer's output format.
 from __future__ import annotations
 
 import copy
-import json
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from functools import lru_cache
 from typing import TYPE_CHECKING, Any
-
-from jsonschema import Draft202012Validator
-from tckdb_schemas import contract
 
 from tckdb_core.constants import (
     KINETICS_ENDPOINT,
@@ -58,6 +56,15 @@ from tckdb_core.constants import (
     TRANSPORT_KIND,
 )
 from tckdb_core.payload_writer import PayloadWriter
+from tckdb_core.validation import (
+    MAX_FINDING_CHARS,  # noqa: F401  (public name, kept)
+    ROUTE_SCHEMAS,
+    PayloadContractError,
+    clip as _clip,
+    json_schema_validator as _validator,  # noqa: F401  (earlier private name, kept)
+    contract_error,
+    request_findings,
+)
 
 if TYPE_CHECKING:  # pragma: no cover
     from tckdb_core.outcomes import UploadOutcome
@@ -81,14 +88,14 @@ def _routes(*routes: StandaloneRoute) -> Mapping[str, StandaloneRoute]:
 
 #: The standalone record routes the core transports, by payload kind.
 STANDALONE_ROUTES: Mapping[str, StandaloneRoute] = _routes(
-    StandaloneRoute(THERMO_KIND, THERMO_ENDPOINT, "ThermoUploadRequest", PayloadWriter.THERMO_SUBDIR),
-    StandaloneRoute(KINETICS_KIND, KINETICS_ENDPOINT, "KineticsUploadRequest", PayloadWriter.KINETICS_SUBDIR),
-    StandaloneRoute(STATMECH_KIND, STATMECH_ENDPOINT, "StatmechUploadRequest", PayloadWriter.STATMECH_SUBDIR),
-    StandaloneRoute(TRANSPORT_KIND, TRANSPORT_ENDPOINT, "TransportUploadRequest", PayloadWriter.TRANSPORT_SUBDIR),
-    StandaloneRoute(REACTION_KIND, REACTION_ENDPOINT, "ReactionUploadRequest", PayloadWriter.REACTION_SUBDIR),
-    StandaloneRoute(NETWORK_KIND, NETWORK_ENDPOINT, "NetworkUploadRequest", PayloadWriter.NETWORK_SUBDIR),
+    StandaloneRoute(THERMO_KIND, THERMO_ENDPOINT, ROUTE_SCHEMAS[THERMO_ENDPOINT], PayloadWriter.THERMO_SUBDIR),
+    StandaloneRoute(KINETICS_KIND, KINETICS_ENDPOINT, ROUTE_SCHEMAS[KINETICS_ENDPOINT], PayloadWriter.KINETICS_SUBDIR),
+    StandaloneRoute(STATMECH_KIND, STATMECH_ENDPOINT, ROUTE_SCHEMAS[STATMECH_ENDPOINT], PayloadWriter.STATMECH_SUBDIR),
+    StandaloneRoute(TRANSPORT_KIND, TRANSPORT_ENDPOINT, ROUTE_SCHEMAS[TRANSPORT_ENDPOINT], PayloadWriter.TRANSPORT_SUBDIR),
+    StandaloneRoute(REACTION_KIND, REACTION_ENDPOINT, ROUTE_SCHEMAS[REACTION_ENDPOINT], PayloadWriter.REACTION_SUBDIR),
+    StandaloneRoute(NETWORK_KIND, NETWORK_ENDPOINT, ROUTE_SCHEMAS[NETWORK_ENDPOINT], PayloadWriter.NETWORK_SUBDIR),
     StandaloneRoute(
-        NETWORK_PDEP_KIND, NETWORK_PDEP_ENDPOINT, "NetworkPDepUploadRequest", PayloadWriter.NETWORK_PDEP_SUBDIR
+        NETWORK_PDEP_KIND, NETWORK_PDEP_ENDPOINT, ROUTE_SCHEMAS[NETWORK_PDEP_ENDPOINT], PayloadWriter.NETWORK_PDEP_SUBDIR
     ),
 )
 
@@ -96,15 +103,13 @@ STANDALONE_ROUTES: Mapping[str, StandaloneRoute] = _routes(
 DEFAULT_QUALIFIER = "standalone"
 
 
-class StandalonePayloadError(ValueError):
+class StandalonePayloadError(PayloadContractError):
     """The request is not one TCKDB's contract accepts for its route; nothing was written.
 
-    ``errors`` lists each finding as ``"<path>: <message>"``.
+    ``errors`` lists each finding as ``"<path>: <message>"``. A
+    :class:`~tckdb_core.validation.PayloadContractError`, so one ``except`` covers this and the
+    refusal strict mode raises at the POST.
     """
-
-    def __init__(self, message: str, errors: Iterable[str] = ()):
-        self.errors = list(errors)
-        super().__init__(message)
 
 
 def standalone_route(kind: str) -> StandaloneRoute:
@@ -117,52 +122,24 @@ def standalone_route(kind: str) -> StandaloneRoute:
         ) from None
 
 
-@lru_cache(maxsize=None)
-def _validator(schema_name: str) -> Draft202012Validator:
-    schema = contract.json_schema(schema_name)
-    Draft202012Validator.check_schema(schema)
-    return Draft202012Validator(schema)
-
-
-#: Longest finding message kept; jsonschema messages quote the offending value, which can be large.
-MAX_FINDING_CHARS = 200
-
-
-def _clip(text: str) -> str:
-    return text if len(text) <= MAX_FINDING_CHARS else text[:MAX_FINDING_CHARS] + "... [truncated]"
-
-
 def standalone_payload_errors(kind: str, payload: Any) -> list[str]:
-    """Every way ``payload`` fails the route's shipped JSON Schema, as ``"<path>: <message>"``.
+    """Every way ``payload`` fails the route's contract, as ``"<path>: <message>"``.
 
-    The request is checked as the client sends it: through a JSON round trip, so a value
-    that is not JSON, or a NaN or infinity, is a finding. An empty list means the shape is
-    accepted; it says nothing about the rules the route handlers apply.
+    :func:`tckdb_core.validation.request_findings` for the route's endpoint. These routes have no
+    published pydantic model, so the check is the shipped JSON Schema, which decides shape only.
+    The request is checked as the client sends it: through a JSON round trip, so a value that is
+    not JSON, or a NaN or infinity, is a finding. An empty list means the shape is accepted; it
+    says nothing about the rules the route handlers apply.
     """
-    route = standalone_route(kind)
-    if not isinstance(payload, Mapping):
-        return [f"<root>: a {route.schema_name} is a JSON object, got {type(payload).__name__}"]
-    try:
-        wire = json.loads(json.dumps(payload, allow_nan=False))
-    except (TypeError, ValueError) as exc:
-        return [f"<root>: not serialisable as the JSON the client sends ({_clip(str(exc))})"]
-    findings = sorted(_validator(route.schema_name).iter_errors(wire), key=lambda e: list(map(str, e.path)))
-    return [
-        f"{'/'.join(map(str, e.absolute_path)) or '<root>'}: {_clip(e.message)}" for e in findings
-    ]
+    return request_findings(standalone_route(kind).endpoint, payload)
 
 
 def validate_standalone_payload(kind: str, payload: Any) -> None:
-    """Raise :class:`StandalonePayloadError` unless ``payload`` matches the route's shipped schema."""
+    """Raise :class:`StandalonePayloadError` unless ``payload`` matches the route's contract."""
     errors = standalone_payload_errors(kind, payload)
     if errors:
-        route = standalone_route(kind)
-        shown = "\n".join(f"  at {line}" for line in errors[:10])
-        raise StandalonePayloadError(
-            f"{kind} payload does not match the tckdb-schemas contract for {route.schema_name} "
-            f"({len(errors)} finding(s)):\n{shown}",
-            errors,
-        )
+        refusal = contract_error(standalone_route(kind).endpoint, errors, what=f"{kind} payload")
+        raise StandalonePayloadError(str(refusal), errors)
 
 
 class StandaloneSubmitMixin:
@@ -198,7 +175,9 @@ class StandaloneSubmitMixin:
         Returns ``None`` when the config is disabled. Raises :class:`StandalonePayloadError`,
         before any file is written, for a request the contract refuses, a request whose
         ``rights`` differ from the configured ones, an empty ``label``, or a label, qualifier or
-        project label so long that the idempotency key exceeds the server's 200 characters; strict mode does not
+        project label so long that the idempotency key exceeds the server's 200 characters, whatever
+        ``config.validate_before_upload`` says (that switch governs only the check just before the
+        POST); strict mode does not
         turn that into a recorded failure, because a payload that never passed validation
         has nothing to replay. Otherwise the outcome is that of ``_upload`` (``uploaded``,
         ``failed``, or ``skipped`` when ``config.upload`` is off).

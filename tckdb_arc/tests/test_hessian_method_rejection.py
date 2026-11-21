@@ -42,7 +42,7 @@ def _refusal():
         status_code=422, parsed=body, text=json.dumps(body), headers={"X-Request-ID": "req-hessian"})
 
 
-def _sweep(tmp_path, *, strict=False):
+def _sweep(tmp_path, *, strict=False, validate=False):
     doc = _doc()
     doc["species"] = [copy.deepcopy(_species(doc, "sBuOH"))]
     record = doc["species"][0]
@@ -53,6 +53,9 @@ def _sweep(tmp_path, *, strict=False):
         enabled=True, base_url="http://localhost:8000/api/v1", payload_dir=str(tmp_path / "payloads"),
         api_key_env="X_TCKDB_API_KEY", project_label="hessian", upload_mode="computed_species",
         upload=True, preflight=False, strict=strict,
+        # The stub plays the server refusing the contradiction. The adapter's own pre-POST check
+        # (the published model carries this rule) would stop the request first; see the last test.
+        validate_before_upload=validate,
         artifacts=TCKDBArtifactConfig(upload=True, kinds=("input",)),
     )
     client = _StubClient(raise_exc=_refusal())
@@ -106,3 +109,47 @@ def test_strict_mode_still_shows_the_code_in_the_sweep_output(tmp_path):
     (line,) = [ln for ln in printed.splitlines() if ln.strip().startswith("failed: sBuOH")]
     assert "TCKDBValidationError" in line and f"[{CODE}]" in line
     assert len([c for c in client.calls if c["path"] != "/readyz"]) == 1
+
+
+@pytest.mark.payload_refused_by_contract
+def test_the_adapters_own_check_stops_the_contradiction_before_the_post(tmp_path):
+    """With the default config the published model refuses the contradiction locally: nothing is posted."""
+    client, printed = _sweep(tmp_path, validate=True)
+    assert [c for c in client.calls if c["path"] != "/readyz"] == []
+    (sidecar_path,) = (tmp_path / "payloads").rglob("*.meta.json")
+    sidecar = json.loads(sidecar_path.read_text())
+    assert sidecar["status"] == "failed" and sidecar["response_status_code"] is None
+    assert sidecar["last_error"].startswith("payload_failed_local_validation:")
+    assert [w["code"] for w in sidecar["warnings"] if w["code"] == "payload_failed_local_validation"]
+    assert list((tmp_path / "payloads").rglob("*.payload.json"))  # the payload stays for inspection
+    assert "failed: 1" in printed
+
+
+def _local_refusal_line(printed):
+    (line,) = [ln for ln in printed.splitlines() if ln.strip().startswith("failed: sBuOH")]
+    return line
+
+
+@pytest.mark.payload_refused_by_contract
+def test_the_local_refusal_is_as_clear_as_the_servers_was(tmp_path):
+    """The `failed:` line names the code, where it is, the recorded method, the deck's value and the remedy."""
+    _, printed = _sweep(tmp_path, validate=True)
+    line = _local_refusal_line(printed)
+    assert "payload_failed_local_validation" in line and CODE in line
+    assert "conformers/0/additional_calculations/0" in line and "freq.hessian_method" in line
+    assert f"was {ANALYTIC}" in line and f"says {FD_GRADIENT}" in line
+    assert "correct the recorded value or the deck" in line  # the model's remedy, not clipped
+    assert "Value error" not in line
+    sidecar = json.loads(next((tmp_path / "payloads").rglob("*.meta.json")).read_text())
+    assert sidecar["last_error"].splitlines()[0] == line.split(" — ", 1)[1]
+    (warning,) = [w for w in sidecar["warnings"] if w["code"] == "payload_failed_local_validation"]
+    assert warning["context"]["refusal_codes"] == [CODE]
+    assert warning["context"]["source"] == "tckdb_core_self_check"
+
+
+@pytest.mark.payload_refused_by_contract
+def test_strict_mode_shows_the_local_refusal_in_the_sweep_output(tmp_path):
+    client, printed = _sweep(tmp_path, validate=True, strict=True)
+    line = _local_refusal_line(printed)
+    assert "PayloadContractError" in line and CODE in line and f"says {FD_GRADIENT}" in line
+    assert [c for c in client.calls if c["path"] != "/readyz"] == []

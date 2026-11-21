@@ -70,6 +70,7 @@ almost fits:
 | Posting a finished thermo, kinetics, statmech, transport, reaction or network request | `TCKDBUploaderBase.submit_standalone` (`standalone`); validates against the shipped schema, builds nothing |
 | Payload and sidecar files | `payload_writer.PayloadWriter` (`self._writer`) |
 | Idempotency keys | `idempotency` (pass the producer's namespace) |
+| Checking a request against the shipped contract before the POST; the endpoint-to-schema table | `validation` (`ROUTE_SCHEMAS`; `TCKDBUploaderBase._upload` runs it; `config.validate_before_upload`) |
 | Config fields, API-key resolution | `config` |
 | Endpoints, payload kinds | `constants` |
 | Warnings | `adapter_warnings.WarningSink`, `warning_codes.CodedEnum` |

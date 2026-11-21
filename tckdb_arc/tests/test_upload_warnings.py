@@ -26,7 +26,8 @@ def test_upload_preserves_and_logs_complete_structured_warnings(tmp_path, monkey
     )
     adapter = TCKDBAdapter(
         TCKDBConfig(base_url="https://example.invalid", payload_dir=str(tmp_path),
-                    api_key_env="TCKDB_WARNING_TEST_KEY", preflight=False),
+                    api_key_env="TCKDB_WARNING_TEST_KEY", preflight=False,
+                    validate_before_upload=False),  # these tests post an empty body to read the response
         client_factory=lambda *args, **kwargs: client,
     )
     written = adapter._writer.write(
@@ -55,7 +56,8 @@ def test_upload_without_warning_list_keeps_legacy_response(tmp_path, monkeypatch
     )
     adapter = TCKDBAdapter(
         TCKDBConfig(base_url="https://example.invalid", payload_dir=str(tmp_path),
-                    api_key_env="TCKDB_WARNING_TEST_KEY", preflight=False),
+                    api_key_env="TCKDB_WARNING_TEST_KEY", preflight=False,
+                    validate_before_upload=False),  # these tests post an empty body to read the response
         client_factory=lambda *args, **kwargs: client,
     )
     written = adapter._writer.write(

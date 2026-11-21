@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tckdb-adapters-core"
-version = "0.5.12"
+version = "0.5.13"
 description = "Shared core of the TCKDB upload adapters: payload writer, upload pipeline, idempotency keys, level identity, numerics, rule pre-checks and a contract test kit."
 requires-python = ">=3.11"
 readme = "README.md"
@@ -22,6 +22,7 @@ classifiers = [
 dependencies = [
     "tckdb-client>=0.208,<0.209",   # tested transport + replay contract
     "tckdb-schemas>=0.175,<0.176", # the producer contract module ships from 0.52
+    "pydantic>=2.6",              # the published request models the pre-POST check runs (tckdb-schemas requires the same)
     "jsonschema>=4.18",           # standalone submit validates against the shipped schemas
     "PyYAML>=6",                  # element data loader (tckdb_core.xyz)
     "numpy>=1.23",               # xyz_from_data / xyz_to_str

@@ -118,7 +118,9 @@ def test_the_readme_producer_example_runs_against_a_stub_client(tmp_path, monkey
 
     def config(**overrides):
         return TCKDBConfig(**{"enabled": True, "base_url": "http://127.0.0.1:1/api/v1", "payload_dir": str(tmp_path),
-                              "api_key_env": "TCKDB_STUB_KIT_KEY", "project_label": "proj", **overrides})
+                              "api_key_env": "TCKDB_STUB_KIT_KEY", "project_label": "proj",
+                              # the README's request is a placeholder, not a whole ComputedSpeciesUploadRequest
+                              "validate_before_upload": False, **overrides})
 
     assert MyToolAdapter(config(enabled=False)).submit_species(record) is None
     assert MyToolAdapter(config(upload=False)).submit_species(record).status == "skipped"
