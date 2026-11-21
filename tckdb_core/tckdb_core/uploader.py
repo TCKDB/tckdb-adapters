@@ -631,8 +631,9 @@ class TCKDBUploaderBase(StandaloneSubmitMixin, PreUploadValidationMixin):
     A subclass sets the three class attributes below and may override the hooks.
     """
 
-    #: Machine tag for the producer; sidecar self-check warnings carry
-    #: ``context.source == f"{PRODUCER_TAG}_self_check"``.
+    #: Machine tag for the producer; pass it to ``WarningSink`` so the adapter's own
+    #: self-check warnings carry ``context.source == f"{PRODUCER_TAG}_self_check"`` (the
+    #: core's pre-POST check uses ``tckdb_core_self_check``).
     PRODUCER_TAG: str = "producer"
     #: Display name used in skip reasons and messages.
     PRODUCER_NAME: str = "the producer"

@@ -75,7 +75,7 @@ class MyToolWarning(CodedEnum):
 
 
 class MyToolAdapter(TCKDBUploaderBase):
-    PRODUCER_TAG = "tckdb_mytool"       # sidecar warnings: source "tckdb_mytool_self_check"
+    PRODUCER_TAG = "tckdb_mytool"       # your own warnings: source "tckdb_mytool_self_check"
     PRODUCER_NAME = "MyTool"
     IDEMPOTENCY_NAMESPACE = "mytool"    # keys: "mytool:<project>:..."
     LOGGER_NAME = "tckdb_mytool"
