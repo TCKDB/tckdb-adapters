@@ -148,7 +148,6 @@ from tckdb_core.uploader import (  # noqa: F401
     _skip,
     _summarize_artifact_batch_results,
     _summarize_response_body,
-    _artifact_batch_idempotency_prefix as _core_artifact_batch_idempotency_prefix,
 )
 
 
@@ -1287,8 +1286,8 @@ class TCKDBAdapter(TCKDBUploaderBase):
         fallback for a response that carries no ref (an older server): it is used
         only then, with a warning, and never preferred over a ref.
 
-        ``calculation_type`` is recorded in the sidecar but does not feed
-        the URL — the endpoint takes the calculation handle directly.
+        ``calculation_type`` is accepted for the callers that pass it and is not
+        used: the endpoint takes the calculation handle directly.
         """
         outcomes = self.submit_artifact_batch_for_calculation(
             output_doc=output_doc,
@@ -1316,78 +1315,26 @@ class TCKDBAdapter(TCKDBUploaderBase):
 
         The calculation is named by ``calculation_ref`` (``calc_...``); the
         integer ``calculation_id`` is a fallback, warned about, for a response that
-        returned no ref.
+        returned no ref. The upload itself is
+        :meth:`tckdb_core.uploader.TCKDBUploaderBase.submit_artifact_batch_for_calculation`;
+        this method supplies the species label from ``species_record`` and hands
+        ``output_doc`` to :meth:`_project_label_for`. ``calculation_type`` is
+        accepted for the callers that pass it and is not used.
         """
         if not self._config.enabled:
             return None
-        calculation_ref = calculation_ref or None
-        if calculation_ref is None:
-            if calculation_id is None:
-                raise ValueError("an artifact upload needs a calculation_ref")
-            # tckdb-schemas 0.116: ``POST /calculations/{calculation_ref}/artifacts`` takes the
-            # ``calc_`` ref only; an integer id in any spelling is refused (422 ``invalid_handle``)
-            # and ``tckdb-client`` raises before posting. Nothing is sent, and the integer id is
-            # not turned into a ref: a handle is the server's to mint.
-            reason = (
-                f"the upload response carried no calculation_ref for calculation {calculation_id}; "
-                "TCKDB addresses a calculation's artifacts by its calc_ ref only (0.116)")
-            logger.warning("TCKDB %s: %s; its artifacts were not uploaded.",
-                           _W_CALCULATION_REF_NOT_RETURNED, reason)
-            return [
-                ArtifactUploadOutcome(
-                    status="skipped", sidecar_path=None, idempotency_key=None,
-                    calculation_id=calculation_id, calculation_ref=None, kind=kind,
-                    skip_reason=f"{_W_CALCULATION_REF_NOT_RETURNED}: {reason}")
-                for kind, _ in artifacts
-            ]
-        handle = calculation_ref
-
-        species_label = species_record.get("label") or "unlabeled"
-        artifact_cfg = self._config.artifacts
-        outcomes: list[ArtifactUploadOutcome] = []
-        prepared: list[_PreparedArtifactUpload] = []
-
-        for kind, file_path in artifacts:
-            prepared_item = self._prepare_artifact_upload(
-                output_doc=output_doc,
-                species_label=species_label,
-                calculation_id=calculation_id,
-                calculation_ref=calculation_ref,
-                kind=kind,
-                file_path=file_path,
-                artifact_cfg=artifact_cfg,
-            )
-            if isinstance(prepared_item, ArtifactUploadOutcome):
-                outcomes.append(prepared_item)
-            else:
-                prepared.append(prepared_item)
-
-        if not prepared:
-            return outcomes
-
-        batch_digest = _artifact_batch_digest(prepared)
-        first = prepared[0]
-        prepared[0] = _PreparedArtifactUpload(
-            written=first.written,
-            calculation_key=f"{handle}-{batch_digest}",
-            calculation_id=first.calculation_id,
-            path=first.path,
-            kind=first.kind,
-            label=first.label,
-            sha256=first.sha256,
-            bytes=first.bytes,
-            filename=first.filename,
-            calculation_ref=first.calculation_ref,
+        # Without a ref the core returns skipped outcomes before it reads the label, so the
+        # record is not touched then (a caller may pass ``species_record=None`` with an id only).
+        species_label = (
+            (species_record.get("label") or "unlabeled") if calculation_ref else "unlabeled"
         )
-
-        batch_outcomes = self._upload_artifact_batch(
-            prepared=prepared,
-            idempotency_key_prefix=_artifact_batch_idempotency_prefix(
-                self._config.project_label or output_doc.get("project"),
-                species_label,
-            ),
+        return super().submit_artifact_batch_for_calculation(
+            species_label=species_label,
+            calculation_id=calculation_id,
+            calculation_ref=calculation_ref,
+            artifacts=artifacts,
+            output_doc=output_doc,
         )
-        return outcomes + batch_outcomes
 
     # ------------------------------------------------------------------
     # Computed-species bundle path (POST /uploads/computed-species)
@@ -12088,13 +12035,6 @@ def _warn_isotopes_not_stated(
         warnings.append(_self_check(
             _W_GEOMETRY_ISOTOPES_NOT_STATED, message, "geometry.isotopes",
             {"action": "geometry_omitted"}))
-
-
-def _artifact_batch_idempotency_prefix(project_label: Any, species_label: Any) -> str:
-    """ARC's artifact-batch key prefix, ``arc:<project>:<species>:artifact`` (see tckdb_core)."""
-    return _core_artifact_batch_idempotency_prefix(
-        project_label, species_label, namespace=TCKDBAdapter.IDEMPOTENCY_NAMESPACE,
-    )
 
 
 __all__ = [

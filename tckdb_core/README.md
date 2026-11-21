@@ -113,7 +113,12 @@ class MyToolAdapter(TCKDBUploaderBase):
 The order is fixed: build the payload, write it with its sidecar, then upload. The base
 class owns everything after the write: the readiness probe with backoff, the POST, the
 sidecar's status, response, warnings and request ids, strict mode, and artifact batches
-(`_prepare_artifact_upload`, `_upload_artifact_batch`).
+(`_prepare_artifact_upload`, `_upload_artifact_batch`). A producer that uploads a calculation's
+log or input file calls `submit_artifacts_for_calculation(species_label=..., calculation_ref=...,
+file_path=...)`, or `submit_artifact_batch_for_calculation(...)` for several files, with the
+`calc_` ref from the upload response; the base class builds the sidecars and keys and posts one
+batch per calculation. It reads the project label from the config, else from your
+`_project_label_for(output_doc)`.
 
 Hooks to override when needed: `_log` (the logger the pipeline writes to),
 `_sleep_between_probes`, `_project_label_for(output_doc)` and `_log_readiness_recovery`.

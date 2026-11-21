@@ -11,6 +11,7 @@ Nothing in this module reads a producer's output format.
 """
 
 import base64
+import dataclasses
 import hashlib
 import os
 import re
@@ -1047,6 +1048,144 @@ class TCKDBUploaderBase:
             filename=resolved.name,
             calculation_ref=calculation_ref,
         )
+
+    def submit_artifacts_for_calculation(
+        self,
+        *,
+        species_label: str,
+        calculation_id: int | None = None,
+        calculation_ref: str | None = None,
+        file_path: str | Path,
+        kind: str = "output_log",
+        output_doc: Mapping[str, Any] | None = None,
+    ) -> ArtifactUploadOutcome | None:
+        """Upload one local file as an artifact attached to a TCKDB calculation.
+
+        A one-artifact call of :meth:`submit_artifact_batch_for_calculation`;
+        see it for the arguments and the skip rules. Returns ``None`` only when
+        the config is disabled, else an :class:`ArtifactUploadOutcome` whose
+        ``status`` is ``uploaded``, ``failed`` or ``skipped``.
+        """
+        outcomes = self._submit_artifact_batch(
+            species_label=species_label,
+            calculation_id=calculation_id,
+            calculation_ref=calculation_ref,
+            artifacts=[(kind, file_path)],
+            output_doc=output_doc,
+        )
+        if outcomes is None:
+            return None
+        return outcomes[0] if outcomes else None
+
+    def submit_artifact_batch_for_calculation(
+        self,
+        *,
+        species_label: str,
+        calculation_id: int | None = None,
+        calculation_ref: str | None = None,
+        artifacts: list[tuple[str, str | Path]],
+        output_doc: Mapping[str, Any] | None = None,
+    ) -> list[ArtifactUploadOutcome] | None:
+        """Upload artifacts for one calculation with client-side batch grouping.
+
+        ``artifacts`` is a list of ``(kind, file_path)``; a relative path is
+        resolved against ``project_directory``. The calculation is named by
+        ``calculation_ref`` (the ``calc_...`` ref from the upload response); the
+        integer ``calculation_id`` is a fallback for a response that returned no
+        ref and is warned about, never used to address the calculation.
+        ``species_label`` names the sidecars and keys the idempotency prefix.
+        ``output_doc`` is the producer's own document, handed only to
+        :meth:`_project_label_for` for the project label when the config names none.
+
+        Returns ``None`` when the config is disabled. Otherwise returns one
+        :class:`ArtifactUploadOutcome` per artifact (skipped ones first, then the
+        batch's). Skip reasons: no ``calculation_ref``, the upload mode carries the
+        kind inline, artifact upload disabled, kind not in ``config.kinds`` or not
+        implemented, file missing, file over ``max_size_mb``, or already uploaded
+        by a pre-0.10 run.
+        """
+        return self._submit_artifact_batch(
+            species_label=species_label,
+            calculation_id=calculation_id,
+            calculation_ref=calculation_ref,
+            artifacts=artifacts,
+            output_doc=output_doc,
+        )
+
+    def _submit_artifact_batch(
+        self,
+        *,
+        species_label: str,
+        calculation_id: int | None = None,
+        calculation_ref: str | None = None,
+        artifacts: list[tuple[str, str | Path]],
+        output_doc: Mapping[str, Any] | None = None,
+    ) -> list[ArtifactUploadOutcome] | None:
+        """The artifact batch logic; both public submit methods call it.
+
+        A producer may override the public methods with its own signatures, so
+        the base's single-file method does not go through them.
+        """
+        if not self._config.enabled:
+            return None
+        output_doc = output_doc if output_doc is not None else {}
+        calculation_ref = calculation_ref or None
+        if calculation_ref is None:
+            if calculation_id is None:
+                raise ValueError("an artifact upload needs a calculation_ref")
+            # tckdb-schemas 0.116: ``POST /calculations/{calculation_ref}/artifacts`` takes the
+            # ``calc_`` ref only; an integer id in any spelling is refused (422 ``invalid_handle``)
+            # and ``tckdb-client`` raises before posting. Nothing is sent, and the integer id is
+            # not turned into a ref: a handle is the server's to mint.
+            reason = (
+                f"the upload response carried no calculation_ref for calculation {calculation_id}; "
+                "TCKDB addresses a calculation's artifacts by its calc_ ref only (0.116)")
+            self._log.warning("TCKDB %s: %s; its artifacts were not uploaded.",
+                              _W_CALCULATION_REF_NOT_RETURNED, reason)
+            return [
+                ArtifactUploadOutcome(
+                    status="skipped", sidecar_path=None, idempotency_key=None,
+                    calculation_id=calculation_id, calculation_ref=None, kind=kind,
+                    skip_reason=f"{_W_CALCULATION_REF_NOT_RETURNED}: {reason}")
+                for kind, _ in artifacts
+            ]
+        handle = calculation_ref
+
+        artifact_cfg = self._config.artifacts
+        outcomes: list[ArtifactUploadOutcome] = []
+        prepared: list[PreparedArtifactUpload] = []
+
+        for kind, file_path in artifacts:
+            prepared_item = self._prepare_artifact_upload(
+                output_doc=output_doc,
+                species_label=species_label,
+                calculation_id=calculation_id,
+                calculation_ref=calculation_ref,
+                kind=kind,
+                file_path=file_path,
+                artifact_cfg=artifact_cfg,
+            )
+            if isinstance(prepared_item, ArtifactUploadOutcome):
+                outcomes.append(prepared_item)
+            else:
+                prepared.append(prepared_item)
+
+        if not prepared:
+            return outcomes
+
+        batch_digest = artifact_batch_digest(prepared)
+        prepared[0] = dataclasses.replace(
+            prepared[0], calculation_key=f"{handle}-{batch_digest}")
+
+        batch_outcomes = self._upload_artifact_batch(
+            prepared=prepared,
+            idempotency_key_prefix=artifact_batch_idempotency_prefix(
+                self._config.project_label or self._project_label_for(output_doc),
+                species_label,
+                namespace=self.IDEMPOTENCY_NAMESPACE,
+            ),
+        )
+        return outcomes + batch_outcomes
 
     def _upload_artifact_batch(
         self,

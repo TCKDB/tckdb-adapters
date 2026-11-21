@@ -12,6 +12,7 @@ of tracked releases.
 `tools/tckdb_drift.py --bump` adds a line below the marker each time it moves the pin.
 
 <!-- tckdb-drift:changelog -->
+- Adapter 0.15.10: artifact submit methods moved to `tckdb_core`; same pin as 0.15.7 (TCKDB d4d5346).
 - Adapter 0.15.9: public names for core helpers and artifact kinds read from tckdb-schemas; same pin as 0.15.7 (TCKDB d4d5346).
 - Adapter 0.15.8: whole path-search paths (NEB images, GSM node energies); same pin as 0.15.7 (TCKDB d4d5346).
 - Adapter 0.15.7: tracked TCKDB d4d5346 (schemas 0.175.2, client 0.208.2).
@@ -28,6 +29,15 @@ of tracked releases.
 - Adapter 0.10.0: tracked TCKDB 96b71b0 (schemas 0.73.0, client 0.111.0).
 - Adapter 0.6.9: tracked TCKDB f22d3a8 (schemas 0.64.0, client 0.102.0).
 - Adapter 0.6.8: tracked TCKDB a515fb9 (schemas 0.58.0, client 0.98.0).
+
+## 0.15.10
+
+Needs `tckdb-adapters-core` `>=0.5.10,<0.6`. No payload change.
+
+- `submit_artifacts_for_calculation` and `submit_artifact_batch_for_calculation` keep their names
+  and signatures and now delegate to `TCKDBUploaderBase`, which holds the upload logic. The ARC
+  adapter supplies the species label from the record and the project label from the output
+  document. Request bodies, idempotency keys, sidecars, warnings and skip rules are unchanged.
 
 ## 0.15.9
 
