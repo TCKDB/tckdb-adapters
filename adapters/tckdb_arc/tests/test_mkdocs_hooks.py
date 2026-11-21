@@ -9,7 +9,7 @@ from types import SimpleNamespace
 
 import pytest
 
-REPO = Path(__file__).resolve().parents[2]
+REPO = Path(__file__).resolve().parents[3]
 _spec = importlib.util.spec_from_file_location("mkdocs_hooks", REPO / "tools" / "mkdocs_hooks.py")
 hooks = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(hooks)

@@ -12,7 +12,7 @@ import pytest
 
 import _drift_fixture as fx
 
-REPO = Path(__file__).resolve().parents[2]
+REPO = Path(__file__).resolve().parents[3]
 _spec = importlib.util.spec_from_file_location("tckdb_drift", REPO / "tools" / "tckdb_drift.py")
 drift = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(drift)
@@ -97,7 +97,7 @@ def test_summary_older_upstream_is_not_drift():
     assert _summary("0.53.0", "0.94.0")["drift"] is False
 
 
-ARC, CORE, CHEMKIN, QCSCHEMA = (drift.package(d) for d in ("tckdb_arc", "tckdb_core", "tckdb_chemkin", "tckdb_qcschema"))
+ARC, CORE, CHEMKIN, QCSCHEMA = (drift.package(d) for d in ("adapters/tckdb_arc", "tckdb_core", "adapters/tckdb_chemkin", "adapters/tckdb_qcschema"))
 SECTION_PACKAGES = (CORE, CHEMKIN, QCSCHEMA)
 
 

@@ -51,9 +51,9 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 #: The shipped packages, relative to the repository root.
 DEFAULT_TARGETS = (
     "tckdb_core/tckdb_core",
-    "tckdb_arc/tckdb_arc",
-    "tckdb_chemkin/tckdb_chemkin",
-    "tckdb_qcschema/tckdb_qcschema",
+    "adapters/tckdb_arc/tckdb_arc",
+    "adapters/tckdb_chemkin/tckdb_chemkin",
+    "adapters/tckdb_qcschema/tckdb_qcschema",
 )
 
 SOURCE_SUFFIXES = (".py", ".sh")
@@ -67,7 +67,7 @@ TEST_TREE_REASON = "test code and data, which run on a developer's machine or in
 #: repository-relative path equals a key or lies under one.
 UNSCANNED_BY_DESIGN: tuple[tuple[str, str], ...] = (
     (
-        "tckdb_qcschema/scripts",
+        "adapters/tckdb_qcschema/scripts",
         "fixture generators run by hand; they write test data, not emitted strings",
     ),
     (

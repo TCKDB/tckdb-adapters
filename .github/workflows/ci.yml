@@ -18,7 +18,7 @@ jobs:
         python-version: ["3.11", "3.12"]
     defaults:
       run:
-        working-directory: tckdb_arc
+        working-directory: adapters/tckdb_arc
     steps:
       - uses: actions/checkout@v7
 
@@ -30,7 +30,7 @@ jobs:
         # tckdb-pin.toml (repo root) holds the tested TCKDB commit; it is kept out
         # of the workflow files so tools/tckdb_drift.py --bump never edits them.
         # The tool fails loudly if the file or its sha is malformed.
-        run: python ../tools/tckdb_drift.py --install-specs >> "$GITHUB_ENV"
+        run: python ../../tools/tckdb_drift.py --install-specs >> "$GITHUB_ENV"
 
       - name: Install the shared layer (tested source revision)
         run: |
@@ -56,8 +56,8 @@ jobs:
 
       - name: Install tckdb-adapters-core (editable, before tckdb-arc)
         # tckdb-arc depends on tckdb-adapters-core (not on PyPI yet); the editable
-        # install of ../tckdb_core satisfies that requirement for the next step.
-        run: pip install -e "../tckdb_core[test]"
+        # install of ../../tckdb_core satisfies that requirement for the next step.
+        run: pip install -e "../../tckdb_core[test]"
 
       - name: Install tckdb-arc (base + test extra)
         run: pip install -e ".[test]"
@@ -89,7 +89,7 @@ jobs:
         python-version: ["3.11", "3.12"]
     defaults:
       run:
-        working-directory: tckdb_chemkin
+        working-directory: adapters/tckdb_chemkin
     steps:
       - uses: actions/checkout@v7
         with:
@@ -100,7 +100,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Read the TCKDB pin
-        run: python ../tools/tckdb_drift.py --install-specs >> "$GITHUB_ENV"
+        run: python ../../tools/tckdb_drift.py --install-specs >> "$GITHUB_ENV"
 
       - name: Install the TCKDB packages (tested source revision)
         run: |
@@ -124,7 +124,7 @@ jobs:
         python-version: ["3.11", "3.12"]
     defaults:
       run:
-        working-directory: tckdb_qcschema
+        working-directory: adapters/tckdb_qcschema
     steps:
       - uses: actions/checkout@v7
         with:
@@ -135,7 +135,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Read the TCKDB pin
-        run: python ../tools/tckdb_drift.py --install-specs >> "$GITHUB_ENV"
+        run: python ../../tools/tckdb_drift.py --install-specs >> "$GITHUB_ENV"
 
       - name: Install the TCKDB packages (tested source revision)
         run: |
@@ -167,8 +167,8 @@ jobs:
 
       - name: Build every distribution
         run: |
-          for dir in tckdb_core tckdb_arc tckdb_chemkin tckdb_qcschema; do
-            python -m build --outdir "dist/$dir" "$dir"
+          for dir in tckdb_core adapters/tckdb_arc adapters/tckdb_chemkin adapters/tckdb_qcschema; do
+            python -m build --outdir "dist/$(basename "$dir")" "$dir"
           done
 
       - name: Check the distribution metadata
@@ -190,7 +190,7 @@ jobs:
   # GSM reparse), run the suite in an environment that already has ARC on the
   # PYTHONPATH (for example ARC's `arc_env`):
   #
-  #     conda run -n arc_env pip install -e "tckdb_arc[test]"
-  #     conda run -n arc_env pytest tckdb_arc/tests -q
+  #     conda run -n arc_env pip install -e "adapters/tckdb_arc[test]"
+  #     conda run -n arc_env pytest adapters/tckdb_arc/tests -q
   #
   # There the 12 `importorskip("arc")` tests execute instead of skipping.

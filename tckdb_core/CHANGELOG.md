@@ -3,6 +3,12 @@
 Releases are listed newest first. Each `tckdb-arc` release names the core version it needs in its
 own changelog.
 
+## 0.5.20
+
+No code, payload, idempotency key or sidecar change. The adapters moved from the repository root
+into `adapters/`; the core stays at `tckdb_core/`. `NOTICE` now names the ARC adapter's files by
+their new paths (`adapters/tckdb_arc/...`).
+
 ## 0.5.19
 
 Tracks TCKDB 292e647 (tckdb-schemas 0.177.1, tckdb-client 0.210.1). Requires

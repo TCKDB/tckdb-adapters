@@ -31,9 +31,9 @@ checker = _load()
 
 REQUIRED_TREES = (
     "tckdb_core/tckdb_core",
-    "tckdb_arc/tckdb_arc",
-    "tckdb_chemkin/tckdb_chemkin",
-    "tckdb_qcschema/tckdb_qcschema",
+    "adapters/tckdb_arc/tckdb_arc",
+    "adapters/tckdb_chemkin/tckdb_chemkin",
+    "adapters/tckdb_qcschema/tckdb_qcschema",
 )
 
 
@@ -48,8 +48,9 @@ def test_every_package_is_a_default_target():
 
 
 def test_every_package_tree_is_a_default_target():
-    """A new ``tckdb_<name>/tckdb_<name>`` package is scanned or the audit says why not."""
-    on_disk = sorted(p.parent.relative_to(REPO_ROOT).as_posix() for p in REPO_ROOT.glob("tckdb_*/tckdb_*/__init__.py"))
+    """A new ``tckdb_<name>/tckdb_<name>`` or ``adapters/tckdb_<name>/tckdb_<name>`` package is scanned or the audit says why not."""
+    inits = [*REPO_ROOT.glob("tckdb_*/tckdb_*/__init__.py"), *REPO_ROOT.glob("adapters/tckdb_*/tckdb_*/__init__.py")]
+    on_disk = sorted(p.parent.relative_to(REPO_ROOT).as_posix() for p in inits)
     assert sorted(checker.DEFAULT_TARGETS) == on_disk
 
 
@@ -114,17 +115,17 @@ def test_prose_data_and_marked_lines_are_left_alone(source):
             "NASA block skipped — temperature bounds incomplete.",
         ),
         (
-            "tckdb_arc/tckdb_arc/sweep.py",
+            "adapters/tckdb_arc/tckdb_arc/sweep.py",
             "missing/non-converged -- writing ",
             "missing/non-converged \u2014 writing ",
         ),
         (
-            "tckdb_chemkin/tckdb_chemkin/parser.py",
+            "adapters/tckdb_chemkin/tckdb_chemkin/parser.py",
             "raise ChemkinParseError(",
             None,
         ),
         (
-            "tckdb_qcschema/tckdb_qcschema/reader.py",
+            "adapters/tckdb_qcschema/tckdb_qcschema/reader.py",
             "raise QCSchemaAdapterError(",
             None,
         ),

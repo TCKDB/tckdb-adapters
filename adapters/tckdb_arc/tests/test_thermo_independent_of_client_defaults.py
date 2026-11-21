@@ -20,7 +20,7 @@ from _adapter_sources import adapter_source_text
 from test_thermo_enthalpy_declaration import _corpus_payloads, _thermo_blocks
 
 PACKAGE_ROOTS = [Path(__file__).resolve().parents[1] / "tckdb_arc",
-                 Path(__file__).resolve().parents[2] / "tckdb_core" / "tckdb_core"]
+                 Path(__file__).resolve().parents[3] / "tckdb_core" / "tckdb_core"]
 
 
 def _imports_of_the_client_builders(path: Path) -> list[str]:

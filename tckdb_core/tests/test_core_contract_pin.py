@@ -1,6 +1,6 @@
 """Pin the tckdb-schemas contract the core's own suite validates payloads against.
 
-The twin of ``tckdb_arc/tests/test_contract_pin.py``: both read the one
+The twin of ``adapters/tckdb_arc/tests/test_contract_pin.py``: both read the one
 ``TARGET_SCHEMAS_LINE`` in :mod:`tckdb_core.testing.contract`, so a bump that moves it
 (``tools/tckdb_drift.py --bump``) is checked against every package's ``pyproject.toml``.
 The assertions are :mod:`tckdb_core.testing.contract_pin`.

@@ -4,7 +4,7 @@ An adapter turns one tool's output into TCKDB upload payloads and sends them. Th
 is for someone adding the second adapter to this repository, next to the ARC one. It says
 what `tckdb_core` already does for you, what you write, and where the core stops.
 
-The ARC adapter (`tckdb_arc/`) is the working example throughout. It is large because ARC
+The ARC adapter (`adapters/tckdb_arc/`) is the working example throughout. It is large because ARC
 produces a great deal of data, and most of its size is mapping code that you will not
 copy.
 
@@ -34,7 +34,7 @@ Three rules shape every adapter here.
 3. **Mark an interpretation as one.** Sometimes the tool's documentation settles a fact
    that its output file does not repeat. You may send that reading if the payload says it
    is the adapter's interpretation and the sidecar carries a warning. The pattern is
-   `_kinetics_declarations` in `tckdb_arc/tckdb_arc/kinetics.py` with the
+   `_kinetics_declarations` in `adapters/tckdb_arc/tckdb_arc/kinetics.py` with the
    `kinetics_declarations_interpreted` warning: the applicability carries
    `claim_origin: depositor_interpretation`, and the kinetics `note` ends with a sentence
    that names what was interpreted.
@@ -71,10 +71,11 @@ your tool's keys stays in your package and passes plain values to the core.
 
 ### 1. The package
 
-Create a sibling of `tckdb_arc/`:
+Create a sibling of `adapters/tckdb_arc/` under `adapters/`. (`docs/adapters/` is this
+site's section about the adapters and holds no code; the packages are in `adapters/`.)
 
 ```text
-tckdb_mytool/
+adapters/tckdb_mytool/
   pyproject.toml
   README.md
   CHANGELOG.md
@@ -94,7 +95,8 @@ tckdb_mytool/
 In `pyproject.toml`, depend on `tckdb-adapters-core` and bound `tckdb-schemas` and
 `tckdb-client` to the same minor lines the core does. Add the package to
 `pythonpath` and `testpaths` under `[tool.pytest.ini_options]` in the root
-`pyproject.toml`, which is what lets `pytest` find it from the repository root, to the
+`pyproject.toml`, which is what lets `pytest` find it from the repository root (its own
+`pytest` `pythonpath` is `[".", "../../tckdb_core"]`, as in `adapters/tckdb_arc/pyproject.toml`), to the
 CI workflow, and to the install lines in `AGENTS.md` ("Running tests") and `CONTRIBUTING.md`.
 
 `tools/tckdb_drift.py --bump` moves the bounds, the patch version and the changelog of every
@@ -223,12 +225,12 @@ because READMEs and tests already link that name. To add yours:
 
 1. In `warning_codes.py`, define `DOC_RELATIVE_PATH` (the path above) and a
    `render_markdown()` that returns the page's text; the tool writes the file. Model it on
-   `render_markdown` in `tckdb_arc/tckdb_arc/warning_codes.py`. Its header and its
+   `render_markdown` in `adapters/tckdb_arc/tckdb_arc/warning_codes.py`. Its header and its
    `CoreWarning` section are copied from ARC's until a shared helper moves into the core.
 2. In `tools/gen_warning_codes.py`, import your package's `warning_codes` module and add
    `(warning_codes.DOC_RELATIVE_PATH, warning_codes.render_markdown)` to `DOCUMENTS`. The
    tool imports every adapter it lists, so each must be installed to run it.
-3. Write a registry test like `tckdb_arc/tests/test_warning_registry.py`. It fails when the
+3. Write a registry test like `adapters/tckdb_arc/tests/test_warning_registry.py`. It fails when the
    page is stale, when a code is unregistered, or when a registered code is never emitted.
    Like ARC's, it also loads `tools/gen_warning_codes.py` and asserts your pair is in
    `DOCUMENTS`, so a forgotten entry fails a test.
@@ -245,7 +247,7 @@ should too.
 ### 6. Configuration and a command
 
 `TCKDBConfig` holds the fields. Your package decides where they come from in your tool's
-input and parses them. `tckdb_arc/tckdb_arc/config.py` is a parser you can follow; it
+input and parses them. `adapters/tckdb_arc/tckdb_arc/config.py` is a parser you can follow; it
 validates `rights` with `DepositRights` and rejects unknown artifact kinds. API keys are
 never read from the input file, only from the environment or a key file named there.
 
@@ -256,7 +258,7 @@ The site is built from `docs/`, `mkdocs.yml` and files that stub pages include. 
 
 1. Create `docs/adapters/<tool>/index.md` and `docs/adapters/<tool>/changelog.md` by copying
    the two files in `docs/adapters/arc/`. Change the include paths to
-   `../../../tckdb_<tool>/README.md` and `../../../tckdb_<tool>/CHANGELOG.md`, and the
+   `../../../adapters/tckdb_<tool>/README.md` and `../../../adapters/tckdb_<tool>/CHANGELOG.md`, and the
    comment to name those files.
 2. Keep the stub shape `tools/mkdocs_hooks.py` recognises: one optional HTML comment, then
    one `include-markdown` directive, and nothing else. No front matter, no heading, and no
@@ -267,7 +269,7 @@ The site is built from `docs/`, `mkdocs.yml` and files that stub pages include. 
    names the adapter's README page; Material makes that page the group's landing page.
 4. Add a row to the table in `docs/adapters/index.md`: the adapter's name linking to
    `<tool>/index.md`, and its package name.
-5. Add `tckdb_<tool>/README.md` and `tckdb_<tool>/CHANGELOG.md` to the `push` path filter in
+5. Add `adapters/tckdb_<tool>/README.md` and `adapters/tckdb_<tool>/CHANGELOG.md` to the `push` path filter in
    `.github/workflows/docs.yml`. Pull requests are built whatever the paths.
 6. If the adapter has a mapping document, write it at `docs/contract/<TOOL>_MAPPING.md` and
    list it in the adapter's nav group. Do not move the existing files in `docs/contract/`:

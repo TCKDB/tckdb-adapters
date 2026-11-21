@@ -10,7 +10,7 @@ how the scheduled workflow moves it, and what a person must still do when it mov
 | `tckdb-pin.toml` | The TCKDB repository URL, the commit `sha`, and the subdirectories of the two packages. CI reads it at run time, so no workflow file contains a commit. |
 | `pyproject.toml` of `tckdb_core`, `tckdb_arc`, `tckdb_chemkin` and `tckdb_qcschema` | The `tckdb-schemas` and `tckdb-client` bounds, each one minor release line (`>=X.Y,<X.(Y+1)`). A package states only the ones it depends on: `tckdb-chemkin` has no `tckdb-schemas` bound. |
 | `tckdb_core/tckdb_core/testing/contract.py` | `TARGET_SCHEMAS_LINE`, the `tckdb-schemas` line the test suites target. It exists once. Each package's `test_contract_pin.py` fails when the installed version or a `pyproject.toml` bound disagrees with it. |
-| `README.md`, `tckdb_arc/README.md` | The install lines and the sentences that name the tested versions. |
+| `README.md`, `adapters/tckdb_arc/README.md` | The install lines and the sentences that name the tested versions. |
 
 The packages `--bump` moves are the rows of the `PACKAGES` table in `tools/tckdb_drift.py`.
 Each row gives the package's directory and its import name, and every path the tool touches
@@ -99,7 +99,7 @@ patch release inside the pinned line is already allowed by the bounds.
 - `TARGET_SCHEMAS_LINE`;
 - the `sha` in `tckdb-pin.toml`;
 - the install lines and the "tested contract" sentence in `README.md`;
-- the version sentence in `tckdb_arc/README.md`.
+- the version sentence in `adapters/tckdb_arc/README.md`.
 
 A package is released when one of its own files changed in that: its `pyproject.toml` bounds,
 for `tckdb_arc` its README sentence, for the core also `TARGET_SCHEMAS_LINE`. For each package
@@ -108,7 +108,7 @@ released the tool:
 - bumps the patch version in `pyproject.toml` and, where the package has one (`tckdb_core`,
   `tckdb_chemkin`, `tckdb_qcschema`), in `__version__`, so the two stay equal;
 - adds a changelog entry: one line under the `<!-- tckdb-drift:changelog -->` marker in
-  `tckdb_arc/CHANGELOG.md`, and a `## X.Y.Z` section above the newest version heading in the
+  `adapters/tckdb_arc/CHANGELOG.md`, and a `## X.Y.Z` section above the newest version heading in the
   others.
 
 When the core is released, a package that requires it (`tckdb_arc`) gets its
@@ -137,7 +137,7 @@ from `tckdb-pin.toml`.
 
 `tckdb_core.level_rules` replicates TCKDB's level-of-theory identity hash, because
 `tckdb-schemas` does not ship it. Two tests in
-`tckdb_arc/tests/test_energy_level_declaration.py` compare the replica with TCKDB's code,
+`adapters/tckdb_arc/tests/test_energy_level_declaration.py` compare the replica with TCKDB's code,
 and they are different checks:
 
 - `test_hash_matches_the_backend_payload_rules` runs wherever `TCKDB_BACKEND_PATH` names a
@@ -155,7 +155,7 @@ pinned commit:
 
 ```bash
 TCKDB=/path/to/TCKDB
-cd tckdb_arc
+cd adapters/tckdb_arc
 TCKDB_BACKEND_PATH=$TCKDB/backend TCKDB_REQUIRE_BACKEND=1 \
 PYTHONPATH=$TCKDB/backend:$TCKDB/schemas/python/tckdb-schemas \
   python -m pytest tests/test_energy_level_declaration.py -k hash_matches -rs

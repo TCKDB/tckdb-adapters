@@ -13,7 +13,7 @@ Built from the ``arc_1_3_levels`` reaction document with ORCA DLPNO-CCSD(T)-F12 
 
 NOTE: the payload shape is unchanged by the server rule (TCKDB #915, tckdb-schemas 0.173), so the published
 model and JSON Schema validate it. The pin (f79e7f94) carries the server rule; the live gate corpus
-``one_electron_hf_reaction`` (``tckdb_arc/tests/integration``) shows TCKDB accepting this payload.
+``one_electron_hf_reaction`` (``adapters/tckdb_arc/tests/integration``) shows TCKDB accepting this payload.
 """
 
 import copy

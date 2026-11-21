@@ -12,7 +12,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parents[2]
+REPO = Path(__file__).resolve().parents[3]
 # The files the bump rewrites (read from the tool, so a new package is copied too), and the
 # files the drift tests read besides.
 _TOOL = importlib.util.spec_from_file_location("drift_real", REPO / "tools" / "tckdb_drift.py")
@@ -22,8 +22,8 @@ COPIED = sorted({
     "tools/tckdb_drift.py",
     "tools/tckdb_drift_publish.sh",
     "tools/python_release.py",
-    "tckdb_arc/tests/test_tckdb_drift.py",
-    "tckdb_arc/tests/_drift_fixture.py",
+    "adapters/tckdb_arc/tests/test_tckdb_drift.py",
+    "adapters/tckdb_arc/tests/_drift_fixture.py",
     "AGENTS.md",
     "CLAUDE.md",
     ".github/workflows/ci.yml",
@@ -48,7 +48,7 @@ def test_drift_tests_pass_with_the_real_pins_already_bumped(tmp_path):
 
     proc = subprocess.run(
         [sys.executable, "-m", "pytest", "-q", "--noconftest", "-p", "no:cacheprovider",
-         str(tmp_path / "tckdb_arc" / "tests" / "test_tckdb_drift.py")],
+         str(tmp_path / "adapters" / "tckdb_arc" / "tests" / "test_tckdb_drift.py")],
         cwd=tmp_path, capture_output=True, text=True,
     )
     assert proc.returncode == 0, proc.stdout[-3000:] + proc.stderr[-1000:]

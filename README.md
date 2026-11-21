@@ -2,7 +2,7 @@
 
 [![ci](https://github.com/calvinp0/tckdb-adapters/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/calvinp0/tckdb-adapters/actions/workflows/ci.yml)
 [![tckdb-adapters-core](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fcalvinp0%2Ftckdb-adapters%2Fmain%2Ftckdb_core%2Fpyproject.toml&query=%24.project.version&label=tckdb-adapters-core)](tckdb_core/CHANGELOG.md)
-[![tckdb-arc](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fcalvinp0%2Ftckdb-adapters%2Fmain%2Ftckdb_arc%2Fpyproject.toml&query=%24.project.version&label=tckdb-arc)](tckdb_arc/CHANGELOG.md)
+[![tckdb-arc](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fcalvinp0%2Ftckdb-adapters%2Fmain%2Fadapters%2Ftckdb_arc%2Fpyproject.toml&query=%24.project.version&label=tckdb-arc)](adapters/tckdb_arc/CHANGELOG.md)
 [![python](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue)](.github/workflows/ci.yml)
 [![licence](https://img.shields.io/badge/licence-MIT-green)](LICENSE)
 [![docs](https://img.shields.io/badge/docs-mkdocs-blue)](https://calvinp0.github.io/tckdb-adapters/)
@@ -27,12 +27,15 @@ The documentation website is at <https://calvinp0.github.io/tckdb-adapters/>.
 
 ## Packages
 
+The shared core is `tckdb_core/` at the repository root; the adapters are the packages under
+`adapters/`. (`docs/adapters/` is the documentation site's section about the adapters and holds no code.)
+
 | Package | Path | What it is |
 |---|---|---|
 | `tckdb-adapters-core` | [`tckdb_core/`](tckdb_core/README.md) | Everything an adapter needs after it has built a payload, and every helper two adapters would write the same way: the payload writer, the upload pipeline with its sidecar files, idempotency keys, configuration, shared numerics, pre-checks of TCKDB's rules, the warning-code registry and a test kit. It reads no tool's output format. |
-| `tckdb-arc` | [`tckdb_arc/`](tckdb_arc/README.md) | The ARC adapter. It reads an ARC project's `output.yml` and builds species, reaction and transition-state uploads. Its command is `tckdb-arc-upload`. |
-| `tckdb-chemkin` | [`tckdb_chemkin/`](tckdb_chemkin/README.md) | Reads a CHEMKIN mechanism (`chem.inp`, with `therm.dat` and `tran.dat`) and builds thermo, transport and kinetics uploads. Its command is `tckdb-chemkin-import`. Needs RDKit. |
-| `tckdb-qcschema` | [`tckdb_qcschema/`](tckdb_qcschema/README.md) | Imports MolSSI QCSchema documents (QCEngine, Psi4, QCArchive) as conformer deposits and exports TCKDB calculations as QCSchema. Its command is `tckdb-qcschema`. |
+| `tckdb-arc` | [`adapters/tckdb_arc/`](adapters/tckdb_arc/README.md) | The ARC adapter. It reads an ARC project's `output.yml` and builds species, reaction and transition-state uploads. Its command is `tckdb-arc-upload`. |
+| `tckdb-chemkin` | [`adapters/tckdb_chemkin/`](adapters/tckdb_chemkin/README.md) | Reads a CHEMKIN mechanism (`chem.inp`, with `therm.dat` and `tran.dat`) and builds thermo, transport and kinetics uploads. Its command is `tckdb-chemkin-import`. Needs RDKit. |
+| `tckdb-qcschema` | [`adapters/tckdb_qcschema/`](adapters/tckdb_qcschema/README.md) | Imports MolSSI QCSchema documents (QCEngine, Psi4, QCArchive) as conformer deposits and exports TCKDB calculations as QCSchema. Its command is `tckdb-qcschema`. |
 
 Dependencies point one way: `tckdb_arc` imports `tckdb_core`, and `tckdb_core` imports
 `tckdb-client` and `tckdb-schemas`. The core never imports an adapter or the tool behind
@@ -49,8 +52,8 @@ TCKDB packages come from the TCKDB commit this repository is tested against:
 pip install \
   "tckdb-client @ git+https://github.com/TCKDB/TCKDB.git@292e6471109071df1696d81bc21083424be375a5#subdirectory=clients/python" \
   "tckdb-schemas @ git+https://github.com/TCKDB/TCKDB.git@292e6471109071df1696d81bc21083424be375a5#subdirectory=schemas/python/tckdb-schemas"
-pip install -e tckdb_core -e tckdb_arc
-pip install -e tckdb_chemkin -e tckdb_qcschema   # the file-format adapters, as needed
+pip install -e tckdb_core -e adapters/tckdb_arc
+pip install -e adapters/tckdb_chemkin -e adapters/tckdb_qcschema   # the file-format adapters, as needed
 ```
 
 Install `tckdb_core` before `tckdb_arc`, as above, because the ARC adapter depends on it. With a
@@ -60,7 +63,7 @@ local TCKDB checkout you can install the two TCKDB packages from its `clients/py
 ## Use an adapter
 
 Each adapter has its own README with its settings and its command; for ARC that is
-[`tckdb_arc/README.md`](tckdb_arc/README.md). Every adapter writes each payload to disk
+[`adapters/tckdb_arc/README.md`](adapters/tckdb_arc/README.md). Every adapter writes each payload to disk
 before it makes any request, next to a sidecar file that records the idempotency key, the
 server's answer and every warning. Running the same adapter release on the same output again
 sends the same keys, so a repeated upload does not create a second deposit. Each adapter's
@@ -70,9 +73,9 @@ left out.
 ## Run the tests
 
 ```bash
-pip install -e "tckdb_core[test]" -e "tckdb_arc[test]"
+pip install -e "tckdb_core[test]" -e "adapters/tckdb_arc[test]"
 python -m pytest                                    # both suites, from the repository root
-python -m pytest tckdb_arc/tests/test_sweep.py -q   # one file
+python -m pytest adapters/tckdb_arc/tests/test_sweep.py -q   # one file
 ```
 
 The file-format adapters run from their own directories: their `tests/conftest.py` and
@@ -80,9 +83,9 @@ The file-format adapters run from their own directories: their `tests/conftest.p
 run fails at collection:
 
 ```bash
-pip install -e "tckdb_chemkin[test]" -e "tckdb_qcschema[test]"
-(cd tckdb_chemkin && python -m pytest)
-(cd tckdb_qcschema && python -m pytest)
+pip install -e "adapters/tckdb_chemkin[test]" -e "adapters/tckdb_qcschema[test]"
+(cd adapters/tckdb_chemkin && python -m pytest)
+(cd adapters/tckdb_qcschema && python -m pytest)
 ```
 
 The suites run without ARC and without a TCKDB server. Tests that need ARC skip when it is
@@ -110,7 +113,7 @@ workflow, the `tools/tckdb_drift.py` commands and the one-time repository settin
 
 ## Write a new adapter
 
-A new adapter is a sibling package, `tckdb_<tool>/`, that subclasses the core's uploader
+A new adapter is a sibling package, `adapters/tckdb_<tool>/`, that subclasses the core's uploader
 and maps its tool's output to the payloads. Start with
 [`docs/writing_an_adapter.md`](docs/writing_an_adapter.md). It lists what the core gives
 you, what you write yourself, and which TCKDB routes the core does not cover yet.

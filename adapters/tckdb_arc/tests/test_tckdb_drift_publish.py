@@ -16,7 +16,7 @@ import pytest
 
 import _drift_fixture as fx
 
-REPO = Path(__file__).resolve().parents[2]
+REPO = Path(__file__).resolve().parents[3]
 SCRIPT = REPO / "tools" / "tckdb_drift_publish.sh"
 BRANCH = "chore/tckdb-drift-schemas-0.58-client-0.98"
 SHA_1 = "1" * 40
@@ -119,7 +119,7 @@ def test_first_run_pushes_a_bot_branch_opens_the_pr_and_dispatches_ci(env):
     assert "tckdb-pin.toml" in changed
     # Everything the bump rewrote was staged and committed: nothing is left over in the work tree.
     assert git(env.work, "status", "--porcelain") == ""
-    assert {"tckdb_chemkin/pyproject.toml", "tckdb_qcschema/CHANGELOG.md", "tckdb_core/tckdb_core/__init__.py"} <= changed
+    assert {"adapters/tckdb_chemkin/pyproject.toml", "adapters/tckdb_qcschema/CHANGELOG.md", "tckdb_core/tckdb_core/__init__.py"} <= changed
     log = env.gh_log()
     assert "pr create" in log and "workflow run ci.yml --ref " + BRANCH in log
 

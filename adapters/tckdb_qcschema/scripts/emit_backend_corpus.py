@@ -4,7 +4,7 @@
 Runs the real ``tckdb_qcschema`` mapper (:func:`tckdb_qcschema.reader.read_document`
 + :func:`tckdb_qcschema.mapping.build_conformer_upload_payload`) -- the exact
 code path ``tckdb-qcschema import`` uses -- over the eight route-outcome
-fixtures under ``tckdb_qcschema/tests/fixtures/`` (energy, gradient,
+fixtures under ``adapters/tckdb_qcschema/tests/fixtures/`` (energy, gradient,
 hessian, optimization; each in QCSchema families v1 and v2), and writes what
 it produces under ``backend/tests/fixtures/qcschema/<case>/`` of the TCKDB
 checkout named by ``--tckdb``:
@@ -32,7 +32,7 @@ adapter's fixtures change. Requires the adapter's own dependencies
 environment:
 
     conda run -n tckdb_qcschema_psi4 python \\
-        tckdb_qcschema/scripts/emit_backend_corpus.py --tckdb <TCKDB checkout>
+        adapters/tckdb_qcschema/scripts/emit_backend_corpus.py --tckdb <TCKDB checkout>
 """
 
 from __future__ import annotations
@@ -122,7 +122,7 @@ def _emit_case(case: str) -> None:
         "generator": {
             "adapter_version": ADAPTER_VERSION,
             "qcelemental_version": qcelemental.__version__,
-            "source_fixture": f"tckdb-adapters:tckdb_qcschema/tests/fixtures/{case}",
+            "source_fixture": f"tckdb-adapters:adapters/tckdb_qcschema/tests/fixtures/{case}",
         },
     }
     (out_dir / "meta.json").write_text(json.dumps(meta, indent=2, sort_keys=True) + "\n")
@@ -199,7 +199,7 @@ def _emit_scan_case(case: str, drive_cases: tuple[str, ...]) -> None:
         "generator": {
             "adapter_version": ADAPTER_VERSION,
             "qcelemental_version": qcelemental.__version__,
-            "source_fixtures": [f"tckdb-adapters:tckdb_qcschema/tests/fixtures/{name}" for name in drive_cases],
+            "source_fixtures": [f"tckdb-adapters:adapters/tckdb_qcschema/tests/fixtures/{name}" for name in drive_cases],
         },
     }
     (out_dir / "meta.json").write_text(json.dumps(meta, indent=2, sort_keys=True) + "\n")

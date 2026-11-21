@@ -44,7 +44,7 @@ Requires `tckdb-client>=0.94,<0.95` and `tckdb-schemas>=0.53,<0.54`.
 """
 
 FILES = {
-    "tckdb_arc/pyproject.toml": f'''[project]
+    "adapters/tckdb_arc/pyproject.toml": f'''[project]
 name = "tckdb-arc"
 version = "{ADAPTER_VERSION}"
 dependencies = [
@@ -64,7 +64,7 @@ dependencies = [
 ''',
     "tckdb_core/tckdb_core/__init__.py": '"""core"""\n\n__version__ = "0.1.0"\n',
     "tckdb_core/CHANGELOG.md": CORE_CHANGELOG,
-    "tckdb_chemkin/pyproject.toml": '''[project]
+    "adapters/tckdb_chemkin/pyproject.toml": '''[project]
 name = "tckdb-chemkin"
 version = "0.7.7"
 dependencies = [
@@ -75,9 +75,9 @@ dependencies = [
     "rdkit>=2024.3",
 ]
 ''',
-    "tckdb_chemkin/tckdb_chemkin/__init__.py": '"""chemkin"""\n\n__version__ = "0.7.7"\n',
-    "tckdb_chemkin/CHANGELOG.md": CHEMKIN_CHANGELOG,
-    "tckdb_qcschema/pyproject.toml": '''[project]
+    "adapters/tckdb_chemkin/tckdb_chemkin/__init__.py": '"""chemkin"""\n\n__version__ = "0.7.7"\n',
+    "adapters/tckdb_chemkin/CHANGELOG.md": CHEMKIN_CHANGELOG,
+    "adapters/tckdb_qcschema/pyproject.toml": '''[project]
 name = "tckdb-qcschema"
 version = "0.9.9"
 dependencies = [
@@ -88,8 +88,8 @@ dependencies = [
     "qcelemental==0.51.2",
 ]
 ''',
-    "tckdb_qcschema/tckdb_qcschema/__init__.py": '"""qcschema"""\n\n__version__ = "0.9.9"\n',
-    "tckdb_qcschema/CHANGELOG.md": QCSCHEMA_CHANGELOG,
+    "adapters/tckdb_qcschema/tckdb_qcschema/__init__.py": '"""qcschema"""\n\n__version__ = "0.9.9"\n',
+    "adapters/tckdb_qcschema/CHANGELOG.md": QCSCHEMA_CHANGELOG,
     "tckdb_core/tckdb_core/testing/contract.py": '"""doc"""\n\nTARGET_SCHEMAS_LINE = (0, 54)\nOTHER = 1\n',
     "tckdb-pin.toml": f'''# pin
 [tckdb]
@@ -109,13 +109,13 @@ pip install \\
   "tckdb-schemas @ git+{PIN_REPO}@{OLD_SHA}#subdirectory=schemas/python/tckdb-schemas"
 ```
 ''',
-    "tckdb_arc/README.md": """# tckdb-arc
+    "adapters/tckdb_arc/README.md": """# tckdb-arc
 
 Requires Python 3.11+, `tckdb-client` 0.95.x and `tckdb-schemas` 0.54.x.
 
 Other text.
 """,
-    "tckdb_arc/CHANGELOG.md": """# Changelog: tckdb-arc
+    "adapters/tckdb_arc/CHANGELOG.md": """# Changelog: tckdb-arc
 
 ## Tracked TCKDB releases
 
@@ -126,8 +126,8 @@ Other text.
 Other text.
 """,
     # Files a bump must leave alone.
-    "tckdb_chemkin/README.md": "# tckdb-chemkin\n\nIt installs `tckdb-client` and RDKit with it.\n",
-    "tckdb_qcschema/README.md": "# tckdb-qcschema\n\nIt installs `tckdb-client` and `tckdb-schemas`.\n",
+    "adapters/tckdb_chemkin/README.md": "# tckdb-chemkin\n\nIt installs `tckdb-client` and RDKit with it.\n",
+    "adapters/tckdb_qcschema/README.md": "# tckdb-qcschema\n\nIt installs `tckdb-client` and `tckdb-schemas`.\n",
     ".github/workflows/ci.yml": "name: ci\n",
     ".github/workflows/tckdb-drift.yml": "name: drift\n",
     "AGENTS.md": "# rules\n",
@@ -140,15 +140,15 @@ BUMPED = [
     "tckdb_core/pyproject.toml",
     "tckdb_core/tckdb_core/__init__.py",
     "tckdb_core/CHANGELOG.md",
-    "tckdb_arc/pyproject.toml",
-    "tckdb_arc/README.md",
-    "tckdb_arc/CHANGELOG.md",
-    "tckdb_chemkin/pyproject.toml",
-    "tckdb_chemkin/tckdb_chemkin/__init__.py",
-    "tckdb_chemkin/CHANGELOG.md",
-    "tckdb_qcschema/pyproject.toml",
-    "tckdb_qcschema/tckdb_qcschema/__init__.py",
-    "tckdb_qcschema/CHANGELOG.md",
+    "adapters/tckdb_arc/pyproject.toml",
+    "adapters/tckdb_arc/README.md",
+    "adapters/tckdb_arc/CHANGELOG.md",
+    "adapters/tckdb_chemkin/pyproject.toml",
+    "adapters/tckdb_chemkin/tckdb_chemkin/__init__.py",
+    "adapters/tckdb_chemkin/CHANGELOG.md",
+    "adapters/tckdb_qcschema/pyproject.toml",
+    "adapters/tckdb_qcschema/tckdb_qcschema/__init__.py",
+    "adapters/tckdb_qcschema/CHANGELOG.md",
     "tckdb_core/tckdb_core/testing/contract.py",
     "tckdb-pin.toml",
     "README.md",

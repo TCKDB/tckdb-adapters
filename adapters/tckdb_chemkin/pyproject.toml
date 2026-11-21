@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tckdb-chemkin"
-version = "0.7.8"
+version = "0.7.9"
 description = "CHEMKIN mechanism importer adapter for TCKDB (parser + identity + payload builder + uploader)."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -53,8 +53,8 @@ Homepage = "https://github.com/TCKDB/tckdb-adapters"
 Repository = "https://github.com/TCKDB/tckdb-adapters"
 Issues = "https://github.com/TCKDB/tckdb-adapters/issues"
 Documentation = "https://tckdb.github.io/TCKDB/"
-Source = "https://github.com/TCKDB/tckdb-adapters/tree/main/tckdb_chemkin"
-Changelog = "https://github.com/TCKDB/tckdb-adapters/blob/main/tckdb_chemkin/CHANGELOG.md"
+Source = "https://github.com/TCKDB/tckdb-adapters/tree/main/adapters/tckdb_chemkin"
+Changelog = "https://github.com/TCKDB/tckdb-adapters/blob/main/adapters/tckdb_chemkin/CHANGELOG.md"
 
 [tool.setuptools]
 packages = ["tckdb_chemkin"]

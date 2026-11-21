@@ -4,7 +4,7 @@ The scan counterpart of ``capture_read_fixtures.py``, run the same way
 (copied into ``backend/tests/api/`` so it can use the backend test
 fixtures, then removed):
 
-    cp <tckdb-adapters>/tckdb_qcschema/scripts/capture_scan_read_fixtures.py \\
+    cp <tckdb-adapters>/adapters/tckdb_qcschema/scripts/capture_scan_read_fixtures.py \\
         backend/tests/api/test_zzz_tmp_capture_qcschema_scan_reads.py
 
     # First set the test database variables (DB_USER, DB_PASSWORD, DB_HOST,
@@ -30,7 +30,7 @@ For each case it posts a ``ComputedSpeciesUploadRequest`` through the real
 * ``GET /geometries?geom_hash=<hash>`` for each of those -> ``legacy_geometries.json``
   (keyed by the un-prefixed request path the exporter passes to ``get_json``)
 
-into ``tckdb_qcschema/tests/fixtures/reads_scan/<case>/`` of the tckdb-adapters checkout.
+into ``adapters/tckdb_qcschema/tests/fixtures/reads_scan/<case>/`` of the tckdb-adapters checkout.
 
 Cases:
 

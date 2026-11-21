@@ -14,7 +14,7 @@ well-tested machinery beats re-implementing DB/app wiring here, but it means
 this file is not itself a backend test module (sovereignty: nothing under
 ``backend/`` changes). To (re)run it:
 
-    cp <tckdb-adapters>/tckdb_qcschema/scripts/capture_read_fixtures.py \\
+    cp <tckdb-adapters>/adapters/tckdb_qcschema/scripts/capture_read_fixtures.py \\
         backend/tests/api/test_zzz_tmp_capture_qcschema_reads.py
 
     # First set the test database variables (DB_USER, DB_PASSWORD, DB_HOST,
@@ -54,7 +54,7 @@ server:
   isotopes from.
 
 and writes the raw JSON response bodies to
-``tckdb_qcschema/tests/fixtures/reads/<case>/*.json`` (tckdb-adapters):
+``adapters/tckdb_qcschema/tests/fixtures/reads/<case>/*.json`` (tckdb-adapters):
 ``calculation.json`` (the calculation detail envelope), ``geometries.json``
 (a dict keyed by whatever handle -- ``geometry_ref`` or, for the Hessian's
 own geometry, the bare numeric id -- was used to fetch it), ``hessian.json``

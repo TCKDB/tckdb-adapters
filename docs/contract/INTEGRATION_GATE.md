@@ -1,7 +1,7 @@
 # Live TCKDB integration gate
 
 The unit suites validate payloads against the shipped schemas, but they never show what
-TCKDB stores. The live gate in `tckdb_arc/tests/integration/` uploads the test corpora
+TCKDB stores. The live gate in `adapters/tckdb_arc/tests/integration/` uploads the test corpora
 through the adapter's real transport (`tckdb-client`) to a TCKDB backend that you run
 locally, then reads the rows back through the REST API.
 
@@ -95,7 +95,7 @@ login above, and `RATE_LIMIT_ENABLED=false` because the gate makes more than
 cd /path/to/tckdb-adapters
 export TCKDB_INTEGRATION_URL=http://127.0.0.1:58010/api/v1
 export TCKDB_INTEGRATION_API_KEY=$(python -c "import json; print(json.load(open('$WORK/key.json'))['key'])")
-python -m pytest tckdb_arc/tests/integration -q -rx
+python -m pytest adapters/tckdb_arc/tests/integration -q -rx
 ```
 
 Project labels are fixed, so a second run against the same database replays every upload
@@ -104,7 +104,7 @@ database and on replay.
 
 ## What it checks
 
-The corpora are defined in `tckdb_arc/tests/integration/_live.py`. For each one the gate
+The corpora are defined in `adapters/tckdb_arc/tests/integration/_live.py`. For each one the gate
 uploads in every mode that applies and reads the stored rows back:
 
 | Area | Read back |

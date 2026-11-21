@@ -3,6 +3,15 @@
 Releases are listed newest first. Releases up to 0.9.7 were made from the TCKDB repository, and
 their entries are in [TCKDB's changelog](https://github.com/TCKDB/TCKDB/blob/main/CHANGELOG.md).
 
+## 0.9.11
+
+The package moved from `tckdb_qcschema/` to `adapters/tckdb_qcschema/` in the repository. The
+project URLs and the README's source and changelog links name the new path, and the checkout
+install is `pip install -e adapters/tckdb_qcschema`; those metadata edits are the reason for the
+release. Reading, mapping, export, dependencies and the `tckdb-qcschema` command are unchanged. The
+payload records the adapter version, so its request body differs from 0.9.10's; the idempotency
+keys do not.
+
 ## 0.9.10
 
 Tracks TCKDB 292e647 (tckdb-schemas 0.177.1, tckdb-client 0.210.1). Requires

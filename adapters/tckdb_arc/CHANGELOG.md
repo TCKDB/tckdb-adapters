@@ -12,6 +12,7 @@ of tracked releases.
 `tools/tckdb_drift.py --bump` adds a line below the marker each time it moves the pin.
 
 <!-- tckdb-drift:changelog -->
+- Adapter 0.15.21: the package moved to `adapters/tckdb_arc/`; no payload change; same pin as 0.15.20 (TCKDB 292e647).
 - Adapter 0.15.20: tracked TCKDB 292e647 (schemas 0.177.1, client 0.210.1); thermo and kinetics payloads change for a one-electron species under an `mrci+davidson` level (see 0.15.20 below).
 - Adapter 0.15.19: ASCII refusal and log messages; same pin as 0.15.18 (TCKDB b129c88).
 - Adapter 0.15.18: tracked TCKDB b129c88 (schemas 0.176.0, client 0.209.2); path searches state their coordinate unit.
@@ -39,6 +40,13 @@ of tracked releases.
 - Adapter 0.10.0: tracked TCKDB 96b71b0 (schemas 0.73.0, client 0.111.0).
 - Adapter 0.6.9: tracked TCKDB f22d3a8 (schemas 0.64.0, client 0.102.0).
 - Adapter 0.6.8: tracked TCKDB a515fb9 (schemas 0.58.0, client 0.98.0).
+
+## 0.15.21
+
+No payload change. The package moved from `tckdb_arc/` to `adapters/tckdb_arc/` in the repository.
+The project URLs and the README's links name the new path, the README's test install reads the
+core from `../../tckdb_core`, and so does the package's pytest `pythonpath`. No mapping or builder changed, so every payload and idempotency key is the
+same as under 0.15.20. The TCKDB pin and the `tckdb-adapters-core` bound are unchanged.
 
 ## 0.15.20
 

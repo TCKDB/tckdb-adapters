@@ -9,11 +9,11 @@ and [`AGENTS.md`](AGENTS.md) states the repository's rules in short form.
 ```bash
 python tools/tckdb_drift.py --install-specs      # prints the two pinned TCKDB requirements
 pip install "<TCKDB_CLIENT_SPEC value>" "<TCKDB_SCHEMAS_SPEC value>"
-pip install -e "tckdb_core[test]" -e "tckdb_arc[test]"   # and each further adapter
+pip install -e "tckdb_core[test]" -e "adapters/tckdb_arc[test]"   # and each further adapter
 python -m pytest
-pip install -e "tckdb_chemkin[test]" -e "tckdb_qcschema[test]"   # when changing either
-(cd tckdb_chemkin && python -m pytest)
-(cd tckdb_qcschema && python -m pytest)
+pip install -e "adapters/tckdb_chemkin[test]" -e "adapters/tckdb_qcschema[test]"   # when changing either
+(cd adapters/tckdb_chemkin && python -m pytest)
+(cd adapters/tckdb_qcschema && python -m pytest)
 ```
 
 Python 3.11 or newer. ARC is optional; the tests that need it skip without it.

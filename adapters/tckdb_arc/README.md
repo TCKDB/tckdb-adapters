@@ -1,6 +1,6 @@
 # tckdb-arc
 
-[![tckdb-arc](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fcalvinp0%2Ftckdb-adapters%2Fmain%2Ftckdb_arc%2Fpyproject.toml&query=%24.project.version&label=tckdb-arc)](https://github.com/TCKDB/tckdb-adapters/blob/main/tckdb_arc/CHANGELOG.md)
+[![tckdb-arc](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fcalvinp0%2Ftckdb-adapters%2Fmain%2Fadapters%2Ftckdb_arc%2Fpyproject.toml&query=%24.project.version&label=tckdb-arc)](https://github.com/TCKDB/tckdb-adapters/blob/main/adapters/tckdb_arc/CHANGELOG.md)
 
 The ARC adapter for TCKDB. It reads an ARC project's `output/output.yml`, with ARC's
 parser evidence file when there is one, and builds TCKDB species, reaction and
@@ -117,7 +117,7 @@ idempotency key, the response, the server's warnings and the adapter's own.
 An idempotency key is `arc:<project>:<species>:<conformer>:<kind>:<payload hash>`. The
 same ARC output gives the same key, and TCKDB answers a repeated key by replaying the first
 response. A release of this adapter that changes a payload changes its hash, and TCKDB
-then records a re-upload as a new deposit. The [changelog](https://github.com/TCKDB/tckdb-adapters/blob/main/tckdb_arc/CHANGELOG.md) marks those
+then records a re-upload as a new deposit. The [changelog](https://github.com/TCKDB/tckdb-adapters/blob/main/adapters/tckdb_arc/CHANGELOG.md) marks those
 releases.
 
 The adapter's warnings each carry a stable code, and
@@ -152,7 +152,7 @@ them under "Exceptions to rules 1 and 3".
 
 ## Module layout
 
-The adapter's code is in `tckdb_arc/`. `adapter.py` holds the `TCKDBAdapter` class, the tables only
+The adapter's code is in `adapters/tckdb_arc/tckdb_arc/`. `adapter.py` holds the `TCKDBAdapter` class, the tables only
 the class reads, and the re-exports. The rest is in sibling modules, each importing only the ones
 listed before it, and `tckdb_arc.adapter` still exports every name that moved.
 
@@ -204,7 +204,7 @@ it up; `tests/test_adapter_module_surface.py` lists those names and checks the l
 ## Tests
 
 ```bash
-pip install -e "../tckdb_core[test]" -e ".[test]"
+pip install -e "../../tckdb_core[test]" -e ".[test]"
 python -m pytest
 ```
 
@@ -213,4 +213,4 @@ backend comparison tests and the live integration gate.
 
 ## Changes
 
-See [CHANGELOG.md](https://github.com/TCKDB/tckdb-adapters/blob/main/tckdb_arc/CHANGELOG.md).
+See [CHANGELOG.md](https://github.com/TCKDB/tckdb-adapters/blob/main/adapters/tckdb_arc/CHANGELOG.md).

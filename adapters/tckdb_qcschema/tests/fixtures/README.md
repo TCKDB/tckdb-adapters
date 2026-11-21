@@ -235,7 +235,7 @@ each `meta.json["edit"]`.
 
 ```
 conda run -n tckdb_qcschema_psi4 python \
-    tckdb_qcschema/scripts/generate_torsiondrive_fixtures.py <tmp_raw_dir> \
+    adapters/tckdb_qcschema/scripts/generate_torsiondrive_fixtures.py <tmp_raw_dir> \
     [--only h2o2 hoooh hoooh_rotors]
 ```
 

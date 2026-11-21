@@ -3,6 +3,13 @@
 Releases are listed newest first. Releases up to 0.7.5 were made from the TCKDB repository, and
 their entries are in [TCKDB's changelog](https://github.com/TCKDB/TCKDB/blob/main/CHANGELOG.md).
 
+## 0.7.9
+
+The package moved from `tckdb_chemkin/` to `adapters/tckdb_chemkin/` in the repository. The project
+URLs and the README's source and changelog links name the new path, and the checkout install is
+`pip install -e adapters/tckdb_chemkin`. Parsing, identity resolution, payloads, dependencies,
+idempotency keys and the `tckdb-chemkin-import` command are unchanged.
+
 ## 0.7.8
 
 Tracks TCKDB 292e647 (tckdb-schemas 0.177.1, tckdb-client 0.210.1). Requires

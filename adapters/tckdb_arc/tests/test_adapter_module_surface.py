@@ -281,8 +281,8 @@ NOT_LOOKED_UP_AS_A_GLOBAL = {
     "_read_gsm_node_outputs": "no caller; the patches on it assert nothing",
 }
 
-REPO_ROOT = PACKAGE_DIR.parents[1]
-TEST_DIRS = (REPO_ROOT / "tckdb_arc" / "tests", REPO_ROOT / "tckdb_core" / "tests")
+REPO_ROOT = PACKAGE_DIR.parents[2]  # adapters/tckdb_arc/tckdb_arc -> adapters/tckdb_arc -> adapters -> repository
+TEST_DIRS = (REPO_ROOT / "adapters" / "tckdb_arc" / "tests", REPO_ROOT / "tckdb_core" / "tests")
 FAMILY = ("adapter", *HELPER_MODULES)  # the modules a patch on the adapter's code can name
 
 

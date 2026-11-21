@@ -19,9 +19,9 @@ import _drift_fixture as fx
 
 yaml = pytest.importorskip("yaml")
 
-REPO = Path(__file__).resolve().parents[2]
+REPO = Path(__file__).resolve().parents[3]
 WORKFLOW = REPO / ".github" / "workflows" / "tckdb-drift.yml"
-DIRECTORIES = ["tckdb_core", "tckdb_arc", "tckdb_chemkin", "tckdb_qcschema"]
+DIRECTORIES = ["tckdb_core", "adapters/tckdb_arc", "adapters/tckdb_chemkin", "adapters/tckdb_qcschema"]
 
 PYTHON_SHIM = """#!/bin/bash
 if [ "$1" = "-m" ] && [ "$2" = "pip" ]; then echo "python $*" >> "$FAKE/pip.log"; exit 0; fi
@@ -103,14 +103,14 @@ def test_every_package_is_installed_and_its_suite_run_from_its_own_directory(run
     assert len(installs) == 1  # one resolve, so a conflict between the packages shows up
     for directory in DIRECTORIES:
         assert f"-e ./{directory}[test]" in installs[0]
-    ran = [Path(line.split()[0]).name for line in run.log("pytest.log").splitlines()]
+    ran = [Path(line.split()[0]).relative_to(run.root).as_posix() for line in run.log("pytest.log").splitlines()]
     assert ran == DIRECTORIES
     assert "FAILED" not in run.summary()
 
 
 @pytest.mark.parametrize("failing", DIRECTORIES)
 def test_a_failure_in_any_suite_is_a_failed_run_and_the_others_still_run(run, failing):
-    (run.fake / f"fail_{failing}").write_text("")
+    (run.fake / f"fail_{Path(failing).name}").write_text("")  # the shim names the failing suite by its directory name
     assert run.run() == {"result": "fail"}
     assert len(run.log("pytest.log").splitlines()) == len(DIRECTORIES)  # no suite is skipped
     lines = run.summary().splitlines()
@@ -123,12 +123,12 @@ def test_a_failure_in_any_suite_is_a_failed_run_and_the_others_still_run(run, fa
 
 
 def test_failures_in_two_packages_are_both_reported(run):
-    for failing in ("tckdb_chemkin", "tckdb_qcschema"):
-        (run.fake / f"fail_{failing}").write_text("")
+    for failing in ("adapters/tckdb_chemkin", "adapters/tckdb_qcschema"):
+        (run.fake / f"fail_{Path(failing).name}").write_text("")
     assert run.run() == {"result": "fail"}
     lines = run.summary().splitlines()
-    assert "FAILED tckdb_chemkin/tests/test_x.py::test_a - boom" in lines
-    assert "FAILED tckdb_qcschema/tests/test_x.py::test_a - boom" in lines
+    assert "FAILED adapters/tckdb_chemkin/tests/test_x.py::test_a - boom" in lines
+    assert "FAILED adapters/tckdb_qcschema/tests/test_x.py::test_a - boom" in lines
 
 
 def test_an_install_failure_runs_no_suite_and_is_reported_as_one(run):

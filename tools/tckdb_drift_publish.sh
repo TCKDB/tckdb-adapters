@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Publish step of .github/workflows/tckdb-drift.yml: open or update the bump PR, or
 # the issue that explains why there is no PR. Kept out of the workflow so it can be
-# exercised with a bare remote and a fake `gh` (tckdb_arc/tests/test_tckdb_drift_publish.py).
+# exercised with a bare remote and a fake `gh` (adapters/tckdb_arc/tests/test_tckdb_drift_publish.py).
 #
 # Environment (all set by the workflow):
 #   GH_TOKEN REPO RUN_URL DRIFT(true|false)

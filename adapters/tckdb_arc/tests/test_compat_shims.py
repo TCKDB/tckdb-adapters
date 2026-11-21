@@ -70,10 +70,10 @@ def test_the_names_arcs_own_repository_imports_are_unchanged():
     assert IDEMPOTENCY_NAMESPACE == "arc"
 
 
-def test_the_imported_core_is_the_sibling_of_the_imported_arc():
+def test_the_imported_core_is_the_core_at_the_repository_root_above_the_imported_arc():
     import pathlib
 
     import tckdb_arc.adapter
     arc_dir = pathlib.Path(tckdb_arc.adapter.__file__).resolve().parent.parent
     core_dir = pathlib.Path(tckdb_core.constraints.__file__).resolve().parent.parent
-    assert core_dir == arc_dir.parent / "tckdb_core"
+    assert core_dir == arc_dir.parent.parent / "tckdb_core"  # adapters/tckdb_arc -> adapters -> repository

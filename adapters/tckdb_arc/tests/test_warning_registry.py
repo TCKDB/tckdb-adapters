@@ -18,7 +18,7 @@ from tckdb_arc.warning_codes import ADAPTIVE_LEVEL_NOT_ATTRIBUTABLE, ArcWarning
 from tckdb_core.adapter_warnings import WarningSink
 from tckdb_core.warning_codes import CoreWarning
 
-REPO = Path(__file__).resolve().parents[2]
+REPO = Path(__file__).resolve().parents[3]
 
 
 def test_the_registry_is_well_formed():
