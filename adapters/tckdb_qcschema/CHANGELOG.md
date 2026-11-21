@@ -10,10 +10,10 @@ The package moved from `tckdb_qcschema/` to `adapters/tckdb_qcschema/` in the re
 path, and the checkout install is `pip install -e adapters/tckdb_qcschema`; those metadata edits
 are the reason for the release. Reading, mapping, export logic, dependencies and the
 `tckdb-qcschema` command are unchanged. The adapter version is recorded in what the package
-produces, so the output differs from 0.9.10's in that field only: an imported document's request
-body (the result origin's `producer`, the parser stamp and `adapter_version` in
-`calculation.parameters_json`) and an exported document's `export_adapter_version`. The
-idempotency keys do not change.
+produces, so the output differs from 0.9.10's only where it records that version: an imported
+document's request body (the result origin's `producer`, the parser stamp and `adapter_version`
+in `calculation.parameters_json`) and an exported document's `provenance.routine` and
+`export_adapter_version`. The idempotency keys do not change.
 
 The unshipped scripts follow the move: `scripts/emit_backend_corpus.py` records its source
 fixtures as `tckdb-adapters:adapters/tckdb_qcschema/tests/fixtures/<case>`, and
