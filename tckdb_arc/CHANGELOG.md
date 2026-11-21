@@ -46,7 +46,7 @@ No payload change: every payload, idempotency key, sidecar and log record is byt
   the core writes `payload_failed_local_validation` and `payload_local_validation_unavailable`
   to a sidecar with the `source` `tckdb_core_self_check`, whichever adapter runs the upload. The
   page also now says that `calculation_ref_not_returned` is not written to a sidecar: it goes to a
-  log line and to the `skip_reason` of the artifact outcome. Only the generated text changed.
+  log line and to the `skip_reason` of each skipped artifact outcome. Only the generated text changed.
 
 ## 0.15.16
 
