@@ -3,7 +3,7 @@
 The determination key and the visibly stated interpretation of an Arkane-stamped fit
 (``_kinetics_declarations``), the tunneling-model label, the calculation roles a kinetics block
 cites, and the electron counts the one-electron exemption reads. The kinetics block itself is
-built in ``adapter.py``.
+built in ``kinetics_payloads.py``.
 """
 
 import hashlib

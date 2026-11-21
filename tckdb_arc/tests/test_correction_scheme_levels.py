@@ -7,10 +7,10 @@ scheme). The adapter never sends ``application_role: composite_delta``.
 """
 
 import copy
-import pathlib
 
 import pytest
 
+from _adapter_sources import adapter_source_text
 from tckdb_arc import adapter as adapter_module
 from tckdb_arc.adapter import _bac_frequency_level
 
@@ -135,5 +135,5 @@ def test_application_roles_are_only_aec_total_and_bac_total(tmp_path, route):
 
 
 def test_the_adapter_source_never_names_composite_delta():
-    source = pathlib.Path(adapter_module.__file__).read_text()
+    source = adapter_source_text()
     assert "composite_delta" not in source

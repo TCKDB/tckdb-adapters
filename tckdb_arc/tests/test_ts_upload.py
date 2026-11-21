@@ -19,6 +19,7 @@ from _contract import contract_validate
 from tckdb_schemas.enums import CalculationType
 from tckdb_schemas.workflows.transition_state_upload import TransitionStateUploadRequest
 
+from tckdb_arc import _logging
 from tckdb_arc.adapter import (
     TCKDBAdapter,
     TRANSITION_STATE_ENDPOINT,
@@ -229,7 +230,7 @@ class TestTSArtifactShortCircuit(unittest.TestCase):
     def test_warns_exactly_once_per_adapter(self):
         adapter = self._artifact_adapter()
         doc = self._doc()
-        with mock.patch("tckdb_arc.adapter.logger") as log:
+        with mock.patch.object(_logging.logger, "warning") as warning:
             for _ in range(3):
                 adapter._compose_transition_state_request(
                     output_doc=doc,
@@ -237,7 +238,7 @@ class TestTSArtifactShortCircuit(unittest.TestCase):
                     reaction_record=doc["reactions"][0],
                 )
         artifact_warnings = [
-            c for c in log.warning.call_args_list
+            c for c in warning.call_args_list
             if "artifact upload" in str(c).lower()
             and "transition-state" in str(c).lower()
         ]
@@ -249,14 +250,14 @@ class TestTSArtifactShortCircuit(unittest.TestCase):
         adapter = _adapter()
         doc = copy.deepcopy(_reaction_output_doc())
         doc["transition_states"][0]["converged"] = True
-        with mock.patch("tckdb_arc.adapter.logger") as log:
+        with mock.patch.object(_logging.logger, "warning") as warning:
             adapter._compose_transition_state_request(
                 output_doc=doc,
                 ts_record=doc["transition_states"][0],
                 reaction_record=doc["reactions"][0],
             )
         artifact_warnings = [
-            c for c in log.warning.call_args_list
+            c for c in warning.call_args_list
             if "artifact upload" in str(c).lower()
         ]
         self.assertEqual(artifact_warnings, [])

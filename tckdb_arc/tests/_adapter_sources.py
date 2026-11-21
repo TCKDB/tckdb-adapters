@@ -1,4 +1,4 @@
-"""The source of the ARC adapter: ``adapter.py`` plus the sibling modules its helpers live in.
+"""The source of the ARC adapter: ``adapter.py`` plus the sibling modules its code lives in.
 
 Source scans (the warning-registry checks, the Hartree-constant guard) read the adapter's code
 through these helpers, so a helper that moves between those files stays under the same checks.
@@ -11,11 +11,34 @@ import tckdb_arc.adapter as _adapter
 
 PACKAGE_DIR = Path(_adapter.__file__).resolve().parent
 
-#: The modules the adapter's helpers live in, lowest layer first; ``adapter.py`` imports from each.
-HELPER_MODULES = (
-    "self_check", "geometry", "levels", "calculations", "path_search",
-    "thermo", "provenance", "statmech", "kinetics", "reactions",
+#: Modules of ``tckdb_arc`` that hold no code moved out of ``adapter.py``: the entry points, the ones
+#: ``adapter.py`` imports for their own sake, and the rest of the package.
+NOT_ADAPTER_HELPERS = (
+    "__init__", "_arc_optional", "_compat", "_logging", "_vendor", "adaptive", "adapter", "arc13",
+    "cli", "config", "constraints", "evidence", "idempotency", "level_rules", "orca_neb",
+    "payload_writer", "sweep", "warning_codes",
 )
+
+
+def _tckdb_arc_modules_imported_by_the_adapter() -> tuple[str, ...]:
+    """The ``tckdb_arc`` modules ``adapter.py`` imports from, in the order it imports them."""
+    found = []
+    for node in ast.parse((PACKAGE_DIR / "adapter.py").read_text(encoding="utf-8")).body:
+        if not isinstance(node, ast.ImportFrom) or node.level or not node.module:
+            continue
+        parts = node.module.split(".")
+        if parts[0] != "tckdb_arc":
+            continue
+        for name in ([parts[1]] if len(parts) > 1 else [a.name for a in node.names]):
+            if name not in found:
+                found.append(name)
+    return tuple(found)
+
+
+#: The modules the adapter's helpers live in, lowest layer first: every module ``adapter.py`` imports
+#: from except the ones in ``NOT_ADAPTER_HELPERS``. A new helper module needs no entry here.
+HELPER_MODULES = tuple(
+    name for name in _tckdb_arc_modules_imported_by_the_adapter() if name not in NOT_ADAPTER_HELPERS)
 
 ADAPTER_SOURCE_FILES = [PACKAGE_DIR / "adapter.py", *(PACKAGE_DIR / f"{name}.py" for name in HELPER_MODULES)]
 

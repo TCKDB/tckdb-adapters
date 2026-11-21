@@ -6,6 +6,7 @@ from unittest.mock import Mock
 
 import pytest
 
+from tckdb_arc import _logging
 from tckdb_arc.adapter import TCKDBAdapter
 from tckdb_arc.config import TCKDBConfig
 
@@ -35,7 +36,7 @@ def test_upload_preserves_and_logs_complete_structured_warnings(tmp_path, monkey
         idempotency_key="warning-test",
     )
     logger = Mock()
-    monkeypatch.setattr("tckdb_arc.adapter.logger", logger)
+    monkeypatch.setattr(_logging.logger, "warning", logger.warning)
     outcome = adapter._upload(written, {})
     sidecar = json.loads(written.sidecar_path.read_text())
     assert outcome.status == "uploaded"

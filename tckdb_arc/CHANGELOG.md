@@ -12,6 +12,7 @@ of tracked releases.
 `tools/tckdb_drift.py --bump` adds a line below the marker each time it moves the pin.
 
 <!-- tckdb-drift:changelog -->
+- Adapter 0.15.16: the payload builders moved out of the adapter module; same pin as 0.15.7 (TCKDB d4d5346).
 - Adapter 0.15.15: the adapter module split into sibling modules; same pin as 0.15.7 (TCKDB d4d5346).
 - Adapter 0.15.14: artifact requests over 64 MiB are split by `tckdb-adapters-core` 0.5.15; same pin as 0.15.7 (TCKDB d4d5346).
 - Adapter 0.15.13: retries transient failures through the client's retry policy, records the server's error code; same pin as 0.15.7 (TCKDB d4d5346).
@@ -34,6 +35,32 @@ of tracked releases.
 - Adapter 0.10.0: tracked TCKDB 96b71b0 (schemas 0.73.0, client 0.111.0).
 - Adapter 0.6.9: tracked TCKDB f22d3a8 (schemas 0.64.0, client 0.102.0).
 - Adapter 0.6.8: tracked TCKDB a515fb9 (schemas 0.58.0, client 0.98.0).
+
+## 0.15.16
+
+No payload change: every payload, idempotency key, sidecar and log record (logger name, level and
+message) is byte-identical.
+
+- The module-level payload builders moved out of `tckdb_arc/adapter.py` into sibling modules, with
+  their code unchanged: `core_aliases` (the core's unit maps, reaction-flattening tables and rule
+  helpers under the adapter's names, and the unit, NASA and thermo-point wrappers),
+  `level_payloads` (ARC's level as a TCKDB level reference, the energy-level declaration, the levels
+  a conformer states), `calculation_payloads` (frequency, single-point and monatomic result
+  payloads, constraints, Hessian and point geometry anchoring), `thermo_payloads` (applied energy
+  corrections, the thermo block, the withholding of G4-shifted energies), `statmech_payloads`,
+  `kinetics_payloads`, `path_payloads` (IRC and path-search result payloads),
+  `ts_evidence_payloads`, `reaction_payloads` (stated participants, the reaction atom map) and
+  `finding_warnings` (the `_warn_*` functions). `adapter.py` keeps `TCKDBAdapter`, the tables only
+  the class reads, and the re-exports.
+- `tckdb_arc.adapter` still exports every name it exported, as the same object, so
+  `from tckdb_arc.adapter import ...` and the CLI work as before.
+- Every module logs through the one `tckdb_arc` logger object in `_logging.py`. Replacing the
+  `logger` name on `tckdb_arc.adapter` no longer reaches the moved functions; patch the methods of
+  the logger object instead. The tests that did so
+  (`test_upload_warnings.py`, `test_ts_upload.py`, `test_warning_registry.py`) now patch
+  `tckdb_arc._logging.logger.warning` (and `.debug`).
+- A test that patches `_THERMO_ENTHALPY_REFERENCE_KIND` patches it on `thermo_payloads`; one that
+  patches `_thermo_energy_level` patches it on `adapter` and on `kinetics_payloads`.
 
 ## 0.15.15
 

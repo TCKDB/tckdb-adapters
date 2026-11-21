@@ -1,7 +1,7 @@
 """The registry of warning codes the ARC adapter emits.
 
 Each member is the ``code`` string a sidecar's ``warnings`` entry carries plus a one-line
-description. The adapter emits them through :func:`tckdb_arc.adapter._self_check`, which
+description. The adapter emits them through :func:`tckdb_arc.self_check._self_check`, which
 renders an ``AdapterWarning`` into the dict the sidecar has always held::
 
     {"code": ..., "message": ..., "field": ..., "context": {"source": "tckdb_arc_self_check", ...}}

@@ -133,10 +133,9 @@ them under "Exceptions to rules 1 and 3".
 
 ## Module layout
 
-The adapter's code is in `tckdb_arc/`. `adapter.py` holds the `TCKDBAdapter` class and the
-builders of the species, reaction and transition-state payloads. Its helpers live in sibling
-modules, each importing only the ones listed before it, and `tckdb_arc.adapter` still exports every
-name that moved.
+The adapter's code is in `tckdb_arc/`. `adapter.py` holds the `TCKDBAdapter` class, the tables only
+the class reads, and the re-exports. The rest is in sibling modules, each importing only the ones
+listed before it, and `tckdb_arc.adapter` still exports every name that moved.
 
 - `self_check.py` renders the sidecar warning dict of one of the adapter's own findings.
 - `geometry.py` normalises xyz text, checks isotope lists and builds the geometry block.
@@ -148,9 +147,22 @@ name that moved.
 - `statmech.py` classifies rotor and mode treatments and lists the calculations a statmech block cites.
 - `kinetics.py` holds the kinetics determination key, the stated interpretation of an Arkane-stamped fit, tunneling labels and electron counts.
 - `reactions.py` holds reaction participant slots, the transition-state atom-map slots and the transition-state SMILES handle.
+- `core_aliases.py` binds the core's unit maps, reaction-flattening tables and rule helpers under the adapter's names, and wraps the unit, NASA and thermo-point builders so they log through the package logger.
+- `level_payloads.py` turns ARC's level into a TCKDB level reference and builds the energy-level declaration and the levels a conformer states.
+- `calculation_payloads.py` builds the frequency, single-point and monatomic result payloads, serialises constraints, and anchors Hessian and point geometries.
+- `thermo_payloads.py` builds the applied energy corrections and the thermo block, and withholds energies a G4 loader shifted.
+- `statmech_payloads.py` builds the statmech block, its torsions and rejected torsions, the frequency scale factor reference and the scan entries.
+- `kinetics_payloads.py` builds the kinetics block and declares the level of its source energies.
+- `path_payloads.py` builds the IRC and path-search result payloads.
+- `ts_evidence_payloads.py` builds the IRC, energy-ordering and imaginary-mode evidence of a transition state.
+- `reaction_payloads.py` builds the stated participants of a reaction and its atom map.
+- `finding_warnings.py` holds the `_warn_*` functions that log a finding and return its sidecar warning.
 - `adaptive.py`, `arc13.py`, `evidence.py`, `constraints.py`, `orca_neb.py`, `config.py`, `sweep.py`, `cli.py` and `warning_codes.py` are the modules that were already separate.
 
-A name that tests patch on `tckdb_arc.adapter` stays in `adapter.py` together with every function that looks it up, because a function in another module would look it up in its own globals.
+Every module logs through the one `tckdb_arc` logger object in `_logging.py`, so tests that capture
+log records patch the methods of that logger (`mock.patch.object(tckdb_arc._logging.logger, "warning")`).
+A test that patches another name on a module of the adapter patches it on the module whose code looks
+it up; `tests/test_adapter_module_surface.py` lists those names and checks the list against the tests.
 
 ## Tests
 
