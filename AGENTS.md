@@ -37,7 +37,7 @@ ARC or RMG conventions are not.
   omit the field, and report a registered warning code. Add no new default.
 - An interpretation may be sent only when it is visibly marked as one in the payload and
   in the sidecar. The pattern is `_kinetics_declarations` in
-  `tckdb_arc/tckdb_arc/adapter.py`: `claim_origin: depositor_interpretation`, a closing
+  `tckdb_arc/tckdb_arc/kinetics.py`: `claim_origin: depositor_interpretation`, a closing
   sentence in the kinetics `note`, and the `kinetics_declarations_interpreted` warning.
   Sending a new interpretation is the repository owner's decision. Ask before adding one.
 - The ARC adapter has three documented exceptions to the two rules above: `formation_298k`

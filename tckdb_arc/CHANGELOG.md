@@ -12,6 +12,7 @@ of tracked releases.
 `tools/tckdb_drift.py --bump` adds a line below the marker each time it moves the pin.
 
 <!-- tckdb-drift:changelog -->
+- Adapter 0.15.15: the adapter module split into sibling modules; same pin as 0.15.7 (TCKDB d4d5346).
 - Adapter 0.15.14: artifact requests over 64 MiB are split by `tckdb-adapters-core` 0.5.15; same pin as 0.15.7 (TCKDB d4d5346).
 - Adapter 0.15.13: retries transient failures through the client's retry policy, records the server's error code; same pin as 0.15.7 (TCKDB d4d5346).
 - Adapter 0.15.12: pre-POST contract check, `validate_before_upload`; same pin as 0.15.7 (TCKDB d4d5346).
@@ -33,6 +34,26 @@ of tracked releases.
 - Adapter 0.10.0: tracked TCKDB 96b71b0 (schemas 0.73.0, client 0.111.0).
 - Adapter 0.6.9: tracked TCKDB f22d3a8 (schemas 0.64.0, client 0.102.0).
 - Adapter 0.6.8: tracked TCKDB a515fb9 (schemas 0.58.0, client 0.98.0).
+
+## 0.15.15
+
+No payload change: every payload, idempotency key and sidecar is byte-identical.
+
+- The ARC adapter's helpers moved out of `tckdb_arc/adapter.py` into sibling modules, with their
+  code unchanged: `self_check` (the sidecar warning dict), `geometry` (xyz text, isotopes, element
+  and formula tables), `levels` (level resolution, level identity, adaptive and restart markers),
+  `calculations` (calculation keys, small result-payload builders, route and reuse provenance),
+  `path_search` (transition-state guess log fields, xTB and GSM node outputs, IRC level and
+  direction), `thermo` (enthalpy checks, applied-energy-correction helpers, composite-energy
+  checks), `provenance` (output-schema checks, record indexes, software releases and data
+  revisions), `statmech`, `kinetics` (including `_kinetics_declarations`) and `reactions`.
+  `adapter.py` keeps `TCKDBAdapter` and every function that looks up a name tests patch on
+  `tckdb_arc.adapter` (`logger` among them).
+- `tckdb_arc.adapter` still exports every name it exported, as the same object, so
+  `from tckdb_arc.adapter import ...`, `mock.patch("tckdb_arc.adapter.<name>")` and the CLI work as
+  before. `tests/test_adapter_module_surface.py` pins that surface.
+- The source scans in `test_warning_registry.py` and the Hartree-constant guard in `test_adapter.py`
+  read `adapter.py` and the new modules.
 
 ## 0.15.14
 

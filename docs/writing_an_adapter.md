@@ -34,7 +34,7 @@ Three rules shape every adapter here.
 3. **Mark an interpretation as one.** Sometimes the tool's documentation settles a fact
    that its output file does not repeat. You may send that reading if the payload says it
    is the adapter's interpretation and the sidecar carries a warning. The pattern is
-   `_kinetics_declarations` in `tckdb_arc/tckdb_arc/adapter.py` with the
+   `_kinetics_declarations` in `tckdb_arc/tckdb_arc/kinetics.py` with the
    `kinetics_declarations_interpreted` warning: the applicability carries
    `claim_origin: depositor_interpretation`, and the kinetics `note` ends with a sentence
    that names what was interpreted.

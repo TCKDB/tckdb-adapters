@@ -10189,8 +10189,9 @@ class TestSingleHartreeToKjMolConstant(unittest.TestCase):
             "relative_energy_kj_mol agree bit-for-bit.",
         )
 
-        source = inspect.getsource(adapter_module)
-        tree = ast.parse(source, filename=adapter_module.__file__)
+        from _adapter_sources import adapter_source_tree
+
+        tree = adapter_source_tree()
         suspects = []
         for node in ast.walk(tree):
             if isinstance(node, ast.Constant) and isinstance(node.value, float):

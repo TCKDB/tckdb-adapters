@@ -131,6 +131,27 @@ Three documented exceptions exist: the formation-enthalpy declaration for output
 the opt level on an IRC calculation whose level is not stated. The mapping page lists
 them under "Exceptions to rules 1 and 3".
 
+## Module layout
+
+The adapter's code is in `tckdb_arc/`. `adapter.py` holds the `TCKDBAdapter` class and the
+builders of the species, reaction and transition-state payloads. Its helpers live in sibling
+modules, each importing only the ones listed before it, and `tckdb_arc.adapter` still exports every
+name that moved.
+
+- `self_check.py` renders the sidecar warning dict of one of the adapter's own findings.
+- `geometry.py` normalises xyz text, checks isotope lists and builds the geometry block.
+- `levels.py` resolves the level a calculation ran at, compares levels, and reads ARC's adaptive and restart markers.
+- `calculations.py` holds the calculation keys, the small result-payload builders and the readers of a calculation's route, reuse and final settings.
+- `path_search.py` resolves the log field of a transition-state guess, reads xTB and GSM node outputs, and holds the IRC level, direction and zero-energy reference.
+- `thermo.py` holds the checks that decide whether an enthalpy is a formation enthalpy, the applied-energy-correction helpers and the composite-energy checks.
+- `provenance.py` reads the output-schema version, indexes species and transition states, and reads software releases and data revisions.
+- `statmech.py` classifies rotor and mode treatments and lists the calculations a statmech block cites.
+- `kinetics.py` holds the kinetics determination key, the stated interpretation of an Arkane-stamped fit, tunneling labels and electron counts.
+- `reactions.py` holds reaction participant slots, the transition-state atom-map slots and the transition-state SMILES handle.
+- `adaptive.py`, `arc13.py`, `evidence.py`, `constraints.py`, `orca_neb.py`, `config.py`, `sweep.py`, `cli.py` and `warning_codes.py` are the modules that were already separate.
+
+A name that tests patch on `tckdb_arc.adapter` stays in `adapter.py` together with every function that looks it up, because a function in another module would look it up in its own globals.
+
 ## Tests
 
 ```bash
