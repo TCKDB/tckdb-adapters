@@ -9,6 +9,7 @@ patched to a few bytes here so no test allocates 64 MiB.
 
 import base64
 import functools
+import gc
 import hashlib
 import json
 
@@ -410,6 +411,48 @@ def test_the_core_sends_what_the_client_sends_for_the_same_plan(tmp_path, sized,
     adapter._post_artifact_batches(_recording_client(from_core), prepared, idempotency_key_prefix=prefix)
     assert from_core == from_client
     assert len(from_core) == {100: 1, 12: 1, 11: 2, 4: 3}.get(budget, len(from_core))
+
+
+def test_an_earlier_requests_encoded_body_is_released_before_the_next_one_is_built(tmp_path, monkeypatch):
+    """One calculation's requests are not all in memory: no earlier request's files are encoded while the next is.
+
+    A list of encoded artifacts cannot be weakly referenced, so this looks for live lists that
+    hold a request's encoded content (``gc.get_objects`` lists every list), when a file is being
+    encoded for a request and when a request is posted. The client keeps nothing it is sent.
+    """
+    _budget(monkeypatch, 4)
+    adapter, _ = _adapter(tmp_path)
+    own = {}
+    for name in "xyz":
+        own[name] = tmp_path / f"{name}.log"
+        own[name].write_bytes(name.encode() * 4)
+    prepared = _plan(adapter, "xyz", own)
+    real_b64encode = base64.b64encode
+    letters = {real_b64encode(n.encode() * 4).decode("ascii"): n for n in "xyz"}
+
+    def live_requests():
+        """The files (as letters) of every live, complete list of encoded artifacts."""
+        return sorted(
+            "".join(letters[e["content_base64"]] for e in obj)
+            for obj in gc.get_objects()
+            if type(obj) is list and obj and all(type(e) is dict and e.get("content_base64") in letters for e in obj)
+        )
+
+    encoding, posting = [], []
+
+    def spying_b64encode(data, *args, **kwargs):
+        encoding.append(live_requests())  # a file of the next request is being encoded
+        return real_b64encode(data, *args, **kwargs)
+
+    class _Client:
+        def request_json(self, method, path, **kwargs):
+            posting.append(live_requests())  # the request being posted is live; any other is a leak
+            return StubResponse({"warnings": []})
+
+    monkeypatch.setattr(uploader.base64, "b64encode", spying_b64encode)
+    adapter._post_artifact_batches(_Client(), prepared, idempotency_key_prefix=PREFIX)
+    assert encoding == [[], [], []]
+    assert posting == [["x"], ["y"], ["z"]]
 
 
 # --------------------------------------------------------------------------- files that go wrong

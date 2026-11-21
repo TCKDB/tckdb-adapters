@@ -239,6 +239,7 @@ def _artifact_batch_bodies(
         except Exception as exc:
             raise _ArtifactPlanError(group) from exc
         yield handle, group, {"artifacts": artifacts}
+        del artifacts  # this frame holds no encoded request while the next one is read and encoded
 
 
 @dataclasses.dataclass(frozen=True)
@@ -1603,7 +1604,7 @@ class TCKDBUploaderBase(StandaloneSubmitMixin, PreUploadValidationMixin):
                 rest = [item for item in prepared if id(item) not in covered]
                 return sent, _ArtifactPostFailure(exc, failed=list(group), not_sent=rest)
             made[handle] = number
-            del body  # the next request's body is not built while this one is still alive
+            del body  # with the generator's own reference gone, the next request is built with this one freed
             sent.append((group, ArtifactBatchResult(
                 handle=handle,
                 calculation_keys=tuple(item.calculation_key for item in group),
