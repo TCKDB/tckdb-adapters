@@ -27,6 +27,10 @@ def _imports_of_the_client_builders(path: Path) -> list[str]:
     for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
         if isinstance(node, ast.ImportFrom):
             module = node.module or ""
+            # The artifact module holds the inline size budget an artifact upload is cut by; it
+            # builds no thermo block, so reading its budget is allowed.
+            if module == "tckdb_client.builders" and [a.name for a in node.names] == ["artifact"]:
+                continue
             if module.startswith("tckdb_client.builders") or (
                     module == "tckdb_client" and any(a.name == "builders" for a in node.names)):
                 found.append(f"{path}:{node.lineno} from {module} import ...")

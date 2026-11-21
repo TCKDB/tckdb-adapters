@@ -119,7 +119,10 @@ sidecar's status, response, warnings and request ids, strict mode, and artifact 
 log or input file calls `submit_artifacts_for_calculation(species_label=..., calculation_ref=...,
 file_path=...)`, or `submit_artifact_batch_for_calculation(...)` for several files, with the
 `calc_` ref from the upload response; the base class builds the sidecars and keys and posts one
-batch per calculation. It reads the project label from the config, else from your
+request per calculation, or several when the files total more than the client's 64 MiB inline
+budget (the first request keeps the plain key, later ones end in `artifact-batch-2`, `-3`; each
+request is stored or refused whole, and when one fails the sidecars of the earlier ones stay
+`uploaded`). It reads the project label from the config, else from your
 `_project_label_for(output_doc)`.
 
 The client the base class builds carries a retry policy made from `config.retry_max_attempts`

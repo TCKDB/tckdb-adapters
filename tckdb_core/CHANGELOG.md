@@ -3,6 +3,38 @@
 Releases are listed newest first. Each `tckdb-arc` release names the core version it needs in its
 own changelog.
 
+## 0.5.15
+
+A calculation's artifacts are cut into several requests when its files total more than 64 MiB,
+the way `tckdb-client` cuts them. This changes what is sent only for a calculation whose files
+total more than 64 MiB: it now goes out as several requests, the first under the old idempotency
+key and the rest under new keys. Everything at or under 64 MiB is unchanged: the same request,
+body, key and sidecar. Atomicity is per request, not per calculation.
+
+- The request plan (`uploader._artifact_batch_requests`) groups a plan's items by calculation, in
+  first-seen order, and starts a new request when adding the next file would take the running
+  total of file sizes on disk past `tckdb_client.builders.artifact.INLINE_TOTAL_BUDGET_BYTES`,
+  read from the client at call time (the number is not copied here). A file over the budget on its
+  own is sent alone. Item order is kept. `_artifact_batch_bodies` yields one `(handle, group, body)`
+  per request and builds each body only when it is posted.
+- The first request of a calculation keeps its key, `<prefix>:<first calculation key>:artifact-batch`;
+  later requests end in `artifact-batch-2`, `artifact-batch-3`, and so on, each through
+  `validate_idempotency_key`. The key prefix and `artifact_batch_digest` are unchanged and are still
+  computed over every item of the submit call.
+- When request k of N fails, the items of the requests before it are recorded as `uploaded` with
+  their own request's response, status, request id and warnings; the items of the failed request
+  are recorded as `failed` with the error; the items of the requests never sent are recorded as
+  `failed` with a `last_error` that says they were not sent because an earlier request failed.
+  Strict mode raises after every sidecar is written. Before, a failure marked every item failed,
+  which was true while a calculation was one request. The same rule now applies to a plan that
+  spans several calculations. A sidecar's `response_body` is the summary of its own request only.
+- The pre-upload validation still checks every item before the first request is sent.
+- `_post_artifact_batches` returns `(sent, failure)` instead of a list and no longer raises for a
+  failed request; its docstring now describes what `TCKDBClient.upload_artifacts` returns (the
+  status, request id and replay flag, but not the headers) and why the core sends through
+  `request_json`. `testing.contract.artifacts_request_bodies` cuts a plan the same way.
+- `calculation_id` may still be `None`: a calculation is addressed by its `calc_` ref.
+
 ## 0.5.14
 
 A failed upload is retried when the failure is transient, and records the server's error code.
