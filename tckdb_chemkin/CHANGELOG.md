@@ -3,6 +3,11 @@
 Releases are listed newest first. Releases up to 0.7.5 were made from the TCKDB repository, and
 their entries are in [TCKDB's changelog](https://github.com/TCKDB/TCKDB/blob/main/CHANGELOG.md).
 
+## 0.7.7
+
+Requires `tckdb-client>=0.209,<0.210` (was `>=0.208,<0.209`). Parsing, identity resolution,
+payloads and idempotency keys are unchanged.
+
 ## 0.7.6
 
 The package lives in this repository, at `tckdb_chemkin/`, with its history. Parsing, identity

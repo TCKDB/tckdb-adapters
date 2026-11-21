@@ -3,6 +3,12 @@
 Releases are listed newest first. Each `tckdb-arc` release names the core version it needs in its
 own changelog.
 
+## 0.5.16
+
+Requires `tckdb-client>=0.209,<0.210` and `tckdb-schemas>=0.176,<0.177` (were `>=0.208,<0.209`
+and `>=0.175,<0.176`), and the contract kit's `TARGET_SCHEMAS_LINE` is 0.176. No payload,
+idempotency key or sidecar changes.
+
 ## 0.5.15
 
 A calculation's artifacts are cut into several requests when its files total more than 64 MiB,

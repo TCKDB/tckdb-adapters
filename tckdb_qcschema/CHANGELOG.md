@@ -3,6 +3,12 @@
 Releases are listed newest first. Releases up to 0.9.7 were made from the TCKDB repository, and
 their entries are in [TCKDB's changelog](https://github.com/TCKDB/TCKDB/blob/main/CHANGELOG.md).
 
+## 0.9.9
+
+Requires `tckdb-client>=0.209,<0.210` and `tckdb-schemas>=0.176,<0.177` (were `>=0.208,<0.209`
+and `>=0.175,<0.176`). Reading, mapping and export are unchanged. The payload records the adapter
+version, so its request body differs from 0.9.8's; the idempotency keys do not.
+
 ## 0.9.8
 
 The package lives in this repository, at `tckdb_qcschema/`, with its history. Reading, mapping,

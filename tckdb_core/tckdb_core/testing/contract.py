@@ -63,7 +63,7 @@ REQUEST_MODELS = request_models()
 #: The tckdb-schemas release line the suites were run against. Keep it equal
 #: to the ``tckdb-schemas`` bound in each ``pyproject.toml``; moving it means
 #: reading ``python -m tckdb_schemas.contract --since <old>`` first.
-TARGET_SCHEMAS_LINE = (0, 175)
+TARGET_SCHEMAS_LINE = (0, 176)
 
 
 def installed_schemas_version() -> str:
