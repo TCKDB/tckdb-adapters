@@ -94,8 +94,8 @@ tckdb_mytool/
 In `pyproject.toml`, depend on `tckdb-adapters-core` and bound `tckdb-schemas` and
 `tckdb-client` to the same minor lines the core does. Add the package to
 `pythonpath` and `testpaths` under `[tool.pytest.ini_options]` in the root
-`pyproject.toml`, which is what lets `pytest` find it from the repository root, and to the
-CI workflow.
+`pyproject.toml`, which is what lets `pytest` find it from the repository root, to the
+CI workflow, and to the install lines in `AGENTS.md` ("Running tests") and `CONTRIBUTING.md`.
 
 `tools/tckdb_drift.py --bump` currently rewrites the bounds of `tckdb_core` and
 `tckdb_arc` only. Add your `pyproject.toml` to it, and to the file list in
@@ -213,12 +213,30 @@ class MyToolWarning(CodedEnum):
 Emit them through the sink: `warnings.add(MyToolWarning.X, "message", "field.path",
 action="...")`. Never write a code as a bare string at the call site.
 
-The ARC adapter generates `docs/contract/WARNING_CODES.md` from its registry with
-`python tools/gen_warning_codes.py`, and `tckdb_arc/tests/test_warning_registry.py` fails
-when the document is stale, when a code is unregistered, or when a registered code is
-never emitted. Give your package the same: a `render_markdown()`, a branch in the
-generator that writes your table, and a registry test. Regenerate the document in the same
-commit that adds a code.
+Each adapter has its own registry and its own generated page,
+`docs/contract/<TOOL>_WARNING_CODES.md`. ARC's page is `docs/contract/WARNING_CODES.md` only
+because READMEs and tests already link that name. To add yours:
+
+1. In `warning_codes.py`, define `DOC_RELATIVE_PATH` (the path above) and a
+   `render_markdown()` that returns the page's text; the tool writes the file. Model it on
+   `render_markdown` in `tckdb_arc/tckdb_arc/warning_codes.py`. Its header and its
+   `CoreWarning` section are copied from ARC's until a shared helper moves into the core.
+2. In `tools/gen_warning_codes.py`, import your package's `warning_codes` module and add
+   `(warning_codes.DOC_RELATIVE_PATH, warning_codes.render_markdown)` to `DOCUMENTS`. The
+   tool imports every adapter it lists, so each must be installed to run it.
+3. Write a registry test like `tckdb_arc/tests/test_warning_registry.py`. It fails when the
+   page is stale, when a code is unregistered, or when a registered code is never emitted.
+   Like ARC's, it also loads `tools/gen_warning_codes.py` and asserts your pair is in
+   `DOCUMENTS`, so a forgotten entry fails a test.
+4. List the page in your nav group (section 7).
+
+Regenerate with `python tools/gen_warning_codes.py` and commit the generated pages with the
+change; a change to a core code regenerates every adapter's page.
+
+Your page lists your codes and then `CoreWarning`, as ARC's does: every adapter's uploads run
+the shared upload code, so the core's codes (source `tckdb_core_self_check`) appear in your
+sidecars and logs too. ARC's registry test asserts that no code is in both registries; yours
+should too.
 
 ### 6. Configuration and a command
 
@@ -250,8 +268,8 @@ The site is built from `docs/`, `mkdocs.yml` and files that stub pages include. 
 6. If the adapter has a mapping document, write it at `docs/contract/<TOOL>_MAPPING.md` and
    list it in the adapter's nav group. Do not move the existing files in `docs/contract/`:
    READMEs, tests and the generator name their paths.
-7. The warning-code table that the generator writes (section 5) is a page under
-   `docs/contract/`. List that page in the adapter's nav group.
+7. The warning-code page that the generator writes (section 5) is
+   `docs/contract/<TOOL>_WARNING_CODES.md`. List it in the adapter's nav group.
 8. Update the root `README.md`, which is also the site's home page: add a row to the package
    table, add the package's version badge, and change the sentence that says which adapters
    exist.
@@ -266,7 +284,7 @@ The site is built from `docs/`, `mkdocs.yml` and files that stub pages include. 
 |---|---|
 | Every built request validates against the contract | In `tests/conftest.py`, register `tckdb_core.testing.contract_hook.contract_checks_fixture` with your adapter class and a map of builder-method name to schema name. It runs the published pydantic model and the shipped JSON Schema on every request any test builds. Call `contract_validate` yourself where a test checks a fragment. |
 | The contract pin | `tests/test_contract_pin.py` with the four assertions of `tckdb_core.testing.contract_pin`, pointed at your `pyproject.toml` and your routes. `assert_routes_have_shipped_schemas` takes the set of endpoints your adapter posts to, which can be any subset of the kit's `ROUTE_SCHEMAS`. |
-| Warning registry | Codes are unique and registered, the generated document is current. |
+| Warning registry | Codes are unique and registered, the adapter's generated page is current. |
 | Upload behaviour without a network | `tckdb_core.testing.stubs.StubClient`, passed as `client_factory=lambda config, key: client`. |
 | Refusals | For each convention the source may not state, a test that the block is omitted and the warning is present. |
 
@@ -462,7 +480,8 @@ Other limits of the core that an adapter author should know:
       registered warning code and a test.
 - [ ] Every interpretation is marked in the payload and in the sidecar.
 - [ ] The contract hook, the pin test and the registry test are in place.
-- [ ] The warning-code document is regenerated.
+- [ ] The adapter's own warning-code page, `docs/contract/<TOOL>_WARNING_CODES.md`, is
+      regenerated and listed in its nav group.
 - [ ] The package has a README and a changelog, and the changelog marks releases that
       change payloads.
 - [ ] The adapter is on the documentation site as section 7 describes, and
