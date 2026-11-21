@@ -279,7 +279,7 @@ def _freq_result_payload(
     if n_imag is not None and is_ts and n_imag <= 0:
         raise ValueError(
             f"TCKDB freq: label={label!r} is_ts=True (transition state) "
-            f"but ARC reports freq_n_imag={n_imag} — TCKDB 0.22.0 refuses "
+            f"but ARC reports freq_n_imag={n_imag} -- TCKDB 0.22.0 refuses "
             f"a transition state with no imaginary mode "
             f"(transition_state_no_imaginary_mode). Refusing to deposit "
             f"this record rather than silently drop the disproving "
@@ -439,7 +439,7 @@ def _freq_result_payload(
                     f"cm-1, and no single one is the unique major TS mode "
                     f"in ARC's own (75, 10000) cm-1 window "
                     f"(arc/checks/ts.py::"
-                    f"check_imaginary_frequencies) — zero candidates "
+                    f"check_imaginary_frequencies) -- zero candidates "
                     f"qualify, or more than one ties for the largest "
                     f"magnitude. TCKDB 0.22.0 requires exactly one "
                     f"designated reaction coordinate "
@@ -488,7 +488,7 @@ def _freq_result_payload(
             f"'minimum') reports freq_n_imag=0, but ARC's own "
             f"statmech.harmonic_frequencies_cm1 contains {imag_count} "
             f"negative value(s) "
-            f"{[m['frequency_cm1'] for m in modes if m['is_imaginary']]} — "
+            f"{[m['frequency_cm1'] for m in modes if m['is_imaginary']]} -- "
             f"ARC never marks a minimum converged with an imaginary mode, "
             f"so this record is not current ARC output. Refusing to deposit "
             f"this record rather than silently drop the disproving evidence "
