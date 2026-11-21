@@ -106,7 +106,7 @@ CORPUS_DIR = Path(__file__).resolve().parents[1] / "fixtures" / "qcschema"
 #: into the tckdb-adapters checkout named by ``TCKDB_ADAPTERS_ROOT``.
 _ADAPTERS_ROOT = os.environ.get("TCKDB_ADAPTERS_ROOT")
 OUT_DIR = (
-    Path(_ADAPTERS_ROOT) / "tckdb_qcschema" / "tests" / "fixtures" / "reads" if _ADAPTERS_ROOT else None
+    Path(_ADAPTERS_ROOT) / "adapters" / "tckdb_qcschema" / "tests" / "fixtures" / "reads" if _ADAPTERS_ROOT else None
 )
 
 #: The two round-trip cases. Deliberately a fixed

@@ -152,7 +152,7 @@ them under "Exceptions to rules 1 and 3".
 
 ## Module layout
 
-The adapter's code is in `adapters/tckdb_arc/tckdb_arc/`. `adapter.py` holds the `TCKDBAdapter` class, the tables only
+The adapter's code is in `tckdb_arc/`. `adapter.py` holds the `TCKDBAdapter` class, the tables only
 the class reads, and the re-exports. The rest is in sibling modules, each importing only the ones
 listed before it, and `tckdb_arc.adapter` still exports every name that moved.
 

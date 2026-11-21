@@ -66,7 +66,7 @@ SCAN_CORPUS = Path(__file__).resolve().parents[1] / "fixtures" / "qcschema_scan"
 #: into the tckdb-adapters checkout named by ``TCKDB_ADAPTERS_ROOT``.
 _ADAPTERS_ROOT = os.environ.get("TCKDB_ADAPTERS_ROOT")
 OUT_DIR = (
-    Path(_ADAPTERS_ROOT) / "tckdb_qcschema" / "tests" / "fixtures" / "reads_scan" if _ADAPTERS_ROOT else None
+    Path(_ADAPTERS_ROOT) / "adapters" / "tckdb_qcschema" / "tests" / "fixtures" / "reads_scan" if _ADAPTERS_ROOT else None
 )
 
 ROUTE_CASES = ("torsiondrive_v1", "torsiondrive_v2", "torsiondrive_2d_v2")

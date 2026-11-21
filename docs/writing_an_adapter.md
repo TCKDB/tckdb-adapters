@@ -301,7 +301,7 @@ ownership, geometry and composition checks), it does not check headers, and JSON
 Run tests serially and only the files you touched while working:
 
 ```bash
-python -m pytest -p no:xdist tckdb_mytool/tests/test_thermo.py -q
+python -m pytest -p no:xdist adapters/tckdb_mytool/tests/test_thermo.py -q
 ```
 
 Run the whole suite once before you open a pull request.

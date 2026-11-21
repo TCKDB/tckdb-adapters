@@ -43,10 +43,12 @@ of tracked releases.
 
 ## 0.15.21
 
-No payload change. The package moved from `tckdb_arc/` to `adapters/tckdb_arc/` in the repository.
-The project URLs and the README's links name the new path, the README's test install reads the
-core from `../../tckdb_core`, and so does the package's pytest `pythonpath`. No mapping or builder changed, so every payload and idempotency key is the
-same as under 0.15.20. The TCKDB pin and the `tckdb-adapters-core` bound are unchanged.
+No payload change. The package moved from `tckdb_arc/` to `adapters/tckdb_arc/` in the
+repository. The `Changelog` project URL and the README's changelog links name the new path (the
+package sets no `Source` URL), the README's test install reads the core from `../../tckdb_core`,
+and so does the package's pytest `pythonpath`. No mapping or builder changed, so every payload and
+idempotency key is the same as under 0.15.20. The TCKDB pin and the `tckdb-adapters-core` bound
+are unchanged.
 
 ## 0.15.20
 
