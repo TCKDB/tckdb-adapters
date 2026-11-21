@@ -1,5 +1,11 @@
 # tckdb-adapters
 
+[![ci](https://github.com/calvinp0/tckdb-adapters/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/calvinp0/tckdb-adapters/actions/workflows/ci.yml)
+[![tckdb-adapters-core](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fcalvinp0%2Ftckdb-adapters%2Fmain%2Ftckdb_core%2Fpyproject.toml&query=%24.project.version&label=tckdb-adapters-core)](tckdb_core/CHANGELOG.md)
+[![tckdb-arc](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fcalvinp0%2Ftckdb-adapters%2Fmain%2Ftckdb_arc%2Fpyproject.toml&query=%24.project.version&label=tckdb-arc)](tckdb_arc/CHANGELOG.md)
+[![python](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue)](.github/workflows/ci.yml)
+[![licence](https://img.shields.io/badge/licence-MIT-green)](LICENSE)
+
 Producer adapters for [TCKDB](https://github.com/TCKDB/TCKDB), a database of computed
 thermochemistry and kinetics. An adapter reads the output of one tool and turns it into
 TCKDB upload payloads. Today there is one, for
@@ -42,32 +48,15 @@ Install `tckdb_core` before `tckdb_arc`, as above, because the ARC adapter depen
 local TCKDB checkout you can install the two TCKDB packages from its `clients/python` and
 `schemas/python/tckdb-schemas` directories instead.
 
-## Upload an ARC run
+## Use an adapter
 
-Add a `tckdb` block to the ARC project's `input.yml`:
-
-```yaml
-tckdb:
-  enabled: true
-  base_url: https://tckdb.example.org/api/v1
-  upload_mode: computed_species   # or conformer, computed_reaction, computed_ts
-  upload: true                    # false writes the payloads and sends nothing
-```
-
-Put the API key in the `TCKDB_API_KEY` environment variable, then run the adapter on the
-finished project:
-
-```bash
-tckdb-arc-upload /path/to/project/input.yml --offline   # build and inspect, no network
-tckdb-arc-upload /path/to/project/input.yml             # upload
-```
-
-Each payload is written under `<project>/tckdb_payloads/` before any request is made, next
-to a sidecar file that records the idempotency key, the server's answer and every warning.
-Because running the command again sends the same keys, a repeated upload does not create
-a second deposit. The [ARC adapter README](tckdb_arc/README.md) lists the other settings, and
-[`docs/contract/ARC_MAPPING.md`](docs/contract/ARC_MAPPING.md) says what each ARC field
-becomes in TCKDB and what is left out.
+Each adapter has its own README with its settings and its command; for ARC that is
+[`tckdb_arc/README.md`](tckdb_arc/README.md). Every adapter writes each payload to disk
+before it makes any request, next to a sidecar file that records the idempotency key, the
+server's answer and every warning. Running an adapter again sends the same keys, so a
+repeated upload does not create a second deposit. The ARC adapter's mapping, what each ARC
+field becomes in TCKDB and what is left out, is in
+[`docs/contract/ARC_MAPPING.md`](docs/contract/ARC_MAPPING.md).
 
 ## Run the tests
 
