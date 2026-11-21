@@ -54,9 +54,12 @@ def test_real_pin_file_parses_and_no_workflow_has_a_literal_sha():
     pin = drift.read_pin_file((REPO / drift.PIN_FILE).read_text())
     assert drift.SHA_RE.match(pin["sha"])
     assert pin["repo"].startswith("https://") and pin["schemas_subdir"] and pin["client_subdir"]
-    # ci.yml reads the pin at runtime, so a bump never edits a workflow file.
+    # ci.yml reads the pin at runtime, so a bump never edits a workflow file. An action pinned
+    # by commit (``uses: owner/repo@<sha>``, as publish-python.yml pins the PyPI upload) is not
+    # a TCKDB revision and is allowed.
     for workflow in (REPO / ".github" / "workflows").glob("*.yml"):
-        assert not re.search(r"\b[0-9a-f]{40}\b", workflow.read_text()), workflow.name
+        text = re.sub(r"uses:\s*[\w.-]+/[\w./-]+@[0-9a-f]{40}\b", "uses: <action>", workflow.read_text())
+        assert not re.search(r"\b[0-9a-f]{40}\b", text), workflow.name
 
 
 @pytest.mark.parametrize("bad", ['sha = "abc"', 'repo = ""', "[other]\nx = 1"])

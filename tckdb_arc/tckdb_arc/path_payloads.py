@@ -15,6 +15,7 @@ from tckdb_arc.geometry import _normalize_xyz_text
 from tckdb_arc.levels import _restart_levels
 from tckdb_arc.path_search import _IRC_DIRECTION_FORWARD, _IRC_DIRECTION_REVERSE
 from tckdb_arc._logging import get_logger
+from tckdb_schemas.fragments.calculation import PathCoordinateUnit
 
 logger = get_logger()
 
@@ -641,6 +642,11 @@ def _build_path_search_result_payload(
         payload["note"] = note
     if zero_e_h is not None:
         payload["zero_energy_reference_hartree"] = zero_e_h
+    # Every path_coordinate above is a distance in Angstrom: ORCA's
+    # ``Dist.(Ang.)`` column for NEB, and for GSM the evidence sidecar's
+    # ``*_angstrom`` values or the Kabsch-aligned arc length computed here.
+    if method in ("neb", "gsm") and any("path_coordinate" in p for p in points):
+        payload["path_coordinate_unit"] = PathCoordinateUnit.angstrom.value
     # Static method properties (is_double_ended, source_endpoint_count)
     # — intrinsic to the algorithm, not the run. See
     # ``_PATH_SEARCH_METHOD_PROPERTIES``.

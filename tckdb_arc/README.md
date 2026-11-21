@@ -7,7 +7,7 @@ parser evidence file when there is one, and builds TCKDB species, reaction and
 transition-state uploads. Each payload is written to disk before any request is made, so
 it can be inspected and replayed.
 
-Requires Python 3.11+, `tckdb-client` 0.208.x and `tckdb-schemas` 0.175.x, and
+Requires Python 3.11+, `tckdb-client` 0.209.x and `tckdb-schemas` 0.176.x, and
 `tckdb-adapters-core` from this repository. Install instructions are in the
 [repository README](https://github.com/TCKDB/tckdb-adapters/blob/main/README.md).
 

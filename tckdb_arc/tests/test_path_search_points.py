@@ -156,6 +156,8 @@ def test_neb_payload_carries_every_image():
     assert points[0]["electronic_energy_hartree"] == -118.48513
     assert points[0]["relative_energy_kj_mol"] == 0.0
     assert points[16]["path_coordinate"] == 6.066
+    # ORCA's Dist.(Ang.) column: the unit is stated with the coordinates.
+    assert payload["path_coordinate_unit"] == "angstrom"
     ci = points[6]
     assert ci["is_climbing_image"] is True and not ci.get("is_ts_guess")
     assert ci["max_force"] == 0.00179 and ci["rms_force"] == 0.00082
@@ -172,6 +174,8 @@ def test_unparseable_neb_log_keeps_the_single_guess_point(tmp_path):
         method="neb", log_path=str(log), fallback_xyz_text="H 0 0 0\nH 0 0 0.74")
     assert payload["n_points"] == 1
     assert "converged" not in payload and "climbing_image_index" not in payload
+    # No coordinate, so no unit.
+    assert "path_coordinate_unit" not in payload
     assert payload["points"][0]["is_ts_guess"] is True
 
 
@@ -211,6 +215,19 @@ def test_gsm_payload_carries_node_energies():
     assert points[8]["is_ts_guess"] is True
     assert points[8]["max_gradient"] > 0 and points[8]["rms_gradient"] > 0
     assert all(not p.get("is_climbing_image") for p in points.values())
+    # The evidence's cumulative displacement is in Angstrom on every point.
+    assert all("path_coordinate" in p for p in points.values())
+    assert payload["path_coordinate_unit"] == "angstrom"
+
+
+def test_path_coordinate_unit_is_one_the_contract_accepts():
+    """The token is a member of tckdb-schemas' PathCoordinateUnit (0.176 and later)."""
+    from tckdb_schemas.fragments.calculation import PathCoordinateUnit
+
+    payload = _build_path_search_result_payload(method="neb", log_path=str(NEB_6_0), fallback_xyz_text=None)
+    assert PathCoordinateUnit(payload["path_coordinate_unit"]) is PathCoordinateUnit("angstrom")
+    model = PathSearchResultPayload.model_validate(payload)
+    assert model.path_coordinate_unit == PathCoordinateUnit("angstrom")
 
 
 # ---------------------------------------------------------------------------

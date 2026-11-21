@@ -1,0 +1,69 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tckdb-qcschema"
+version = "0.9.9"
+description = "MolSSI QCSchema (QCElemental) import/export adapter for TCKDB (family dispatch + mapping + uploader + exporter)."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "TCKDB" }]
+keywords = [
+    "tckdb",
+    "qcschema",
+    "qcelemental",
+    "molssi",
+    "thermochemistry",
+    "computational chemistry",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Chemistry",
+    "Typing :: Typed",
+]
+dependencies = [
+    # tckdb-client and tckdb-schemas are 0.x and a minor may break, so each
+    # window holds the line this release was tested with. Move them, and bump
+    # this package, before releasing against newer ones.
+    "tckdb-client>=0.209,<0.210",
+    "tckdb-schemas>=0.176,<0.177",
+    "qcelemental==0.51.2",
+    # Imported directly, not only through qcelemental.
+    "numpy>=1.26",
+    "pydantic>=2.6",
+]
+
+[project.optional-dependencies]
+test = ["pytest"]
+
+[project.scripts]
+tckdb-qcschema = "tckdb_qcschema.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/TCKDB/tckdb-adapters"
+Repository = "https://github.com/TCKDB/tckdb-adapters"
+Issues = "https://github.com/TCKDB/tckdb-adapters/issues"
+Documentation = "https://tckdb.github.io/TCKDB/"
+Source = "https://github.com/TCKDB/tckdb-adapters/tree/main/tckdb_qcschema"
+Changelog = "https://github.com/TCKDB/tckdb-adapters/blob/main/tckdb_qcschema/CHANGELOG.md"
+
+[tool.setuptools]
+packages = ["tckdb_qcschema"]
+
+[tool.setuptools.package-data]
+tckdb_qcschema = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]  # package dir ahead of a repo-root cwd, so the outer dir is not a namespace package

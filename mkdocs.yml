@@ -73,6 +73,12 @@ nav:
           - Mapping: contract/ARC_MAPPING.md
           - Warning codes: contract/WARNING_CODES.md
           - tckdb-arc changelog: adapters/arc/changelog.md
+      - CHEMKIN:
+          - Importing CHEMKIN mechanisms: adapters/chemkin/index.md
+          - tckdb-chemkin changelog: adapters/chemkin/changelog.md
+      - QCSchema:
+          - Importing and exporting QCSchema: adapters/qcschema/index.md
+          - tckdb-qcschema changelog: adapters/qcschema/changelog.md
   - Core:
       - The core: core/index.md
       - tckdb-adapters-core changelog: core/changelog.md
@@ -80,4 +86,5 @@ nav:
       - Writing an adapter: writing_an_adapter.md
       - The TCKDB pin: tckdb_pin.md
       - Integration gate: contract/INTEGRATION_GATE.md
+      - Publishing to PyPI: publishing.md
       - Contributing: contributing.md

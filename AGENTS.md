@@ -2,7 +2,10 @@
 
 Producer adapters that turn a tool's output into TCKDB upload payloads. `tckdb_core/`
 (`tckdb-adapters-core`) is the shared, producer-agnostic core. `tckdb_arc/` is the ARC
-adapter. A new adapter is a sibling package `tckdb_<producer>/`.
+adapter. `tckdb_chemkin/` (`tckdb-chemkin`) and `tckdb_qcschema/` (`tckdb-qcschema`) are
+file-format adapters for CHEMKIN mechanisms and MolSSI QCSchema documents; they import
+`tckdb-client` and `tckdb-schemas` directly and do not use the core. A new producer adapter is a
+sibling package `tckdb_<producer>/`.
 
 TCKDB decides the contract. The adapter conforms.
 
@@ -15,6 +18,8 @@ TCKDB decides the contract. The adapter conforms.
 - Moving the TCKDB pin, or reviewing a `chore/tckdb-drift-*` pull request: read
   `docs/tckdb_pin.md`.
 - Running the live gate: read `docs/contract/INTEGRATION_GATE.md`.
+- Releasing a package to PyPI, or changing `.github/workflows/publish-python.yml` or
+  `tools/python_release.py`: read `docs/publishing.md`.
 - Adding a documentation page: add it to `nav` in `mkdocs.yml`. `mkdocs build --strict` is
   the check; it must pass with no warnings. The site is built from `docs/`, `mkdocs.yml`,
   the READMEs, the changelogs and `CONTRIBUTING.md`. Install `requirements-docs.txt` in a
@@ -175,14 +180,22 @@ backend, and an agent starts one only when the user asks.
   `PYTHONPATH=$PWD/tckdb_core:$PWD/tckdb_arc`.
 - Install order from a checkout: `pip install -e tckdb_core -e tckdb_arc` (then each further
   adapter).
+- `tckdb_chemkin` and `tckdb_qcschema` run from their own directories
+  (`cd tckdb_chemkin && python -m pytest`). They are not in the root run: their
+  `tests/conftest.py` and `test_uploader.py` share module names with the core's and the ARC
+  adapter's, and collection fails.
+- A new package with its own `pyproject.toml` also goes into `PACKAGES` in
+  `tools/python_release.py` and the publish workflow's choices; `tools/tests` fails until it is.
 
 ## Versions and changelogs
 
 A change to package code bumps that package's patch version and adds an entry to its
 `CHANGELOG.md`. When `tckdb_arc` needs the new core, raise its `tckdb-adapters-core`
 bound. Say in the entry when a release changes a payload: the payload hash is part of the
-idempotency key, so TCKDB records a re-upload as a new deposit. `tckdb_core/__init__.py`
-holds `__version__`; keep it equal to the `pyproject.toml` version.
+idempotency key, so TCKDB records a re-upload as a new deposit. `tckdb_core/__init__.py`,
+`tckdb_chemkin/__init__.py` and `tckdb_qcschema/__init__.py` hold `__version__`; keep each equal
+to its `pyproject.toml` version. A `tckdb-qcschema` payload records the adapter version, so any
+version bump changes its request body (not its idempotency keys).
 
 ## ARC-specific decisions
 

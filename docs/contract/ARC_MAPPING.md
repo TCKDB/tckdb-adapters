@@ -107,9 +107,9 @@ referenced to the lowest energy on the path.
 **ORCA NEB.** Every image of the log's band `PATH SUMMARY` becomes a point
 (`tckdb_arc.orca_neb`):
 
-- `path_coordinate` from `Dist.(Ang.)`, the energy, and `max_force` and `rms_force` from
-  `max(|Fp|)` and `RMS(Fp)` in Eh/Bohr. The force is the one perpendicular to the path,
-  and the total force at the two end points.
+- `path_coordinate` from `Dist.(Ang.)`, with `path_coordinate_unit: angstrom`, the energy,
+  and `max_force` and `rms_force` from `max(|Fp|)` and `RMS(Fp)` in Eh/Bohr. The force is the
+  one perpendicular to the path, and the total force at the two end points.
 - The climbing image is marked `is_climbing_image` and named by `climbing_image_index`. It
   is the only image with a geometry, taken with its full-precision energy from the log's
   saddle-point block. The other images' geometries are not in the log.
@@ -127,7 +127,9 @@ referenced to the lowest energy on the path.
 
 **xtb GSM.** The points are the stringfile frames in ARC's parser evidence. A point
 carries an xTB energy and gradient norm only where the evidence matches a node evaluation
-to that frame's geometry. A frame with no match has no energy. Values are never attached
+to that frame's geometry. A frame with no match has no energy. A point's `path_coordinate`
+is its cumulative displacement along the string in Angstrom, sent with
+`path_coordinate_unit: angstrom`. Values are never attached
 by node number, the stringfile's all-zero energy column is not read as energies, and
 without an evidence file the archived node values are left out. GSM `converged` and
 `is_climbing_image` are not sent: ARC keeps no GSM output that states convergence, and the
