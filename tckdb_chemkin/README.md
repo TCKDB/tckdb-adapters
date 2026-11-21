@@ -8,7 +8,7 @@ pip install tckdb-chemkin
 ```
 
 It installs `tckdb-client` and RDKit with it. From a checkout of
-[TCKDB](https://github.com/TCKDB/TCKDB), `pip install -e clients/python/adapters/chemkin`.
+[tckdb-adapters](https://github.com/TCKDB/tckdb-adapters), `pip install -e tckdb_chemkin`.
 
 ## Command
 
@@ -47,6 +47,6 @@ The stages are importable on their own: `parse_mechanism`,
 ## Links
 
 - Documentation: https://tckdb.github.io/TCKDB/
-- Source: https://github.com/TCKDB/TCKDB/tree/main/clients/python/adapters/chemkin
-- Changelog: https://github.com/TCKDB/TCKDB/blob/main/CHANGELOG.md
+- Source: https://github.com/TCKDB/tckdb-adapters/tree/main/tckdb_chemkin
+- Changelog: https://github.com/TCKDB/tckdb-adapters/blob/main/tckdb_chemkin/CHANGELOG.md
 - License: MIT

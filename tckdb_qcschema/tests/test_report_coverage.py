@@ -6,9 +6,10 @@ them. These tests hold the report to the document with their own walk of the
 raw JSON, not the adapter's (:mod:`tckdb_qcschema.report_coverage`), so a
 defect in the adapter's walk cannot pass by agreeing with itself.
 
-Corpus: every ``outcome: route`` case of the adapter's own fixtures, every
-document of the backend corpus (``backend/tests/fixtures/qcschema/``), and
-both families of the Psi4 B3LYP/def2-TZVP water Hessian.
+Corpus: every ``outcome: route`` case of the adapter's own fixtures (TCKDB's
+backend corpus holds byte-identical copies of the eight route documents), and
+both families of the Psi4 B3LYP/def2-TZVP water Hessian
+(``tests/fixtures/interchange/``).
 """
 
 from __future__ import annotations
@@ -28,9 +29,8 @@ from tckdb_qcschema.report_coverage import check_mapping_report, rule_paths
 from tckdb_qcschema.scan import build_scan_bundle_payload
 from tckdb_qcschema.uploader import sha256_bytes
 
-REPO_ROOT = Path(__file__).resolve().parents[5]
-BACKEND_CORPUS = REPO_ROOT / "backend" / "tests" / "fixtures" / "qcschema"
-WATER = BACKEND_CORPUS / "water_b3lyp_def2tzvp_psi4"
+PACKAGE_ROOT = Path(__file__).resolve().parents[1]
+WATER = FIXTURES / "interchange" / "water_b3lyp_def2tzvp_psi4"
 WATER_V1 = WATER / "water_b3lyp_def2tzvp_hessian_v1.json"
 WATER_V2 = WATER / "water_b3lyp_def2tzvp_hessian_v2.json"
 
@@ -41,15 +41,14 @@ def _corpus() -> list[Path]:
         for case in discover_corpus_cases()
         if load_case(case)[1]["outcome"] == "route"
     ]
-    backend = sorted(BACKEND_CORPUS.glob("*/document.json"))
-    return [*adapter, *backend, WATER_V1, WATER_V2]
+    return [*adapter, WATER_V1, WATER_V2]
 
 
 CORPUS = _corpus()
 
 
 def _id(path: Path) -> str:
-    return str(path.relative_to(REPO_ROOT))
+    return str(path.relative_to(PACKAGE_ROOT))
 
 
 def _import(raw: bytes) -> tuple[dict, dict]:
@@ -137,7 +136,7 @@ def test_corpus_is_not_empty() -> None:
     # (1-D v1 and v2, 2-D, and two 1-D rotors sharing the 2-D parent).
     assert len([p for p in adapter if _scan_parent(p) is None]) == 11
     assert len([p for p in adapter if _scan_parent(p) is not None]) == 5
-    assert len([p for p in CORPUS if p.parent.parent == BACKEND_CORPUS and p.name == "document.json"]) == 8
+    assert [p for p in CORPUS if p.parent == WATER] == [WATER_V1, WATER_V2]
     for path in CORPUS:
         assert path.is_file(), path
 

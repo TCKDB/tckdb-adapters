@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tckdb-chemkin"
-version = "0.7.5"
+version = "0.7.6"
 description = "CHEMKIN mechanism importer adapter for TCKDB (parser + identity + payload builder + uploader)."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -49,15 +49,19 @@ test = ["pytest"]
 tckdb-chemkin-import = "tckdb_chemkin.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/TCKDB/TCKDB"
-Repository = "https://github.com/TCKDB/TCKDB"
-Issues = "https://github.com/TCKDB/TCKDB/issues"
+Homepage = "https://github.com/TCKDB/tckdb-adapters"
+Repository = "https://github.com/TCKDB/tckdb-adapters"
+Issues = "https://github.com/TCKDB/tckdb-adapters/issues"
 Documentation = "https://tckdb.github.io/TCKDB/"
-Source = "https://github.com/TCKDB/TCKDB/tree/main/clients/python/adapters/chemkin"
-Changelog = "https://github.com/TCKDB/TCKDB/blob/main/CHANGELOG.md"
+Source = "https://github.com/TCKDB/tckdb-adapters/tree/main/tckdb_chemkin"
+Changelog = "https://github.com/TCKDB/tckdb-adapters/blob/main/tckdb_chemkin/CHANGELOG.md"
 
 [tool.setuptools]
 packages = ["tckdb_chemkin"]
 
 [tool.setuptools.package-data]
 tckdb_chemkin = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]  # package dir ahead of a repo-root cwd, so the outer dir is not a namespace package

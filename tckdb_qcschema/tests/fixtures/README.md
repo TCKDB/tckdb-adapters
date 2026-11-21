@@ -99,7 +99,7 @@ reads depends on it.
   `torsiondrive_2d_parent_opt_v2`: H-O-O-O (0, 1, 2, 3) and O-O-O-H
   (1, 2, 3, 4), each at 90 degrees (4 points), `scan_results: lowest`,
   trajectory `final`. The two-rotor case: both go up in one bundle with
-  one `opt` (`backend/tests/fixtures/qcschema_scan/torsiondrive_two_rotors_v2`).
+  one `opt` (TCKDB's `backend/tests/fixtures/qcschema_scan/torsiondrive_two_rotors_v2`).
 
 Each drive's `meta.json` names its `parent_opt_case`; the corpus test maps
 the pair with `tckdb_qcschema.scan.build_scan_bundle_payload` and pins the
@@ -123,7 +123,7 @@ has `optimization_history` emptied; the refusal fires before either is read.
 
 ### Pinned reads for the scan exporter (`reads_scan/`)
 
-`scripts/capture_scan_read_fixtures.py` posts the backend scan corpus
+`scripts/capture_scan_read_fixtures.py` posts TCKDB's backend scan corpus
 (`backend/tests/fixtures/qcschema_scan/`, emitted from the three drives
 above by `scripts/emit_backend_corpus.py`) through the real
 `POST /uploads/computed-species` route and records the exact reads the
@@ -235,7 +235,7 @@ each `meta.json["edit"]`.
 
 ```
 conda run -n tckdb_qcschema_psi4 python \
-    clients/python/adapters/qcschema/scripts/generate_torsiondrive_fixtures.py <tmp_raw_dir> \
+    tckdb_qcschema/scripts/generate_torsiondrive_fixtures.py <tmp_raw_dir> \
     [--only h2o2 hoooh hoooh_rotors]
 ```
 

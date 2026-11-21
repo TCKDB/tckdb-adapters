@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tckdb-qcschema"
-version = "0.9.7"
+version = "0.9.8"
 description = "MolSSI QCSchema (QCElemental) import/export adapter for TCKDB (family dispatch + mapping + uploader + exporter)."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -51,15 +51,19 @@ test = ["pytest"]
 tckdb-qcschema = "tckdb_qcschema.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/TCKDB/TCKDB"
-Repository = "https://github.com/TCKDB/TCKDB"
-Issues = "https://github.com/TCKDB/TCKDB/issues"
+Homepage = "https://github.com/TCKDB/tckdb-adapters"
+Repository = "https://github.com/TCKDB/tckdb-adapters"
+Issues = "https://github.com/TCKDB/tckdb-adapters/issues"
 Documentation = "https://tckdb.github.io/TCKDB/"
-Source = "https://github.com/TCKDB/TCKDB/tree/main/clients/python/adapters/qcschema"
-Changelog = "https://github.com/TCKDB/TCKDB/blob/main/CHANGELOG.md"
+Source = "https://github.com/TCKDB/tckdb-adapters/tree/main/tckdb_qcschema"
+Changelog = "https://github.com/TCKDB/tckdb-adapters/blob/main/tckdb_qcschema/CHANGELOG.md"
 
 [tool.setuptools]
 packages = ["tckdb_qcschema"]
 
 [tool.setuptools.package-data]
 tckdb_qcschema = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]  # package dir ahead of a repo-root cwd, so the outer dir is not a namespace package

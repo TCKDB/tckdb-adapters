@@ -12,6 +12,7 @@ prints ``tckdb_qcschema.__version__``.
 from __future__ import annotations
 
 import re
+import tomllib
 from pathlib import Path
 
 import tckdb_qcschema
@@ -33,11 +34,9 @@ def test_module_version_matches_the_packaging_metadata():
 def test_the_adapter_versions_separately_from_the_client():
     """Its own distribution, so its own number.
 
-    If this file is ever moved under ``clients/python/pyproject.toml``'s
-    packaging, this assertion is the reminder that the two version
-    numbers stopped being independent.
+    The package has its own ``pyproject.toml`` and reaches ``tckdb-client``
+    only as a declared dependency, so the two version numbers are independent.
     """
-    client_pyproject = PYPROJECT.parents[2] / "pyproject.toml"
-    assert client_pyproject.is_file(), client_pyproject
-    assert 'name = "tckdb-client"' in client_pyproject.read_text(encoding="utf-8")
-    assert 'name = "tckdb-qcschema"' in PYPROJECT.read_text(encoding="utf-8")
+    project = tomllib.loads(PYPROJECT.read_text(encoding="utf-8"))["project"]
+    assert project["name"] == "tckdb-qcschema"
+    assert any(dep.startswith("tckdb-client") for dep in project["dependencies"])

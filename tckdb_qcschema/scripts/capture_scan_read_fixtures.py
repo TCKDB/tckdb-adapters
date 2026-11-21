@@ -4,11 +4,12 @@ The scan counterpart of ``capture_read_fixtures.py``, run the same way
 (copied into ``backend/tests/api/`` so it can use the backend test
 fixtures, then removed):
 
-    cp clients/python/adapters/qcschema/scripts/capture_scan_read_fixtures.py \\
+    cp <tckdb-adapters>/tckdb_qcschema/scripts/capture_scan_read_fixtures.py \\
         backend/tests/api/test_zzz_tmp_capture_qcschema_scan_reads.py
 
     DB_TEST_NAME=tckdb_test_scan_capture \\
     DB_USER=tckdb DB_PASSWORD=tckdb DB_HOST=127.0.0.1 DB_PORT=5432 \\
+    TCKDB_ADAPTERS_ROOT=<tckdb-adapters> \\
     PYTHONPATH="$(pwd)/schemas/python/tckdb-schemas:${PYTHONPATH:-}" \\
         conda run -n tckdb_env pytest \\
         backend/tests/api/test_zzz_tmp_capture_qcschema_scan_reads.py -q
@@ -28,7 +29,7 @@ For each case it posts a ``ComputedSpeciesUploadRequest`` through the real
 * ``GET /geometries?geom_hash=<hash>`` for each of those -> ``legacy_geometries.json``
   (keyed by the un-prefixed request path the exporter passes to ``get_json``)
 
-into ``clients/python/adapters/qcschema/tests/fixtures/reads_scan/<case>/``.
+into ``tckdb_qcschema/tests/fixtures/reads_scan/<case>/`` of the tckdb-adapters checkout.
 
 Cases:
 
@@ -54,20 +55,17 @@ from __future__ import annotations
 import copy
 import json
 import math
+import os
 from pathlib import Path
 
 import pytest
 
 SCAN_CORPUS = Path(__file__).resolve().parents[1] / "fixtures" / "qcschema_scan"
+#: Run from a TCKDB checkout (see the module docstring); the reads are written
+#: into the tckdb-adapters checkout named by ``TCKDB_ADAPTERS_ROOT``.
+_ADAPTERS_ROOT = os.environ.get("TCKDB_ADAPTERS_ROOT")
 OUT_DIR = (
-    Path(__file__).resolve().parents[3]
-    / "clients"
-    / "python"
-    / "adapters"
-    / "qcschema"
-    / "tests"
-    / "fixtures"
-    / "reads_scan"
+    Path(_ADAPTERS_ROOT) / "tckdb_qcschema" / "tests" / "fixtures" / "reads_scan" if _ADAPTERS_ROOT else None
 )
 
 ROUTE_CASES = ("torsiondrive_v1", "torsiondrive_v2", "torsiondrive_2d_v2")
@@ -198,6 +196,8 @@ def _capture(client, case: str, payload: dict) -> None:
 
 def test_capture_scan_reads(client, db_session, stub_store_artifact) -> None:
     """Not collected here -- see the module docstring's copy-then-run recipe."""
+    if OUT_DIR is None:
+        pytest.fail("set TCKDB_ADAPTERS_ROOT to the tckdb-adapters checkout the reads are written to")
     del db_session
     for case, payload in _cases():
         _capture(client, case, payload)

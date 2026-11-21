@@ -4,9 +4,10 @@
 Runs the real ``tckdb_qcschema`` mapper (:func:`tckdb_qcschema.reader.read_document`
 + :func:`tckdb_qcschema.mapping.build_conformer_upload_payload`) -- the exact
 code path ``tckdb-qcschema import`` uses -- over the eight route-outcome
-fixtures under ``clients/python/adapters/qcschema/tests/fixtures/`` (energy,
-gradient, hessian, optimization; each in QCSchema families v1 and v2), and
-writes what it produces under ``backend/tests/fixtures/qcschema/<case>/``:
+fixtures under ``tckdb_qcschema/tests/fixtures/`` (energy, gradient,
+hessian, optimization; each in QCSchema families v1 and v2), and writes what
+it produces under ``backend/tests/fixtures/qcschema/<case>/`` of the TCKDB
+checkout named by ``--tckdb``:
 
     document.json   byte-identical copy of the source fixture (for reference
                      and drift detection -- never re-derived)
@@ -31,11 +32,12 @@ adapter's fixtures change. Requires the adapter's own dependencies
 environment:
 
     conda run -n tckdb_qcschema_psi4 python \\
-        clients/python/adapters/qcschema/scripts/emit_backend_corpus.py
+        tckdb_qcschema/scripts/emit_backend_corpus.py --tckdb <TCKDB checkout>
 """
 
 from __future__ import annotations
 
+import argparse
 import base64
 import json
 import sys
@@ -49,8 +51,8 @@ from tckdb_qcschema.reader import read_document
 from tckdb_qcschema.uploader import sha256_bytes
 
 ADAPTER_FIXTURES = Path(__file__).resolve().parents[1] / "tests" / "fixtures"
-REPO_ROOT = Path(__file__).resolve().parents[5]
-BACKEND_CORPUS = REPO_ROOT / "backend" / "tests" / "fixtures" / "qcschema"
+#: Set by ``--tckdb``: the TCKDB checkout whose backend corpus is written.
+TCKDB_ROOT = Path(".")
 
 #: The eight route cases named in the plan: energy/gradient/hessian/
 #: optimization crossed with QCSchema families v1/v2. Deliberately a fixed
@@ -105,7 +107,7 @@ def _emit_case(case: str) -> None:
         "bytes": len(raw_bytes),
     }
 
-    out_dir = BACKEND_CORPUS / case
+    out_dir = TCKDB_ROOT / "backend" / "tests" / "fixtures" / "qcschema" / case
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "document.json").write_bytes(raw_bytes)
     (out_dir / "payload.json").write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
@@ -120,7 +122,7 @@ def _emit_case(case: str) -> None:
         "generator": {
             "adapter_version": ADAPTER_VERSION,
             "qcelemental_version": qcelemental.__version__,
-            "source_fixture": f"clients/python/adapters/qcschema/tests/fixtures/{case}",
+            "source_fixture": f"tckdb-adapters:tckdb_qcschema/tests/fixtures/{case}",
         },
     }
     (out_dir / "meta.json").write_text(json.dumps(meta, indent=2, sort_keys=True) + "\n")
@@ -143,7 +145,6 @@ SCAN_ROUTE_CASES: dict[str, tuple[str, ...]] = {
     "torsiondrive_2d_v2": ("torsiondrive_2d_v2",),
     "torsiondrive_two_rotors_v2": ("torsiondrive_rotor1_v2", "torsiondrive_rotor2_v2"),
 }
-BACKEND_SCAN_CORPUS = REPO_ROOT / "backend" / "tests" / "fixtures" / "qcschema_scan"
 
 
 def _emit_scan_case(case: str, drive_cases: tuple[str, ...]) -> None:
@@ -183,7 +184,7 @@ def _emit_scan_case(case: str, drive_cases: tuple[str, ...]) -> None:
         declared_smiles=drives[0][2]["smiles_arg"],
         additional_drives=additional,
     )
-    out_dir = BACKEND_SCAN_CORPUS / case
+    out_dir = TCKDB_ROOT / "backend" / "tests" / "fixtures" / "qcschema_scan" / case
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "payload.json").write_text(json.dumps(bundle.payload, indent=2, sort_keys=True) + "\n")
     meta = {
@@ -198,7 +199,7 @@ def _emit_scan_case(case: str, drive_cases: tuple[str, ...]) -> None:
         "generator": {
             "adapter_version": ADAPTER_VERSION,
             "qcelemental_version": qcelemental.__version__,
-            "source_fixtures": [f"clients/python/adapters/qcschema/tests/fixtures/{name}" for name in drive_cases],
+            "source_fixtures": [f"tckdb-adapters:tckdb_qcschema/tests/fixtures/{name}" for name in drive_cases],
         },
     }
     (out_dir / "meta.json").write_text(json.dumps(meta, indent=2, sort_keys=True) + "\n")
@@ -206,20 +207,27 @@ def _emit_scan_case(case: str, drive_cases: tuple[str, ...]) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """``--scans-only`` re-emits the scan corpus and leaves the conformer
-    corpus's files untouched (they would otherwise change only in the
-    adapter version they record)."""
-    argv = sys.argv[1:] if argv is None else argv
+    """``--tckdb PATH`` names the TCKDB checkout to write into. ``--scans-only``
+    re-emits the scan corpus and leaves the conformer corpus's files untouched
+    (they would otherwise change only in the adapter version they record)."""
+    global TCKDB_ROOT
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--tckdb", required=True, type=Path, help="TCKDB checkout (its backend/ is written)")
+    parser.add_argument("--scans-only", action="store_true")
+    args = parser.parse_args(argv)
+    if not (args.tckdb / "backend" / "tests" / "fixtures").is_dir():
+        print(f"not a TCKDB checkout (no backend/tests/fixtures): {args.tckdb}", file=sys.stderr)
+        return 1
+    TCKDB_ROOT = args.tckdb.resolve()
     if not ADAPTER_FIXTURES.exists():
         print(f"adapter fixtures directory not found: {ADAPTER_FIXTURES}", file=sys.stderr)
         return 1
-    if "--scans-only" not in argv:
+    if not args.scans_only:
         for case in ROUTE_CASES:
             _emit_case(case)
     for case, drive_cases in SCAN_ROUTE_CASES.items():
         _emit_scan_case(case, drive_cases)
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

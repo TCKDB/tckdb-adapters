@@ -8,14 +8,14 @@ release that bumps the packaging metadata and forgets the module (or the
 other way round) ships a package that misreports itself to anyone who
 prints ``tckdb_chemkin.__version__``.
 
-Noticed while bumping both for an unrelated change. One assertion is
-cheaper than finding out from a bug report which of the two numbers was
-the real one.
+One assertion is cheaper than finding out from a bug report which of the
+two numbers was the real one.
 """
 
 from __future__ import annotations
 
 import re
+import tomllib
 from pathlib import Path
 
 import tckdb_chemkin
@@ -37,11 +37,9 @@ def test_module_version_matches_the_packaging_metadata():
 def test_the_adapter_versions_separately_from_the_client():
     """Its own distribution, so its own number.
 
-    If this file is ever moved under ``clients/python/pyproject.toml``'s
-    packaging, this assertion is the reminder that the two version
-    numbers stopped being independent.
+    The package has its own ``pyproject.toml`` and reaches ``tckdb-client``
+    only as a declared dependency, so the two version numbers are independent.
     """
-    client_pyproject = PYPROJECT.parents[2] / "pyproject.toml"
-    assert client_pyproject.is_file(), client_pyproject
-    assert 'name = "tckdb-client"' in client_pyproject.read_text(encoding="utf-8")
-    assert 'name = "tckdb-chemkin"' in PYPROJECT.read_text(encoding="utf-8")
+    project = tomllib.loads(PYPROJECT.read_text(encoding="utf-8"))["project"]
+    assert project["name"] == "tckdb-chemkin"
+    assert any(dep.startswith("tckdb-client") for dep in project["dependencies"])

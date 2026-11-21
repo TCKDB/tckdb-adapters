@@ -5,7 +5,7 @@ Run in the ``tckdb_qcschema_psi4`` environment (``tests/fixtures/ENVIRONMENT.loc
 which includes ``torsiondrive`` 1.2.0):
 
     conda run -n tckdb_qcschema_psi4 python \\
-        clients/python/adapters/qcschema/scripts/generate_torsiondrive_fixtures.py OUT_DIR [--only NAME ...]
+        tckdb_qcschema/scripts/generate_torsiondrive_fixtures.py OUT_DIR [--only NAME ...]
 
 It writes the raw ``*.json`` documents to ``OUT_DIR``; the fixture
 directories (``tests/fixtures/torsiondrive_*/``) hold them byte-for-byte, with

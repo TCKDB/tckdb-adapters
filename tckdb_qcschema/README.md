@@ -8,8 +8,9 @@ pip install tckdb-qcschema
 ```
 
 It pins `qcelemental==0.51.2` and installs `tckdb-client` and `tckdb-schemas`
-with it. From a checkout of [TCKDB](https://github.com/TCKDB/TCKDB),
-`pip install -e clients/python/adapters/qcschema`.
+with it. From a checkout of
+[tckdb-adapters](https://github.com/TCKDB/tckdb-adapters),
+`pip install -e tckdb_qcschema`.
 
 ## Commands
 
@@ -86,6 +87,6 @@ so IRC calculations are neither imported nor exported.
 ## Links
 
 - Documentation: https://tckdb.github.io/TCKDB/
-- Source: https://github.com/TCKDB/TCKDB/tree/main/clients/python/adapters/qcschema
-- Changelog: https://github.com/TCKDB/TCKDB/blob/main/CHANGELOG.md
+- Source: https://github.com/TCKDB/tckdb-adapters/tree/main/tckdb_qcschema
+- Changelog: https://github.com/TCKDB/tckdb-adapters/blob/main/tckdb_qcschema/CHANGELOG.md
 - License: MIT

@@ -14,11 +14,12 @@ well-tested machinery beats re-implementing DB/app wiring here, but it means
 this file is not itself a backend test module (sovereignty: nothing under
 ``backend/`` changes). To (re)run it:
 
-    cp clients/python/adapters/qcschema/scripts/capture_read_fixtures.py \\
+    cp <tckdb-adapters>/tckdb_qcschema/scripts/capture_read_fixtures.py \\
         backend/tests/api/test_zzz_tmp_capture_qcschema_reads.py
 
     DB_TEST_NAME=tckdb_test_q3 \\
     DB_USER=tckdb DB_PASSWORD=tckdb DB_HOST=127.0.0.1 DB_PORT=5432 \\
+    TCKDB_ADAPTERS_ROOT=<tckdb-adapters> \\
     PYTHONPATH="$(pwd)/schemas/python/tckdb-schemas:${PYTHONPATH:-}" \\
         conda run -n tckdb_env pytest \\
         backend/tests/api/test_zzz_tmp_capture_qcschema_reads.py -q
@@ -52,7 +53,7 @@ server:
   isotopes from.
 
 and writes the raw JSON response bodies to
-``clients/python/adapters/qcschema/tests/fixtures/reads/<case>/*.json``:
+``tckdb_qcschema/tests/fixtures/reads/<case>/*.json`` (tckdb-adapters):
 ``calculation.json`` (the calculation detail envelope), ``geometries.json``
 (a dict keyed by whatever handle -- ``geometry_ref`` or, for the Hessian's
 own geometry, the bare numeric id -- was used to fetch it), ``hessian.json``
@@ -94,20 +95,17 @@ reads from (the Hessian route) for a different purpose.
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import pytest
 
 CORPUS_DIR = Path(__file__).resolve().parents[1] / "fixtures" / "qcschema"
+#: Run from a TCKDB checkout (see the module docstring); the reads are written
+#: into the tckdb-adapters checkout named by ``TCKDB_ADAPTERS_ROOT``.
+_ADAPTERS_ROOT = os.environ.get("TCKDB_ADAPTERS_ROOT")
 OUT_DIR = (
-    Path(__file__).resolve().parents[3]
-    / "clients"
-    / "python"
-    / "adapters"
-    / "qcschema"
-    / "tests"
-    / "fixtures"
-    / "reads"
+    Path(_ADAPTERS_ROOT) / "tckdb_qcschema" / "tests" / "fixtures" / "reads" if _ADAPTERS_ROOT else None
 )
 
 #: The two round-trip cases. Deliberately a fixed
@@ -263,6 +261,8 @@ def _capture(client, case: str) -> None:
 
 def test_capture_energy_v1_and_hessian_v1(client, db_session, stub_store_artifact) -> None:
     """Not collected here -- see the module docstring's copy-then-run recipe."""
+    if OUT_DIR is None:
+        pytest.fail("set TCKDB_ADAPTERS_ROOT to the tckdb-adapters checkout the reads are written to")
     del db_session  # only needed to bind to the same per-test transaction as `client`
     for case in CASES:
         _capture(client, case)
