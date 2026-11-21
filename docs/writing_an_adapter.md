@@ -100,10 +100,18 @@ In `pyproject.toml`, depend on `tckdb-adapters-core` and bound `tckdb-schemas` a
 CI workflow, and to the install lines in `AGENTS.md` ("Running tests") and `CONTRIBUTING.md`.
 
 `tools/tckdb_drift.py --bump` moves the bounds, the patch version and the changelog of every
-package in its `PACKAGES` table. Add your package to that table (its directory and its
-import name); the publish script and the drift workflow take the files and directories from
-the tool. A test fails when a package that depends on `tckdb-client` or `tckdb-schemas` is
-missing from the table.
+package in its `PACKAGES` table. Add one row for your package: its directory and import name,
+its distribution name, whether `__init__.py` holds a `__version__`, whether its README has the
+tested-versions sentence, its changelog style (`marker` or `sections`) and, for `sections`, a
+note about the package. `docs/tckdb_pin.md` ("Where the pin lives") describes each field, and the
+`Package` class in the tool documents them. Nothing else needs editing: the publish script, the
+drift workflow and the drift tests (their synthetic repository and their list of directories)
+are built from the table. The package needs the files its row names: a `CHANGELOG.md` with the
+`<!-- tckdb-drift:changelog -->` marker or `## X.Y.Z` headings, the `__version__` line and the
+README sentence. A test fails when a package that depends on `tckdb-client` or `tckdb-schemas`
+is missing from the table. A package that does not depend on the core also writes its own
+`tests/test_contract_pin.py` (a self-contained one, as in `adapters/tckdb_qcschema`); the
+bounds of every package in the table must match the core's (`tools/tests/test_pin_lines.py`).
 
 ### 2. The uploader subclass
 

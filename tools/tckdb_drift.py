@@ -10,7 +10,9 @@ tool never edits a workflow file. Modes:
     commit, resolve TCKDB's ``main`` (repo from ``tckdb-pin.toml``; ``--repo``
     and ``--ref`` override), read the two package versions at that commit, and print
     a JSON summary on stdout plus one human line on stderr. Exit 0 = no drift,
-    10 = drift, anything else = error.
+    10 = drift, anything else = error. The oldest package's line counts as pinned; when
+    the packages do not all state the same line, the JSON's ``lines_differ`` names which
+    package is on which line (it is empty when they agree).
 
 ``--bump --sha SHA --schemas X.Y.Z --client A.B.C [--allow-downgrade]``
     Move the pins: the ``tckdb-schemas`` / ``tckdb-client`` dependency bounds in the
@@ -26,8 +28,12 @@ tool never edits a workflow file. Modes:
     ``tckdb-adapters-core`` floor raised to the new core version, which releases that
     package too. A package nothing changed in is left alone, so a move of the commit
     alone (same release lines) releases nothing.
-    Idempotent: running it again with the same values changes nothing. Refuses to move
-    any package's line backwards unless ``--allow-downgrade``.
+    Idempotent: running it again with the same values changes nothing. Refuses (exit 2,
+    naming the package and its ``pyproject.toml``) to move any package's line backwards, which
+    includes a package that is already ahead of the target, unless ``--allow-downgrade``:
+    every package states ``tckdb-client`` and the core states both bounds, so packages on
+    different lines cannot be installed into one environment, and bringing them onto one
+    line is a person's decision.
 
 ``--since-output [--from X.Y.Z]``
     Run ``python -m tckdb_schemas.contract --since <from>`` with the installed
@@ -42,6 +48,11 @@ tool never edits a workflow file. Modes:
     Print, one per line, the package directories in ``PACKAGES`` and every file
     ``--bump`` may rewrite (for the drift workflow and the publish script, so neither
     repeats the list).
+
+``--cap-text LIMIT``
+    Copy stdin to stdout, cut to at most LIMIT bytes with a truncation marker (and a
+    closing code fence when the cut left one open). The publish script and the drift
+    workflow use it to keep every GitHub body under the size limit.
 
 Drift means an available package release line is *newer* than the pinned one; a
 patch release inside the pinned line, or a new commit with the same versions, is
@@ -74,7 +85,9 @@ class Package(NamedTuple):
     ``PACKAGES`` is the list of packages a bump moves. Every path below is derived from
     ``directory`` and ``module``, so moving a package means editing those fields. (The
     publish-to-PyPI list in ``tools/python_release.py`` is a separate table; a test checks
-    that the two name the same directories.)
+    that the two name the same directories.) Adding a package is adding one row: the
+    workflow, the publish script and the drift tests (their synthetic repository and their
+    list of directories included) are all built from this table.
     """
 
     #: The package's directory, relative to the repository root.
@@ -170,6 +183,7 @@ def bumped_files() -> list[str]:
 
 
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
+TARGET_LINE_RE = re.compile(r"^TARGET_SCHEMAS_LINE\s*=\s*\((\d+),\s*(\d+)\)", re.M)
 _PIN_SHA = re.compile(r'^(sha\s*=\s*")[0-9a-f]{40}(")', re.M)
 
 Line = tuple[int, int]
@@ -279,6 +293,32 @@ def read_pins(root: Path) -> dict:
     }
 
 
+def package_lines(texts: dict[str, str], package: str) -> dict[Line, list[str]]:
+    """The minor line each package pins ``package`` to, grouped: ``{line: [directory, ...]}``."""
+    by_line: dict[Line, list[str]] = {}
+    for pkg in PACKAGES:
+        text = texts[pkg.pyproject]
+        if states_dependency(text, package):
+            by_line.setdefault(pinned_line(text, package), []).append(pkg.directory)
+    return by_line
+
+
+def lines_note(texts: dict[str, str]) -> str:
+    """One sentence per TCKDB package whose line is not the same in every package that states it.
+
+    Empty when every package is on the same lines. A package is on a different line when it was
+    moved by hand (``--bump`` moves all of them together and refuses to move any backwards).
+    They cannot be installed into one environment, so a person has to bring them onto one line.
+    """
+    sentences = []
+    for package in TCKDB_PACKAGES:
+        by_line = package_lines(texts, package)
+        if len(by_line) > 1:
+            where = "; ".join(f"{fmt_line(line)} in {', '.join(dirs)}" for line, dirs in sorted(by_line.items()))
+            sentences.append(f"The packages are on different {package} lines: {where}.")
+    return "\n".join(sentences)
+
+
 def package_version_of(pyproject_text: str) -> str:
     return tomllib.loads(pyproject_text)["project"]["version"]
 
@@ -372,7 +412,8 @@ def package_version(pyproject_text: str, path: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-def build_summary(pins: dict, repo: str, ref: str, sha: str, schemas_v: str, client_v: str) -> dict:
+def build_summary(pins: dict, repo: str, ref: str, sha: str, schemas_v: str, client_v: str,
+                  lines_differ: str = "") -> dict:
     def entry(pinned: Line, available: str) -> dict:
         avail_line = line_of(available)
         return {
@@ -394,6 +435,8 @@ def build_summary(pins: dict, repo: str, ref: str, sha: str, schemas_v: str, cli
         "schemas": schemas,
         "client": client,
         "drift": schemas["newer"] or client["newer"],
+        # Non-empty when the packages are not all on one line; "pinned" is then the oldest.
+        "lines_differ": lines_differ,
     }
 
 
@@ -404,6 +447,7 @@ def human_line(summary: dict) -> str:
         f"{state}: tckdb-schemas {s['pinned_line']}.x -> {s['available_version']}, "
         f"tckdb-client {c['pinned_line']}.x -> {c['available_version']} "
         f"(TCKDB {summary['pinned_sha'][:7]} -> {summary['available_sha7']})"
+        + (" [packages are on different lines; the oldest counts as pinned]" if summary["lines_differ"] else "")
     )
 
 
@@ -419,6 +463,7 @@ def run_check(root: Path, repo: str, ref: str) -> int:
         pins, repo, ref, sha,
         package_version(files[schemas_path], schemas_path),
         package_version(files[client_path], client_path),
+        lines_note(read_pyprojects(root)),
     )
     print(json.dumps(summary, indent=2))
     print(human_line(summary), file=sys.stderr)
@@ -554,8 +599,12 @@ def add_changelog_line(text: str, line: str, where: str) -> str:
 
 
 def add_changelog_section(text: str, version: str, body: str, where: str) -> str:
-    """Insert ``## <version>`` above the newest *version* heading (not ``## Unreleased`` and the like)."""
-    if re.search(rf"^## {re.escape(version)}\s*$", text, re.M):
+    """Insert ``## <version>`` above the newest *version* heading (not ``## Unreleased`` and the like).
+
+    A section already exists when any ``## `` heading's first token is the version, so
+    ``## 0.9.11 (unreleased)`` and ``## 0.9.11 - 2026-01-01`` count as well as ``## 0.9.11``.
+    """
+    if re.search(rf"^##[ \t]+\[?v?{re.escape(version)}\]?(?=\s|$)", text, re.M):
         raise DriftError(f"{where} already has a ## {version} section")
     section = f"## {version}\n\n{body}\n\n"
     first = re.search(r"^## v?\d+\.\d+\.\d+", text, re.M)
@@ -580,6 +629,25 @@ def release_body(pkg: Package, old_text: str, new_text: str, previous: str, sha:
     return textwrap.fill(" ".join(p for p in parts if p), width=100, break_long_words=False, break_on_hyphens=False)
 
 
+def refuse_downgrades(old: dict[str, str], schemas_line: Line, client_line: Line) -> None:
+    """Raise when the bump would move any package's bound backwards, naming the package and file.
+
+    A package already ahead of the target counts: the bump moves every package to the target, so
+    that package would go back. Packages cannot stay on different lines (they would not install
+    into one environment), so moving some and leaving others is not an option.
+    """
+    for pkg in PACKAGES:
+        for package, new_line in (("tckdb-schemas", schemas_line), ("tckdb-client", client_line)):
+            if not states_dependency(old[pkg.pyproject], package):
+                continue
+            current = pinned_line(old[pkg.pyproject], package)
+            if new_line < current:
+                raise DriftError(
+                    f"refusing to move {package} in {pkg.pyproject} back from {fmt_line(current)} "
+                    f"to {fmt_line(new_line)}; pass --allow-downgrade if that is intended"
+                )
+
+
 def run_bump(root: Path, sha: str, schemas: str, client: str, allow_downgrade: bool = False) -> int:
     if not SHA_RE.match(sha):
         raise DriftError(f"--sha must be a full 40-character lowercase hex commit, got {sha!r}")
@@ -588,17 +656,9 @@ def run_bump(root: Path, sha: str, schemas: str, client: str, allow_downgrade: b
 
     old = {rel: (root / rel).read_text() for rel in bumped_files()}
     if not allow_downgrade:
-        for pkg in PACKAGES:
-            for package, new_line in (("tckdb-schemas", schemas_line), ("tckdb-client", client_line)):
-                if not states_dependency(old[pkg.pyproject], package):
-                    continue
-                current = pinned_line(old[pkg.pyproject], package)
-                if new_line < current:
-                    raise DriftError(
-                        f"refusing to move {package} in {pkg.pyproject} back from {fmt_line(current)} "
-                        f"to {fmt_line(new_line)}; pass --allow-downgrade if that is intended"
-                    )
+        refuse_downgrades(old, schemas_line, client_line)
     repo = read_pin_file(old[PIN_FILE])["repo"]
+    core = core_package()
     new = dict(old)
     for pkg in PACKAGES:
         new[pkg.pyproject] = rewrite_pyproject(old[pkg.pyproject], schemas_line, client_line, pkg.pyproject)
@@ -618,8 +678,8 @@ def run_bump(root: Path, sha: str, schemas: str, client: str, allow_downgrade: b
 
     # A package is released only when one of its own files changed apart from the version itself.
     released = {pkg.directory: any(new[rel] != old[rel] for rel in own_files(pkg)) for pkg in PACKAGES}
-    core = core_package()
     versions: dict[str, tuple[str, str]] = {}  # directory -> (old, new)
+    raised_floor: dict[str, str] = {}  # directory -> the core version its floor was raised to
 
     def release(pkg: Package) -> None:
         before = package_version_of(old[pkg.pyproject])
@@ -637,6 +697,7 @@ def run_bump(root: Path, sha: str, schemas: str, client: str, allow_downgrade: b
             if raised != new[pkg.pyproject]:
                 new[pkg.pyproject] = raised
                 released[pkg.directory] = True
+                raised_floor[pkg.directory] = versions[core.directory][1]
     for pkg in PACKAGES:
         if pkg is not core and released[pkg.directory]:
             release(pkg)
@@ -648,9 +709,11 @@ def run_bump(root: Path, sha: str, schemas: str, client: str, allow_downgrade: b
         if pkg.version_in_init:
             new[pkg.init] = set_module_version(old[pkg.init], after, pkg.init)
         if pkg.changelog_style == "marker":
+            floor = raised_floor.get(pkg.directory)
             new[pkg.changelog] = add_changelog_line(
                 old[pkg.changelog],
-                f"- Adapter {after}: tracked TCKDB {sha[:7]} (schemas {schemas}, client {client}).",
+                f"- Adapter {after}: tracked TCKDB {sha[:7]} (schemas {schemas}, client {client})"
+                + (f"; requires {CORE_DIST}>={floor}." if floor else "."),
                 pkg.changelog,
             )
         else:
@@ -670,7 +733,9 @@ def run_bump(root: Path, sha: str, schemas: str, client: str, allow_downgrade: b
     )
     for pkg in PACKAGES:
         if pkg.directory in versions:
-            print(f"  {pkg.dist} {versions[pkg.directory][0]} -> {versions[pkg.directory][1]}")
+            floor = raised_floor.get(pkg.directory)
+            print(f"  {pkg.dist} {versions[pkg.directory][0]} -> {versions[pkg.directory][1]}"
+                  + (f" ({CORE_DIST} floor raised to {floor})" if floor else ""))
         else:
             print(f"  {pkg.dist} unchanged")
     for rel in changed:
@@ -714,6 +779,52 @@ def run_since_output(root: Path, since: str | None) -> int:
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# --cap-text
+# ---------------------------------------------------------------------------
+
+#: What replaces the end of a text that was cut. ASCII, and it names the numbers.
+TRUNCATION_MARKER = (
+    "[... truncated: {omitted} of {total} bytes omitted to stay under GitHub's size limit; "
+    "the workflow run has the full text ...]"
+)
+
+
+def cap_text(text: str, limit: int) -> str:
+    """``text`` unchanged when it is at most ``limit`` bytes (UTF-8), else cut with a marker.
+
+    The result, marker included, is at most ``limit`` bytes. The cut falls on a line boundary
+    when there is one in the last 2000 bytes and never inside a multi-byte character, and a
+    code fence the cut left open is closed before the marker.
+    """
+    data = text.encode("utf-8")
+    if len(data) <= limit:
+        return text
+    # The marker's numbers are at most the length of the input's, so size it for that.
+    closing = "```\n"
+    marker_room = len(TRUNCATION_MARKER.format(omitted=len(data), total=len(data)).encode()) + len(closing) + 8
+    if limit < marker_room + 1:
+        raise DriftError(f"--cap-text limit {limit} is too small to hold the truncation marker")
+    kept = data[: limit - marker_room].decode("utf-8", errors="ignore")
+    newline = kept.rfind("\n", max(0, len(kept) - 2000))
+    if newline > 0:
+        kept = kept[:newline]
+    out = kept.rstrip("\n") + "\n"
+    if sum(1 for line in out.splitlines() if line.startswith("```")) % 2:
+        out += closing
+    omitted = len(data) - len(kept.encode("utf-8"))
+    return out + "\n" + TRUNCATION_MARKER.format(omitted=omitted, total=len(data)) + "\n"
+
+
+def run_cap_text(limit: int) -> int:
+    raw = sys.stdin.buffer.read()
+    text = raw.decode("utf-8", errors="replace")
+    # Under the limit the bytes go through as they came; only a cut text is re-encoded.
+    capped = text if len(raw) <= limit and text.encode("utf-8") == raw else cap_text(text, limit)
+    sys.stdout.buffer.write(capped.encode("utf-8"))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     mode = p.add_mutually_exclusive_group(required=True)
@@ -723,6 +834,7 @@ def main(argv: list[str] | None = None) -> int:
     mode.add_argument("--install-specs", action="store_true", help="print pip specifiers from tckdb-pin.toml")
     mode.add_argument("--list-packages", action="store_true", help="print the package directories --bump moves")
     mode.add_argument("--bumped-files", action="store_true", help="print every file --bump may rewrite")
+    mode.add_argument("--cap-text", type=int, metavar="LIMIT", help="copy stdin to stdout, cut to LIMIT bytes")
     p.add_argument("--repo", default=None, help="TCKDB repository, overriding the repo in tckdb-pin.toml")
     p.add_argument("--ref", default=DEFAULT_REF, help="branch, tag or SHA to resolve (default: %(default)s)")
     p.add_argument("--sha", help="--bump: full commit SHA to pin")
@@ -748,6 +860,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.bumped_files:
             print("\n".join(bumped_files()))
             return 0
+        if args.cap_text is not None:
+            return run_cap_text(args.cap_text)
         return run_since_output(args.root, args.since)
     except DriftError as exc:
         print(f"error: {exc}", file=sys.stderr)

@@ -2,103 +2,112 @@
 
 The tests must not depend on the checkout's real pins: the drift workflow bumps the
 real files to the newest TCKDB before it runs the suite. Everything here uses fixed
-values (schemas 0.54 / client 0.95, adapter 1.2.3). The four packages mirror the real
-ones: the core and the two file-format adapters hold ``__version__`` and a sectioned
-changelog, the ARC adapter has a marker changelog and a README sentence, and the CHEMKIN
-adapter has no tckdb-schemas dependency.
+values (schemas 0.54 / client 0.95; each package's version is in ``VERSIONS``).
+
+The repository's *shape* is not written down here. It comes from the tool's own table,
+``PACKAGES`` in ``tools/tckdb_drift.py``, and from the real files:
+
+- one synthetic package per row, with the version file, README sentence and changelog style
+  its flags name;
+- each package's ``pyproject.toml`` is the REAL one with only its TCKDB bounds, core floor and
+  version replaced, so the comment lines inside the dependency arrays, the extras and the
+  markers the real files have are what the rewrite is tested against (the CHEMKIN adapter has
+  no tckdb-schemas bound, the ARC adapter requires the core);
+- each package's ``CHANGELOG.md`` is the real preamble (for the marker style, the marker with the
+  real lines already under it) and the real newest release section, with that section's heading
+  set to the synthetic version.
+
+So adding a package means adding its row and nothing in the tests or here.
 """
 
+import importlib.util
+import os
+import re
+import subprocess
 from pathlib import Path
+
+REPO = Path(__file__).resolve().parents[3]
+_spec = importlib.util.spec_from_file_location("tckdb_drift_for_fixture", REPO / "tools" / "tckdb_drift.py")
+drift = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(drift)
 
 PIN_REPO = "https://example.org/tckdb.git"
 OLD_SHA = "a" * 40
 PINNED_SCHEMAS = (0, 54)
 PINNED_CLIENT = (0, 95)
-ADAPTER_VERSION = "1.2.3"
+#: The synthetic starting version of each package; a package without an entry starts at DEFAULT_VERSION.
+VERSIONS = {
+    "tckdb_core": "0.1.0",
+    "adapters/tckdb_arc": "1.2.3",
+    "adapters/tckdb_chemkin": "0.7.7",
+    "adapters/tckdb_qcschema": "0.9.9",
+}
+DEFAULT_VERSION = "0.3.0"
+#: The directories of the packages, in the tool's order.
+DIRECTORIES = [pkg.directory for pkg in drift.PACKAGES]
 
-CORE_CHANGELOG = """# Changelog: tckdb-adapters-core
+_SYNTHETIC_BOUNDS = {"tckdb-client": ">=0.95,<0.96", "tckdb-schemas": ">=0.54,<0.55"}
+_SYNTHETIC_CORE_FLOOR = ">=0.1.0,<0.2"
 
-Releases are listed newest first.
 
-## 0.1.0
+def version_of(pkg) -> str:
+    return VERSIONS.get(pkg.directory, DEFAULT_VERSION)
 
-First release.
-"""
 
-CHEMKIN_CHANGELOG = """# Changelog: tckdb-chemkin
+def _pyproject(pkg) -> str:
+    """The real pyproject with its TCKDB bounds, core floor and version replaced (nothing else)."""
+    text = (REPO / pkg.pyproject).read_text()
+    for name, bound in _SYNTHETIC_BOUNDS.items():
+        text = re.sub(rf'("{name}(?:\s*\[[^\]"]*\])?\s*)[<>=!~][^";]*', rf"\g<1>{bound}", text)
+    text = re.sub(rf'("{drift.CORE_DIST}(?:\s*\[[^\]"]*\])?\s*)[<>=!~][^";]*', rf"\g<1>{_SYNTHETIC_CORE_FLOOR}", text)
+    text, n = re.subn(r'^(version\s*=\s*")[^"]*(")', rf"\g<1>{version_of(pkg)}\g<2>", text, count=1, flags=re.M)
+    assert n == 1, pkg.pyproject
+    return text
 
-Releases are listed newest first.
 
-## 0.7.7
+def _changelog(pkg) -> str:
+    """The real preamble and newest release section, the section's heading set to the synthetic version."""
+    real = (REPO / pkg.changelog).read_text()
+    first = re.search(r"^## v?\d+\.\d+\.\d+.*$", real, re.M)
+    assert first is not None, pkg.changelog
+    following = re.search(r"^## ", real[first.end():], re.M)
+    end = first.end() + following.start() if following else len(real)
+    heading = f"## {version_of(pkg)}"
+    out = real[:first.start()] + heading + real[first.end():end].rstrip("\n") + "\n"
+    if pkg.changelog_style == "marker":
+        assert drift.CHANGELOG_MARKER in out, f"{pkg.changelog} has no {drift.CHANGELOG_MARKER}"
+    return out
 
-Requires `tckdb-client>=0.94,<0.95` (was `>=0.93,<0.94`).
-"""
 
-QCSCHEMA_CHANGELOG = """# Changelog: tckdb-qcschema
+def _init(pkg) -> str:
+    text = (REPO / pkg.init).read_text()
+    text, n = re.subn(r'^(__version__\s*=\s*")[^"]*(")', rf"\g<1>{version_of(pkg)}\g<2>", text, count=1, flags=re.M)
+    assert n == 1, pkg.init
+    return text
 
-Releases are listed newest first.
 
-## 0.9.9
-
-Requires `tckdb-client>=0.94,<0.95` and `tckdb-schemas>=0.53,<0.54`.
-"""
-
-FILES = {
-    "adapters/tckdb_arc/pyproject.toml": f'''[project]
-name = "tckdb-arc"
-version = "{ADAPTER_VERSION}"
-dependencies = [
-    "tckdb-adapters-core>=0.1.0,<0.2",  # pipeline
-    "tckdb-client>=0.95,<0.96",   # transport
-    "tckdb-schemas>=0.54,<0.55", # contract
-    "PyYAML>=6",
-]
-''',
-    "tckdb_core/pyproject.toml": '''[project]
-name = "tckdb-adapters-core"
-version = "0.1.0"
-dependencies = [
-    "tckdb-client>=0.95,<0.96",   # transport
-    "tckdb-schemas>=0.54,<0.55", # contract
-]
-''',
-    "tckdb_core/tckdb_core/__init__.py": '"""core"""\n\n__version__ = "0.1.0"\n',
-    "tckdb_core/CHANGELOG.md": CORE_CHANGELOG,
-    "adapters/tckdb_chemkin/pyproject.toml": '''[project]
-name = "tckdb-chemkin"
-version = "0.7.7"
-dependencies = [
-    # tckdb-client is 0.x and a minor may break, so the window holds the
-    # client line this release was tested with.
-    "tckdb-client>=0.95,<0.96",
-    # Every import resolves species identity.
-    "rdkit>=2024.3",
-]
-''',
-    "adapters/tckdb_chemkin/tckdb_chemkin/__init__.py": '"""chemkin"""\n\n__version__ = "0.7.7"\n',
-    "adapters/tckdb_chemkin/CHANGELOG.md": CHEMKIN_CHANGELOG,
-    "adapters/tckdb_qcschema/pyproject.toml": '''[project]
-name = "tckdb-qcschema"
-version = "0.9.9"
-dependencies = [
-    # tckdb-client and tckdb-schemas are 0.x and a minor may break, so each
-    # window holds the line this release was tested with.
-    "tckdb-client>=0.95,<0.96",
-    "tckdb-schemas>=0.54,<0.55",
-    "qcelemental==0.51.2",
-]
-''',
-    "adapters/tckdb_qcschema/tckdb_qcschema/__init__.py": '"""qcschema"""\n\n__version__ = "0.9.9"\n',
-    "adapters/tckdb_qcschema/CHANGELOG.md": QCSCHEMA_CHANGELOG,
-    "tckdb_core/tckdb_core/testing/contract.py": '"""doc"""\n\nTARGET_SCHEMAS_LINE = (0, 54)\nOTHER = 1\n',
-    "tckdb-pin.toml": f'''# pin
+def _files() -> dict[str, str]:
+    files: dict[str, str] = {}
+    for pkg in drift.PACKAGES:
+        files[pkg.pyproject] = _pyproject(pkg)
+        files[pkg.changelog] = _changelog(pkg)
+        if pkg.version_in_init:
+            files[pkg.init] = _init(pkg)
+        if pkg.readme_sentence:
+            files[pkg.readme] = (
+                f"# {pkg.dist}\n\nRequires Python 3.11+, `tckdb-client` 0.95.x and `tckdb-schemas` 0.54.x.\n\nOther text.\n"
+            )
+        else:  # a README a bump must leave alone
+            files[pkg.readme] = f"# {pkg.dist}\n\nIt installs `tckdb-client` and `tckdb-schemas`.\n"
+    files[drift.CONTRACT_PY] = '"""doc"""\n\nTARGET_SCHEMAS_LINE = (0, 54)\nOTHER = 1\n'
+    files[drift.PIN_FILE] = f'''# pin
 [tckdb]
 repo = "{PIN_REPO}"
 sha = "{OLD_SHA}"
 schemas_subdir = "schemas/python/tckdb-schemas"
 client_subdir = "clients/python"
-''',
-    "README.md": f'''# adapters
+'''
+    files[drift.README] = f'''# adapters
 
 The tested contract is `tckdb-client` 0.95.x with `tckdb-schemas` 0.54.x
 (notes).
@@ -108,51 +117,20 @@ pip install \\
   "tckdb-client @ git+{PIN_REPO}@{OLD_SHA}#subdirectory=clients/python" \\
   "tckdb-schemas @ git+{PIN_REPO}@{OLD_SHA}#subdirectory=schemas/python/tckdb-schemas"
 ```
-''',
-    "adapters/tckdb_arc/README.md": """# tckdb-arc
-
-Requires Python 3.11+, `tckdb-client` 0.95.x and `tckdb-schemas` 0.54.x.
-
-Other text.
-""",
-    "adapters/tckdb_arc/CHANGELOG.md": """# Changelog: tckdb-arc
-
-## Tracked TCKDB releases
-
-<!-- tckdb-drift:changelog -->
-
-## 1.2.3
-
-Other text.
-""",
+'''
     # Files a bump must leave alone.
-    "adapters/tckdb_chemkin/README.md": "# tckdb-chemkin\n\nIt installs `tckdb-client` and RDKit with it.\n",
-    "adapters/tckdb_qcschema/README.md": "# tckdb-qcschema\n\nIt installs `tckdb-client` and `tckdb-schemas`.\n",
-    ".github/workflows/ci.yml": "name: ci\n",
-    ".github/workflows/tckdb-drift.yml": "name: drift\n",
-    "AGENTS.md": "# rules\n",
-    "CLAUDE.md": "@AGENTS.md\n",
-}
+    files.update({
+        ".github/workflows/ci.yml": "name: ci\n",
+        ".github/workflows/tckdb-drift.yml": "name: drift\n",
+        "AGENTS.md": "# rules\n",
+        "CLAUDE.md": "@AGENTS.md\n",
+    })
+    return files
 
-#: The files a bump rewrites; the rest of FILES must stay byte-identical. The tool's own
-#: list (``tckdb_drift.bumped_files()``) must equal this one.
-BUMPED = [
-    "tckdb_core/pyproject.toml",
-    "tckdb_core/tckdb_core/__init__.py",
-    "tckdb_core/CHANGELOG.md",
-    "adapters/tckdb_arc/pyproject.toml",
-    "adapters/tckdb_arc/README.md",
-    "adapters/tckdb_arc/CHANGELOG.md",
-    "adapters/tckdb_chemkin/pyproject.toml",
-    "adapters/tckdb_chemkin/tckdb_chemkin/__init__.py",
-    "adapters/tckdb_chemkin/CHANGELOG.md",
-    "adapters/tckdb_qcschema/pyproject.toml",
-    "adapters/tckdb_qcschema/tckdb_qcschema/__init__.py",
-    "adapters/tckdb_qcschema/CHANGELOG.md",
-    "tckdb_core/tckdb_core/testing/contract.py",
-    "tckdb-pin.toml",
-    "README.md",
-]
+
+#: Every file of the synthetic repository. Which of them a bump rewrites is NOT stored here: a test
+#: runs a full bump and compares the files that changed with the tool's ``bumped_files()``.
+FILES = _files()
 
 
 def build(root: Path) -> Path:
@@ -161,3 +139,39 @@ def build(root: Path) -> Path:
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text(text)
     return root
+
+
+# ---- a local stand-in for the TCKDB repository --------------------------------------------------
+
+
+def run_git(cwd, *args) -> str:
+    env = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@x", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@x"}
+    return subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True, text=True, env=env).stdout.strip()
+
+
+def make_tckdb(tmp: Path) -> tuple[str, str, str]:
+    """A local stand-in for the TCKDB repository with two commits: ``(url, old sha, new sha)``.
+
+    ``backend/app/chemistry/marker.txt`` says which commit a checkout is at (OLD, then NEW), and a
+    file outside ``backend/app/chemistry`` is there to show the checkout is sparse. The repository
+    is ``<tmp>/tckdb-src``.
+    """
+    src = tmp / "tckdb-src"
+    (src / "backend" / "app" / "chemistry").mkdir(parents=True)
+    (src / "schemas").mkdir()
+    run_git(src, "init", "-q", "-b", "main")
+    run_git(src, "config", "uploadpack.allowFilter", "true")
+    (src / "schemas" / "elsewhere.txt").write_text("not part of the backend\n")
+    marker = src / "backend" / "app" / "chemistry" / "marker.txt"
+    shas = []
+    for text in ("OLD", "NEW"):
+        marker.write_text(text)
+        run_git(src, "add", "-A")
+        run_git(src, "commit", "-q", "-m", text)
+        shas.append(run_git(src, "rev-parse", "HEAD"))
+    return f"file://{src}", shas[0], shas[1]
+
+
+def pin_text(url: str, sha: str) -> str:
+    """The fixture's tckdb-pin.toml with its repository and commit replaced."""
+    return FILES[drift.PIN_FILE].replace(PIN_REPO, url).replace(OLD_SHA, sha)

@@ -2,8 +2,9 @@ name: tckdb-drift
 
 # Tracks tckdb-schemas / tckdb-client releases in TCKDB. When TCKDB's main
 # ships a newer minor line than the adapter pins, the `test` job bumps the pins in
-# its runner and runs every package's suite with a read-only token; the `publish` job (the only
-# one with write access) opens a PR (tests pass) or an issue (tests fail).
+# its runner, installs the new packages, fetches TCKDB's backend identity rules at the new
+# commit and runs every package's suite with a read-only token; the `publish` job (the only one
+# with write access) opens a PR (tests pass) or an issue (tests fail, or could not be set up).
 # See docs/tckdb_pin.md.
 
 on:
@@ -61,33 +62,89 @@ jobs:
             echo "old_schemas=$(jq -r .schemas.pinned_line "$RUNNER_TEMP/drift.json").0"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Bump the pins in this runner
-        if: steps.check.outputs.drift == 'true'
-        run: |
-          python tools/tckdb_drift.py --bump \
-            --sha "${{ steps.check.outputs.sha }}" \
-            --schemas "${{ steps.check.outputs.schemas }}" \
-            --client "${{ steps.check.outputs.client }}"
-          git diff --stat
-
-      - name: Install the new TCKDB packages and run every package's suite
+      - name: Bump the pins, install the new TCKDB packages and run every package's suite
         id: test
         if: steps.check.outputs.drift == 'true'
         run: |
+          # result is one of
+          #   pass           every suite passed (the only value that leads to a pull request)
+          #   fail           a suite failed: an issue with the failing tests
+          #   install-failed pip could not install the new packages: an issue with the pip log
+          #   setup-failed   the job stopped before any suite ran, for a reason that is not a test
+          #                  and not pip: the bump was refused (a package is ahead of the target) or
+          #                  failed, the package list was empty or failed, or TCKDB's backend could
+          #                  not be fetched. An issue with the reason.
+          # Every value but `pass` is a failure of the run, never a pass.
           result=pass
+          packages=()
+          : > "$RUNNER_TEMP/setup.log"
+
+          # A package behind the others is repaired by the bump (every package moves to the target); one
+          # ahead of the target makes the bump refuse, and the refusal below names the package, its
+          # file and the lines.
+          bump_rc=0
+          python tools/tckdb_drift.py --bump \
+            --sha "${{ steps.check.outputs.sha }}" \
+            --schemas "${{ steps.check.outputs.schemas }}" \
+            --client "${{ steps.check.outputs.client }}" > "$RUNNER_TEMP/bump.log" 2>&1 || bump_rc=$?
+          cat "$RUNNER_TEMP/bump.log"
+          if [ "$bump_rc" -ne 0 ]; then
+            result=setup-failed
+            {
+              echo "python tools/tckdb_drift.py --bump exited $bump_rc, so the pins were not moved and no suite was run. Its output:"
+              cat "$RUNNER_TEMP/bump.log"
+              if grep -q 'refusing to move' "$RUNNER_TEMP/bump.log"; then
+                echo "TCKDB's main has tckdb-schemas ${{ steps.check.outputs.schemas }} and tckdb-client ${{ steps.check.outputs.client }}, and a package here is already on a newer line than that for a bound: the target is behind the pins."
+                echo "The refusal above says which package, in which file, from which line to which."
+                echo "Either TCKDB went back or that package was moved by hand. A person must decide which, and bring the package back or move the others up."
+                echo "(The bump with --allow-downgrade moves every package to TCKDB's line.)"
+              fi
+            } > "$RUNNER_TEMP/setup.log"
+          fi
+
           # The packages come from the tool. As in ci.yml, each suite runs from its own
           # directory (the chemkin and qcschema tests share module names with the others').
-          mapfile -t packages < <(python tools/tckdb_drift.py --list-packages)
-          editable=()
-          for dir in "${packages[@]}"; do editable+=(-e "./${dir}[test]"); done
-          {
-            [ "${#packages[@]}" -gt 0 ] &&
-            python tools/tckdb_drift.py --install-specs > "$RUNNER_TEMP/specs" &&
-            python -m pip install --upgrade pip &&
-            pip install "$(sed -n 's/^TCKDB_CLIENT_SPEC=//p' "$RUNNER_TEMP/specs")" \
-                        "$(sed -n 's/^TCKDB_SCHEMAS_SPEC=//p' "$RUNNER_TEMP/specs")" &&
-            pip install "${editable[@]}"
-          } > "$RUNNER_TEMP/install.log" 2>&1 || result=install-failed
+          if [ "$result" = pass ]; then
+            if list="$(python tools/tckdb_drift.py --list-packages 2> "$RUNNER_TEMP/list.err")" && [ -n "$list" ]; then
+              mapfile -t packages <<< "$list"
+            else
+              result=setup-failed
+              {
+                echo "python tools/tckdb_drift.py --list-packages failed or printed no packages, so no suite was run."
+                cat "$RUNNER_TEMP/list.err"
+              } > "$RUNNER_TEMP/setup.log"
+            fi
+          fi
+
+          if [ "$result" = pass ]; then
+            editable=()
+            for dir in "${packages[@]}"; do editable+=(-e "./${dir}[test]"); done
+            {
+              python tools/tckdb_drift.py --install-specs > "$RUNNER_TEMP/specs" &&
+              python -m pip install --upgrade pip &&
+              pip install "$(sed -n 's/^TCKDB_CLIENT_SPEC=//p' "$RUNNER_TEMP/specs")" \
+                          "$(sed -n 's/^TCKDB_SCHEMAS_SPEC=//p' "$RUNNER_TEMP/specs")" &&
+              pip install "${editable[@]}"
+            } > "$RUNNER_TEMP/install.log" 2>&1 || result=install-failed
+          fi
+
+          # TCKDB's identity rules at the NEW commit (the pin the bump step just moved), as ci.yml
+          # fetches them at the pinned one. The comparison tests need them: without TCKDB_BACKEND_PATH
+          # they skip, and a change to backend/app/chemistry would pass this job unseen.
+          if [ "$result" = pass ]; then
+            if bash tools/fetch_tckdb_backend.sh \
+                 "$(sed -n 's/^TCKDB_SCHEMAS_SPEC=//p' "$RUNNER_TEMP/specs")" "$RUNNER_TEMP/tckdb" \
+                 > "$RUNNER_TEMP/backend.env" 2> "$RUNNER_TEMP/backend.log" &&
+               [ "$(wc -l < "$RUNNER_TEMP/backend.env")" -eq 2 ]; then
+              while IFS= read -r assignment; do export "$assignment"; done < "$RUNNER_TEMP/backend.env"
+            else
+              result=setup-failed
+              {
+                echo "Fetching TCKDB's backend/app/chemistry at the new commit failed, so no suite was run."
+                cat "$RUNNER_TEMP/backend.log"
+              } > "$RUNNER_TEMP/setup.log"
+            fi
+          fi
 
           # The contract changelog from the PRE-bump schemas line.
           python tools/tckdb_drift.py --since-output \
@@ -101,25 +158,37 @@ jobs:
             done
             {
               echo '```'
+              # The tallies come first: when the cap below cuts the summary it cuts the end, so
+              # every package's tally survives and only some failing-test lines are lost.
+              for dir in "${packages[@]}"; do
+                echo "${dir}: $(tail -n 1 "$RUNNER_TEMP/pytest-${dir//\//_}.log")" | cut -c1-300
+              done
               for dir in "${packages[@]}"; do
                 # Prefix each failing test with its package: the same test path occurs in several.
                 { grep -E '^(FAILED|ERROR) ' "$RUNNER_TEMP/pytest-${dir//\//_}.log" || true; } \
                   | head -40 | cut -c1-300 | sed -E "s#^(FAILED|ERROR) #\1 ${dir}/#"
               done
-              for dir in "${packages[@]}"; do
-                echo "${dir}: $(tail -n 1 "$RUNNER_TEMP/pytest-${dir//\//_}.log")"
-              done
               echo '```'
-            } > "$RUNNER_TEMP/summary.md"
+            } > "$RUNNER_TEMP/summary.raw"
             for dir in "${packages[@]}"; do tail -n 3 "$RUNNER_TEMP/pytest-${dir//\//_}.log"; done
-          else
+          elif [ "$result" = install-failed ]; then
             {
               echo 'Installing the new packages with the bumped pins failed:'
               echo '```'
               tail -n 30 "$RUNNER_TEMP/install.log" | cut -c1-300
               echo '```'
-            } > "$RUNNER_TEMP/summary.md"
+            } > "$RUNNER_TEMP/summary.raw"
+          else
+            {
+              echo 'The drift job stopped before it ran any suite. This is not a failing test, but a person has to look:'
+              echo '```'
+              tail -n 30 "$RUNNER_TEMP/setup.log" | cut -c1-300
+              echo '```'
+            } > "$RUNNER_TEMP/summary.raw"
           fi
+          # The summary as a whole stays small enough for an issue body (the publish script caps again).
+          { python tools/tckdb_drift.py --cap-text 40000 < "$RUNNER_TEMP/summary.raw" > "$RUNNER_TEMP/summary.md" &&
+            [ -s "$RUNNER_TEMP/summary.md" ]; } || cp "$RUNNER_TEMP/summary.raw" "$RUNNER_TEMP/summary.md"
           echo "result=$result" >> "$GITHUB_OUTPUT"
 
       - name: Keep the changelog and test summary for the publish job
