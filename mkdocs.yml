@@ -24,7 +24,9 @@ theme:
         icon: material/weather-sunny
         name: Switch to light mode
   features:
+    - navigation.tabs
     - navigation.sections
+    - navigation.indexes
     - navigation.top
     - navigation.footer
     - search.highlight
@@ -64,16 +66,19 @@ validation:
 
 nav:
   - Home: index.md
-  - Using the ARC adapter: arc.md
+  - Adapters:
+      - adapters/index.md
+      - ARC:
+          - adapters/arc/index.md
+          - Mapping: contract/ARC_MAPPING.md
+          - Changelog: adapters/arc/changelog.md
+  - Core:
+      - core/index.md
+      - Changelog: core/changelog.md
   - Reference:
-      - ARC mapping: contract/ARC_MAPPING.md
       - Warning codes: contract/WARNING_CODES.md
-  - The core: core.md
-  - Writing an adapter: writing_an_adapter.md
-  - Maintenance:
+  - Developing:
+      - Writing an adapter: writing_an_adapter.md
       - The TCKDB pin: tckdb_pin.md
       - Integration gate: contract/INTEGRATION_GATE.md
-  - Changelogs:
-      - tckdb-adapters-core: changelog_core.md
-      - tckdb-arc: changelog_arc.md
-  - Contributing: contributing.md
+      - Contributing: contributing.md

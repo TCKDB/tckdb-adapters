@@ -432,3 +432,6 @@ Other limits of the core that an adapter author should know:
 - [ ] The warning-code document is regenerated.
 - [ ] The package has a README and a changelog, and the changelog marks releases that
       change payloads.
+- [ ] Its pages are under Adapters in `mkdocs.yml`, it has a line on
+      `docs/adapters/index.md`, and its README and changelog are in the `push` path filter of
+      `.github/workflows/docs.yml`.

@@ -117,3 +117,15 @@ def test_two_stubs_for_one_file_are_an_error(tree):
     (tree / "docs" / "second.md").write_text('{% include-markdown "../pkg/README.md" %}\n')
     with pytest.raises(Exception, match="include the same file"):
         hooks.on_config(_config(tree))
+
+
+def test_a_stub_in_a_subdirectory_is_found_and_links_to_it_resolve_from_the_page(tree):
+    (tree / "docs" / "sub" / "deep").mkdir()
+    (tree / "pkg2").mkdir()
+    (tree / "pkg2" / "README.md").write_text("# Pkg2\n")
+    (tree / "docs" / "sub" / "deep" / "index.md").write_text('{% include-markdown "../../../pkg2/README.md" %}\n')
+    # From the deep stub itself: a link to the file the top-level stub includes.
+    out = _render(tree, _link("../../../pkg/README.md#x"), page="sub/deep/index.md")
+    assert out == _link("../../stub.md#x")
+    # From another page: a link to the file the deep stub includes.
+    assert _render(tree, _link("../../pkg2/README.md")) == _link("deep/index.md")
