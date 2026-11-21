@@ -67,16 +67,15 @@ validation:
 nav:
   - Home: index.md
   - Adapters:
-      - adapters/index.md
+      - Overview: adapters/index.md
       - ARC:
-          - adapters/arc/index.md
+          - Using the ARC adapter: adapters/arc/index.md
           - Mapping: contract/ARC_MAPPING.md
-          - Changelog: adapters/arc/changelog.md
+          - Warning codes: contract/WARNING_CODES.md
+          - tckdb-arc changelog: adapters/arc/changelog.md
   - Core:
-      - core/index.md
-      - Changelog: core/changelog.md
-  - Reference:
-      - Warning codes: contract/WARNING_CODES.md
+      - The core: core/index.md
+      - tckdb-adapters-core changelog: core/changelog.md
   - Developing:
       - Writing an adapter: writing_an_adapter.md
       - The TCKDB pin: tckdb_pin.md

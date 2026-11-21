@@ -227,6 +227,39 @@ input and parses them. `tckdb_arc/tckdb_arc/config.py` is a parser you can follo
 validates `rights` with `DepositRights` and rejects unknown artifact kinds. API keys are
 never read from the input file, only from the environment or a key file named there.
 
+### 7. Add the adapter to the documentation site
+
+The site is built from `docs/`, `mkdocs.yml` and files that stub pages include. Replace
+`<tool>` with your tool's name. `mkdocs build --strict` checks steps 1 to 3, 6 and 7.
+
+1. Create `docs/adapters/<tool>/index.md` and `docs/adapters/<tool>/changelog.md` by copying
+   the two files in `docs/adapters/arc/`. Change the include paths to
+   `../../../tckdb_<tool>/README.md` and `../../../tckdb_<tool>/CHANGELOG.md`, and the
+   comment to name those files.
+2. Keep the stub shape `tools/mkdocs_hooks.py` recognises: one optional HTML comment, then
+   one `include-markdown` directive, and nothing else. No front matter, no heading, and no
+   other stub including the same file (the build fails on that).
+3. Add the pages to `nav` in `mkdocs.yml`, as a new group under `Adapters` next to `ARC`.
+   Give every page a title there; the stubs have no heading, so a page without a nav title
+   is called "Index". The first child of the group is the stub `index.md`, and its title
+   names the adapter's README page; Material makes that page the group's landing page.
+4. Add a row to the table in `docs/adapters/index.md`: the adapter's name linking to
+   `<tool>/index.md`, and its package name.
+5. Add `tckdb_<tool>/README.md` and `tckdb_<tool>/CHANGELOG.md` to the `push` path filter in
+   `.github/workflows/docs.yml`. Pull requests are built whatever the paths.
+6. If the adapter has a mapping document, write it at `docs/contract/<TOOL>_MAPPING.md` and
+   list it in the adapter's nav group. Do not move the existing files in `docs/contract/`:
+   READMEs, tests and the generator name their paths.
+7. The warning-code table that the generator writes (section 5) is a page under
+   `docs/contract/`. List that page in the adapter's nav group.
+8. Update the root `README.md`, which is also the site's home page: add a row to the package
+   table, add the package's version badge, and change the sentence that says which adapters
+   exist.
+9. In a README, write links to repository files as relative links: the build turns a link
+   to an included README or changelog into a link to its site page, and any other link to
+   a repository file into a GitHub link. Absolute GitHub URLs are left as they are, so they
+   leave the site.
+
 ## Tests your package must have
 
 | Test | How |
@@ -432,6 +465,5 @@ Other limits of the core that an adapter author should know:
 - [ ] The warning-code document is regenerated.
 - [ ] The package has a README and a changelog, and the changelog marks releases that
       change payloads.
-- [ ] Its pages are under Adapters in `mkdocs.yml`, it has a line on
-      `docs/adapters/index.md`, and its README and changelog are in the `push` path filter of
-      `.github/workflows/docs.yml`.
+- [ ] The adapter is on the documentation site as section 7 describes, and
+      `mkdocs build --strict` passes.
