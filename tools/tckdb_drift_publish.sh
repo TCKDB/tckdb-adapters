@@ -113,10 +113,10 @@ cat > "$tmp/pr.md" <<BODY
 Automated bump by \`tckdb-drift.yml\` (run: ${RUN_URL}).
 
 - tckdb-schemas ${SCHEMAS}, tckdb-client ${CLIENT}, TCKDB ${SHA}
-- \`tools/tckdb_drift.py --bump\` moved the pyproject bounds (\`tckdb_arc\` and \`tckdb_core\`), \`TARGET_SCHEMAS_LINE\`, \`tckdb-pin.toml\`, the README install lines and version sentences, the \`tckdb_arc/CHANGELOG.md\` line, and the adapter patch version.
+- \`tools/tckdb_drift.py --bump\` moved the pyproject bounds of every package that states them, \`TARGET_SCHEMAS_LINE\`, \`tckdb-pin.toml\` and the README install lines and version sentences. It released each package one of whose own files changed: patch version in \`pyproject.toml\` (and \`__version__\` where the package has one) and an entry in its \`CHANGELOG.md\`.
 
 ### What the bot already did
-It ran the full test suite against the new packages with the target already moved, and it passed. It did not read the contract change: that is your job. Read the \`--since\` changelog below (and \`python -m tckdb_schemas.contract --print\`), decide whether the adapter handles what moved, then merge or close. CI on this PR re-runs the suite.
+It ran the test suite of every package against the new TCKDB packages with the target already moved, and each passed. It did not read the contract change: that is your job. Read the \`--since\` changelog below (and \`python -m tckdb_schemas.contract --print\`), decide whether the adapter handles what moved, then merge or close. CI on this PR re-runs the suite.
 
 ${SUMMARY}
 
@@ -127,7 +127,7 @@ ${SINCE}
 - [ ] I read the \`--since\` changelog above.
 - [ ] Every changed route, field or refusal code is handled by the adapter or judged irrelevant.
 - [ ] No producer convention was defaulted to fit a new required field (refuse to build the block instead).
-- [ ] The \`tckdb-adapters-core\` version (\`tckdb_core/pyproject.toml\` and \`tckdb_core/tckdb_core/__init__.py\`) and \`tckdb_core/CHANGELOG.md\` are bumped by hand; the bot bumps only \`tckdb-arc\`.
+- [ ] Each package's changelog entry is complete. The bot writes which bounds moved and that the package's code is unchanged (the \`tckdb-qcschema\` entry also says its request body changes, because it records the adapter version). It cannot know what the new contract does to a package's behaviour or payloads; add that (a new refusal, a changed rule, a changed payload and its idempotency-key consequence) to the entries it applies to.
 BODY
 
 git config user.name "$BOT_NAME"
@@ -135,7 +135,10 @@ git config user.email "$BOT_EMAIL"
 BASE_SHA="$(git rev-parse HEAD)"
 python tools/tckdb_drift.py --bump --sha "$SHA" --schemas "$SCHEMAS" --client "$CLIENT"
 git switch -C "$BRANCH"
-git add tckdb_arc/pyproject.toml tckdb_core/pyproject.toml tckdb_core/tckdb_core/testing/contract.py tckdb_arc/README.md tckdb_arc/CHANGELOG.md tckdb-pin.toml README.md
+# Stage every file tools/tckdb_drift.py --bump can rewrite (the tool names them; none is listed here).
+mapfile -t bumped < <(python tools/tckdb_drift.py --bumped-files)
+[ "${#bumped[@]}" -gt 0 ] || { echo "tckdb_drift.py --bumped-files listed no files" >&2; exit 1; }
+git add -- "${bumped[@]}"
 git diff --cached --quiet || git commit -q -m "$TITLE"
 
 pushed=false

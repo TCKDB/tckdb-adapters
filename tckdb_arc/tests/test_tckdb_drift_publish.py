@@ -90,6 +90,7 @@ class Env:
             "OLD_SCHEMAS": "0.54.0",
             "SINCE_FILE": str(self.tmp / "since.md"), "SUMMARY_FILE": str(self.tmp / "summary.md"),
         }
+        self.work = work
         proc = subprocess.run(["bash", str(work / "tools" / "tckdb_drift_publish.sh")], cwd=work, env=env,
                               capture_output=True, text=True)
         assert proc.returncode == 0, proc.stderr
@@ -116,6 +117,9 @@ def test_first_run_pushes_a_bot_branch_opens_the_pr_and_dispatches_ci(env):
     changed = set(git(env.remote, "diff", "--name-only", "main", tip).split())
     assert ".github/workflows/ci.yml" not in changed
     assert "tckdb-pin.toml" in changed
+    # Everything the bump rewrote was staged and committed: nothing is left over in the work tree.
+    assert git(env.work, "status", "--porcelain") == ""
+    assert {"tckdb_chemkin/pyproject.toml", "tckdb_qcschema/CHANGELOG.md", "tckdb_core/tckdb_core/__init__.py"} <= changed
     log = env.gh_log()
     assert "pr create" in log and "workflow run ci.yml --ref " + BRANCH in log
 

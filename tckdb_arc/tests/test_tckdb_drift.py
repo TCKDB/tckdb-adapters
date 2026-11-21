@@ -1,8 +1,11 @@
 """Unit tests for tools/tckdb_drift.py: pin parsing and rewriting. No network."""
 
+import difflib
 import importlib.util
 import json
+import os
 import re
+import sys
 from pathlib import Path
 
 import pytest
@@ -94,41 +97,220 @@ def test_summary_older_upstream_is_not_drift():
     assert _summary("0.53.0", "0.94.0")["drift"] is False
 
 
-def test_bump_rewrites_only_the_pins_and_patch(root):
+ARC, CORE, CHEMKIN, QCSCHEMA = (drift.package(d) for d in ("tckdb_arc", "tckdb_core", "tckdb_chemkin", "tckdb_qcschema"))
+SECTION_PACKAGES = (CORE, CHEMKIN, QCSCHEMA)
+
+
+def _version(text):
+    return drift.parse_version(drift.package_version_of(text))
+
+
+def test_bump_rewrites_only_the_pins_and_versions(root):
     before = {rel: (root / rel).read_text() for rel in FILES + UNTOUCHED}
     assert drift.run_bump(root, NEW_SHA, "0.58.0", "0.98.0") == 0
     after = {rel: (root / rel).read_text() for rel in FILES + UNTOUCHED}
 
     changed = {rel for rel in before if before[rel] != after[rel]}
-    assert changed == set(FILES)  # no workflow file, no AGENTS.md or CLAUDE.md
+    assert changed == set(FILES)  # no workflow file, no AGENTS.md or CLAUDE.md, no chemkin/qcschema README
 
-    assert drift.pinned_line(after[drift.ADAPTER_PYPROJECT], "tckdb-schemas") == (0, 58)
-    assert drift.pinned_line(after[drift.ADAPTER_PYPROJECT], "tckdb-client") == (0, 98)
-    assert drift.pinned_line(after[drift.CORE_PYPROJECT], "tckdb-schemas") == (0, 58)
-    assert drift.pinned_line(after[drift.CORE_PYPROJECT], "tckdb-client") == (0, 98)
-    assert drift.adapter_version(after[drift.CORE_PYPROJECT]) == drift.adapter_version(before[drift.CORE_PYPROJECT])
+    for pkg in drift.PACKAGES:
+        text = after[pkg.pyproject]
+        if pkg is not CHEMKIN:
+            assert drift.pinned_line(text, "tckdb-schemas") == (0, 58), pkg.directory
+        assert drift.pinned_line(text, "tckdb-client") == (0, 98), pkg.directory
     assert "TARGET_SCHEMAS_LINE = (0, 58)" in after[drift.CONTRACT_PY]
     assert drift.read_pin_file(after[drift.PIN_FILE])["sha"] == NEW_SHA
     assert NEW_SHA in after[drift.README]
     assert "`tckdb-client` 0.98.x with `tckdb-schemas` 0.58.x" in after[drift.README]
-    assert "`tckdb-client` 0.98.x and `tckdb-schemas` 0.58.x" in after[drift.PKG_README]
+    assert "`tckdb-client` 0.98.x and `tckdb-schemas` 0.58.x" in after[ARC.readme]
+    assert drift.CHANGELOG_MARKER not in after[ARC.readme]
 
-    old_v = drift.parse_version(drift.adapter_version(before[drift.ADAPTER_PYPROJECT]))
-    new_v = drift.parse_version(drift.adapter_version(after[drift.ADAPTER_PYPROJECT]))
-    assert new_v == (old_v[0], old_v[1], old_v[2] + 1)
-    entry = f"- Adapter {new_v[0]}.{new_v[1]}.{new_v[2]}: tracked TCKDB 74aae9a (schemas 0.58.0, client 0.98.0)."
-    assert f"{drift.CHANGELOG_MARKER}\n{entry}\n" in after[drift.PKG_CHANGELOG]
-    assert drift.CHANGELOG_MARKER not in after[drift.PKG_README]
+    # Every package moves one patch, in pyproject and (where it has one) in __version__.
+    for pkg in drift.PACKAGES:
+        old_v, new_v = _version(before[pkg.pyproject]), _version(after[pkg.pyproject])
+        assert new_v == (old_v[0], old_v[1], old_v[2] + 1), pkg.directory
+        if pkg.version_in_init:
+            assert f'__version__ = "{new_v[0]}.{new_v[1]}.{new_v[2]}"' in after[pkg.init], pkg.directory
 
-    # Nothing else moved: every changed line is a pin, the SHA, a version sentence or the changelog line.
+    # The ARC adapter's changelog gets a marker line; the others get a new section on top.
+    arc_v = ".".join(map(str, _version(after[ARC.pyproject])))
+    entry = f"- Adapter {arc_v}: tracked TCKDB 74aae9a (schemas 0.58.0, client 0.98.0)."
+    assert f"{drift.CHANGELOG_MARKER}\n{entry}\n" in after[ARC.changelog]
+    for pkg in SECTION_PACKAGES:
+        v = ".".join(map(str, _version(after[pkg.pyproject])))
+        old_v = ".".join(map(str, _version(before[pkg.pyproject])))
+        text, old_text = after[pkg.changelog], before[pkg.changelog]
+        first = re.search(r"^## (.*)$", text, re.M)
+        assert first[1] == v, pkg.directory  # newest first, above the previous release
+        section = text[first.start():text.index(f"## {old_v}")]
+        assert "Tracks TCKDB 74aae9a (tckdb-schemas 0.58.0, tckdb-client 0.98.0)." in section
+        assert "`tckdb-client>=0.98,<0.99`" in section
+        assert ("(was `" if pkg is CHEMKIN else "(were `") in section  # one bound moved, or two
+        assert text.startswith(old_text.split("## ")[0])  # the heading and intro are untouched
+        assert text.endswith(old_text[old_text.index("## "):])  # so is the history
+    assert "`TARGET_SCHEMAS_LINE` is 0.58" in after[CORE.changelog]
+    assert "`tckdb-schemas>=0.58,<0.59`" in after[QCSCHEMA.changelog].split("## 0.9.9")[0]
+
+    # The ARC adapter's floor on the core follows the core's new version.
+    assert '"tckdb-adapters-core>=0.1.1,<0.2",  # pipeline' in after[ARC.pyproject]
+
+    # Nothing else moved, in any bumped file.
     for rel in FILES:
-        old_lines, new_lines = before[rel].splitlines(), after[rel].splitlines()
-        assert len(new_lines) == len(old_lines) + (1 if rel == drift.PKG_CHANGELOG else 0)
-        if rel == drift.PKG_CHANGELOG:
-            new_lines = [n for n in new_lines if n != entry]
-        for o, n in zip(old_lines, new_lines):
-            if o != n:
-                assert any(k in o for k in ("tckdb-", "TARGET_SCHEMAS_LINE", "tckdb.git@", "version =", "sha =")), o
+        _assert_only_expected_lines_changed(rel, before[rel], after[rel])
+
+
+KEYWORDS = ("tckdb-", "version =", "__version__", "TARGET_SCHEMAS_LINE", "tckdb.git@", "sha =")
+
+
+def _assert_only_expected_lines_changed(rel, before, after):
+    """A changelog only gains lines. Every other file keeps its line count, and each line that
+    changed was a pin, the sha, a version, the core floor or a version sentence."""
+    ops = [op for op in difflib.SequenceMatcher(None, before.splitlines(), after.splitlines()).get_opcodes()
+           if op[0] != "equal"]
+    assert ops, rel
+    old, new = before.splitlines(), after.splitlines()
+    for tag, i1, i2, j1, j2 in ops:
+        if rel.endswith("CHANGELOG.md"):
+            assert tag == "insert", (rel, tag, old[i1:i2])
+        else:
+            assert tag == "replace" and i2 - i1 == j2 - j1, (rel, tag, old[i1:i2], new[j1:j2])
+            for o in old[i1:i2]:
+                assert any(k in o for k in KEYWORDS), (rel, o)
+
+
+@pytest.mark.parametrize("pkg", drift.PACKAGES, ids=lambda p: p.directory)
+def test_a_stale_package_reports_drift_in_check(root, monkeypatch, pkg):
+    """Every package that states a bound counts: the oldest pin is the pin."""
+    path = root / pkg.pyproject
+    text = path.read_text()
+    for package in drift.TCKDB_PACKAGES:
+        if drift.states_dependency(text, package):
+            line = drift.pinned_line(text, package)
+            text = re.sub(rf'"{package}[^"]*"', f'"{package}{drift.bound_for((line[0], line[1] - 1))}"', text)
+    path.write_text(text)
+    reported = drift.read_pins(root)
+    for package, key, pinned in (("tckdb-schemas", "schemas_line", fx.PINNED_SCHEMAS),
+                                 ("tckdb-client", "client_line", fx.PINNED_CLIENT)):
+        stale = drift.states_dependency(text, package)
+        assert reported[key] == ((pinned[0], pinned[1] - 1) if stale else pinned), (pkg.directory, key)
+    pin = drift.read_pin_file((root / drift.PIN_FILE).read_text())
+    available = {
+        f"{pin['schemas_subdir']}/pyproject.toml": '[project]\nversion = "%d.%d.9"\n' % fx.PINNED_SCHEMAS,
+        f"{pin['client_subdir']}/pyproject.toml": '[project]\nversion = "%d.%d.9"\n' % fx.PINNED_CLIENT,
+    }
+    monkeypatch.setattr(drift, "resolve_sha", lambda repo, ref: fx.OLD_SHA)
+    monkeypatch.setattr(drift, "fetch_files", lambda repo, sha, paths: available)
+    assert drift.run_check(root, None, "main") == drift.EXIT_DRIFT
+
+
+def test_bump_repairs_a_package_that_lags(root):
+    path = root / QCSCHEMA.pyproject
+    path.write_text(path.read_text().replace(">=0.54,<0.55", ">=0.53,<0.54").replace(">=0.95,<0.96", ">=0.94,<0.95"))
+    assert drift.read_pins(root) == {"schemas_line": (0, 53), "client_line": (0, 94), "sha": fx.OLD_SHA}
+    drift.run_bump(root, fx.OLD_SHA, "0.54.0", "0.95.0")
+    assert drift.read_pins(root) == {"schemas_line": (0, 54), "client_line": (0, 95), "sha": fx.OLD_SHA}
+
+
+def test_the_tools_file_list_is_the_fixtures():
+    assert sorted(drift.bumped_files()) == sorted(fx.BUMPED)
+
+
+def _code_lines(path):
+    """The file without its comment lines (a comment may point at a test that will move)."""
+    return "\n".join(line for line in path.read_text().splitlines() if not line.lstrip().startswith("#"))
+
+
+def test_the_publish_script_stages_what_the_tool_lists_and_names_no_package():
+    script = _code_lines(REPO / "tools" / "tckdb_drift_publish.sh")
+    assert "tools/tckdb_drift.py --bumped-files" in script
+    for pkg in drift.PACKAGES:
+        assert pkg.directory not in script, pkg.directory  # the tool is the one source of the file list
+
+
+def test_the_workflow_takes_its_packages_from_the_tool():
+    text = _code_lines(REPO / ".github" / "workflows" / "tckdb-drift.yml")
+    assert "tools/tckdb_drift.py --list-packages" in text
+    for pkg in drift.PACKAGES:
+        assert pkg.directory not in text, pkg.directory
+
+
+def test_list_modes_print_the_tables(capsys):
+    assert drift.main(["--list-packages"]) == 0
+    assert capsys.readouterr().out.split() == [pkg.directory for pkg in drift.PACKAGES]
+    assert drift.main(["--bumped-files"]) == 0
+    assert capsys.readouterr().out.split() == drift.bumped_files()
+
+
+def test_the_release_tool_and_the_drift_tool_name_the_same_package_directories():
+    spec = importlib.util.spec_from_file_location("python_release", REPO / "tools" / "python_release.py")
+    release = importlib.util.module_from_spec(spec)
+    sys.modules["python_release"] = release
+    spec.loader.exec_module(release)
+    assert {p.directory for p in release.PACKAGES} == {p.directory for p in drift.PACKAGES}
+    assert {p.directory: p.module for p in release.PACKAGES} == {p.directory: p.module for p in drift.PACKAGES}
+
+
+SKIPPED_DIRS = {".git", ".claude", ".venv", "venv", "env", "build", "dist", "site", "node_modules", "__pycache__"}
+
+
+def depends_on_a_tckdb_package(pyproject: Path) -> bool:
+    import tomllib
+
+    deps = tomllib.loads(pyproject.read_text()).get("project", {}).get("dependencies", [])
+    names = {re.split(r"[\s<>=!~;\[]", dep.strip(), maxsplit=1)[0].lower().replace("_", "-") for dep in deps}
+    return bool(names & set(drift.TCKDB_PACKAGES))
+
+
+def packages_depending_on_tckdb(root: Path) -> list[str]:
+    """Repository-relative directories of every pyproject.toml, at any depth, that depends on
+    tckdb-client or tckdb-schemas. Virtualenvs, build output and the like are not searched."""
+    found = []
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = sorted(
+            d for d in dirnames
+            if d not in SKIPPED_DIRS and not d.endswith(".egg-info") and not (Path(dirpath) / d / "pyvenv.cfg").exists()
+        )
+        if "pyproject.toml" in filenames and depends_on_a_tckdb_package(Path(dirpath) / "pyproject.toml"):
+            found.append(Path(dirpath).relative_to(root).as_posix())
+    return sorted(found)
+
+
+def test_the_guard_finds_nested_packages_and_skips_virtualenvs_and_build_output(tmp_path):
+    dep = '[project]\nname = "x"\ndependencies = ["tckdb-client>=0.1,<0.2"]\n'
+    for rel in ("adapters/new_one", "tckdb_flat", "deep/er/pkg"):
+        (tmp_path / rel).mkdir(parents=True)
+        (tmp_path / rel / "pyproject.toml").write_text(dep)
+    for rel in (".venv/lib/x", "build/lib", "dist", "site", "node_modules/y", ".claude/worktrees/w", ".git/z"):
+        (tmp_path / rel).mkdir(parents=True)
+        (tmp_path / rel / "pyproject.toml").write_text(dep)
+    (tmp_path / "other").mkdir()
+    (tmp_path / "other" / "pyproject.toml").write_text('[project]\nname = "o"\ndependencies = ["rdkit"]\n')
+    (tmp_path / "pyproject.toml").write_text("[tool.pytest.ini_options]\n")
+    assert packages_depending_on_tckdb(tmp_path) == ["adapters/new_one", "deep/er/pkg", "tckdb_flat"]
+
+
+def test_every_package_that_depends_on_a_tckdb_package_is_covered_by_the_bump():
+    """The next adapter cannot be forgotten: any pyproject.toml in the repository that depends on
+    tckdb-client or tckdb-schemas must belong to a row of ``PACKAGES``, so ``--bump`` moves it."""
+    found = packages_depending_on_tckdb(REPO)
+    assert found, "found no package directory; the search is wrong"
+    covered = {pkg.directory for pkg in drift.PACKAGES}
+    missing = [d for d in found if d not in covered]
+    assert not missing, (
+        f"{missing} depend on tckdb-client or tckdb-schemas but are not in PACKAGES in "
+        "tools/tckdb_drift.py, so a pin bump would leave them behind (AGENTS.md, Scaffolding step 2)"
+    )
+    for pkg in drift.PACKAGES:  # and every row is a package on disk
+        for rel in (pkg.pyproject, pkg.changelog, f"{pkg.directory}/{pkg.module}/__init__.py"):
+            assert (REPO / rel).is_file(), f"{pkg.directory}: {rel} does not exist"
+
+
+def test_module_version_flags_match_the_real_packages():
+    """``version_in_init`` says which packages hold a ``__version__`` that must equal pyproject's."""
+    for pkg in drift.PACKAGES:
+        init = REPO / pkg.init
+        has = init.is_file() and re.search(r"^__version__\s*=", init.read_text(), re.M) is not None
+        assert has == pkg.version_in_init, pkg.directory
 
 
 def test_bump_is_idempotent(root):
@@ -143,8 +325,12 @@ def test_bump_only_the_client_line(root):
     schemas = f"{pins['schemas_line'][0]}.{pins['schemas_line'][1]}.3"
     drift.run_bump(root, NEW_SHA, schemas, "0.98.0")
     after = _snapshot(root)
-    assert drift.pinned_line(after[drift.ADAPTER_PYPROJECT], "tckdb-schemas") == pins["schemas_line"]
-    assert drift.pinned_line(after[drift.ADAPTER_PYPROJECT], "tckdb-client") == (0, 98)
+    assert drift.pinned_line(after[ARC.pyproject], "tckdb-schemas") == pins["schemas_line"]
+    assert drift.pinned_line(after[ARC.pyproject], "tckdb-client") == (0, 98)
+    # The changelog entries name only the bound that moved.
+    section = after[QCSCHEMA.changelog].split("## 0.9.9")[0]
+    assert "`tckdb-client>=0.98,<0.99` (was `>=0.95,<0.96`)" in " ".join(section.split())
+    assert "tckdb-schemas>=" not in section
 
 
 def test_bump_rejects_a_short_sha_and_writes_nothing(root):
@@ -237,7 +423,18 @@ def test_bump_refuses_a_downgrade_unless_allowed(root):
         drift.run_bump(root, NEW_SHA, lower, "0.98.0")
     assert {rel: (root / rel).read_text() for rel in FILES} == before
     drift.run_bump(root, NEW_SHA, lower, "0.98.0", allow_downgrade=True)
-    assert drift.pinned_line((root / drift.ADAPTER_PYPROJECT).read_text(), "tckdb-schemas")[1] == pins["schemas_line"][1] - 1
+    assert drift.pinned_line((root / ARC.pyproject).read_text(), "tckdb-schemas")[1] == pins["schemas_line"][1] - 1
+
+
+def test_a_lagging_package_does_not_let_the_others_move_backwards(root):
+    """The refusal is per package: with one package behind, the older target is still a downgrade
+    for every package that is already ahead."""
+    path = root / QCSCHEMA.pyproject
+    path.write_text(path.read_text().replace(">=0.54,<0.55", ">=0.53,<0.54"))
+    before = _snapshot(root)
+    with pytest.raises(drift.DriftError, match="back from 0.54 to 0.53"):
+        drift.run_bump(root, NEW_SHA, "0.53.0", "0.95.0")
+    assert _snapshot(root) == before
 
 
 def test_main_exits_2_on_a_refused_bump(root, capsys):
@@ -251,7 +448,7 @@ def test_bump_keeps_extras_and_markers_in_specifiers():
         '    "tckdb-client[fast]>=0.95,<0.96 ; python_version >= \'3.11\'",\n'
         '    "tckdb-schemas >=0.54,<0.55",\n]\n'
     )
-    new = drift.rewrite_pyproject(text, (0, 58), (0, 98))
+    new = drift.rewrite_pyproject(text, (0, 58), (0, 98), "p")
     assert '"tckdb-client[fast]>=0.98,<0.99 ; python_version >= \'3.11\'"' in new
     assert '"tckdb-schemas>=0.58,<0.59"' in new
     assert drift.pinned_line(new, "tckdb-client") == (0, 98)
@@ -276,30 +473,91 @@ def test_install_specs_come_from_the_pin_file(root, capsys):
     assert NEW_SHA in capsys.readouterr().out
 
 
-@pytest.mark.parametrize("package", ["tckdb-schemas", "tckdb-client"])
-def test_a_stale_core_pyproject_reports_drift_in_check(root, monkeypatch, package):
-    """Core pins the same packages as the adapter, so a stale core pin is drift."""
-    path = root / drift.CORE_PYPROJECT
-    text = path.read_text()
-    # Move core one minor behind the adapter's pin for this package.
-    line = drift.pinned_line(text, package)
-    older = (line[0], line[1] - 1)
-    text = re.sub(rf'"{package}[^"]*"', f'"{package}{drift.bound_for(older)}"', text)
-    path.write_text(text)
-    assert drift.read_pins(root)["schemas_line" if package == "tckdb-schemas" else "client_line"] == older
-
-    pin = drift.read_pin_file((root / drift.PIN_FILE).read_text())
-    available = {
-        f"{pin['schemas_subdir']}/pyproject.toml": '[project]\nversion = "%d.%d.9"\n' % fx.PINNED_SCHEMAS,
-        f"{pin['client_subdir']}/pyproject.toml": '[project]\nversion = "%d.%d.9"\n' % fx.PINNED_CLIENT,
-    }
-    monkeypatch.setattr(drift, "resolve_sha", lambda repo, ref: fx.OLD_SHA)
-    monkeypatch.setattr(drift, "fetch_files", lambda repo, sha, paths: available)
-    assert drift.run_check(root, None, "main") == drift.EXIT_DRIFT
+def test_a_sha_only_move_releases_nothing(root):
+    before = {rel: (root / rel).read_text() for rel in FILES}
+    drift.run_bump(root, NEW_SHA, "0.54.2", "0.95.3")  # the same release lines
+    after = {rel: (root / rel).read_text() for rel in FILES}
+    assert {rel for rel in FILES if before[rel] != after[rel]} == {drift.PIN_FILE, drift.README}
+    assert drift.read_pin_file(after[drift.PIN_FILE])["sha"] == NEW_SHA
 
 
-def test_bump_repairs_a_core_pin_that_lags_the_adapter(root):
-    path = root / drift.CORE_PYPROJECT
-    path.write_text(path.read_text().replace(">=0.54,<0.55", ">=0.53,<0.54"))
-    drift.run_bump(root, fx.OLD_SHA, "0.54.0", "0.95.0")
-    assert drift.pinned_line(path.read_text(), "tckdb-schemas") == fx.PINNED_SCHEMAS
+def test_a_schemas_only_move_releases_every_package_that_states_the_bound_and_not_chemkin(root):
+    before = {rel: (root / rel).read_text() for rel in FILES}
+    drift.run_bump(root, NEW_SHA, "0.58.0", "0.95.0")
+    after = {rel: (root / rel).read_text() for rel in FILES}
+    changed = {rel for rel in FILES if before[rel] != after[rel]}
+    for pkg in drift.PACKAGES:
+        own = {pkg.pyproject, pkg.changelog} | ({pkg.init} if pkg.version_in_init else set())
+        if pkg is CHEMKIN:
+            assert not (changed & {pkg.pyproject, pkg.init, pkg.changelog}), "chemkin has no schemas bound"
+        else:
+            assert own <= changed, pkg.directory
+    assert before[CHEMKIN.pyproject] == after[CHEMKIN.pyproject]
+    # The core was released, so its dependant's floor followed it.
+    assert '"tckdb-adapters-core>=0.1.1,<0.2"' in after[ARC.pyproject]
+    for rel in FILES:
+        if before[rel] != after[rel]:
+            _assert_only_expected_lines_changed(rel, before[rel], after[rel])
+
+
+def test_the_core_floor_is_left_alone_when_the_core_is_not_released(root):
+    path = root / CORE.pyproject
+    old_floor = '"tckdb-adapters-core>=0.1.0,<0.2"'
+    assert old_floor in (root / ARC.pyproject).read_text()
+    drift.run_bump(root, NEW_SHA, "0.54.1", "0.95.1")  # sha only
+    assert old_floor in (root / ARC.pyproject).read_text()
+    assert path.read_text() == fx.FILES[CORE.pyproject]
+
+
+@pytest.mark.parametrize("spec", [
+    '"tckdb-adapters-core >= 0.1.0 , <0.2"',
+    '"tckdb-adapters-core[x]>=0.1,<0.2 ; python_version >= \'3.11\'"',
+    '"tckdb-adapters-core>=0.1.0"',
+])
+def test_core_floor_is_rewritten_with_spaces_and_extras(spec):
+    text = f"[project]\ndependencies = [\n    {spec},  # core\n]\n"
+    new = drift.rewrite_core_floor(text, "0.5.19", "p")
+    assert ">=0.5.19" in new.replace(" >= 0.5.19", ">=0.5.19") and "# core" in new
+    assert new.count("0.5.19") == 1
+
+
+@pytest.mark.parametrize("spec", ['"tckdb-adapters-core==0.1.0"', '"tckdb-adapters-core<0.2"', '"tckdb-adapters-core"'])
+def test_core_floor_that_cannot_be_rewritten_is_an_error(spec):
+    text = f"[project]\ndependencies = [{spec}]\n"
+    with pytest.raises(drift.DriftError, match="lower bound"):
+        drift.rewrite_core_floor(text, "0.5.19", "p")
+
+
+def test_core_floor_is_a_noop_for_a_package_that_does_not_require_the_core():
+    text = '[project]\ndependencies = ["tckdb-client>=0.1,<0.2"]\n'
+    assert drift.rewrite_core_floor(text, "0.5.19", "p") == text
+
+
+def test_a_bump_fails_without_writing_when_a_dependants_floor_cannot_be_rewritten(root):
+    path = root / ARC.pyproject
+    path.write_text(path.read_text().replace(">=0.1.0,<0.2", "==0.1.0"))
+    before = _snapshot(root)
+    with pytest.raises(drift.DriftError, match="lower bound"):
+        drift.run_bump(root, NEW_SHA, "0.58.0", "0.98.0")
+    assert _snapshot(root) == before
+
+
+def test_changelog_section_goes_above_the_newest_version_not_above_unreleased():
+    text = "# Changelog\n\nintro\n\n## Unreleased\n\nsoon\n\n## 1.0.0\n\nold\n"
+    new = drift.add_changelog_section(text, "1.0.1", "body", "c")
+    assert new == "# Changelog\n\nintro\n\n## Unreleased\n\nsoon\n\n## 1.0.1\n\nbody\n\n## 1.0.0\n\nold\n"
+    assert drift.add_changelog_section("# C\n\ntext\n", "1.0.1", "body", "c") == "# C\n\ntext\n\n## 1.0.1\n\nbody\n"
+
+
+def test_changelog_section_that_already_exists_is_an_error():
+    with pytest.raises(drift.DriftError, match="already has a ## 1.0.1"):
+        drift.add_changelog_section("# C\n\n## 1.0.1\n\nx\n", "1.0.1", "body", "c")
+
+
+def test_release_body_says_was_for_one_bound_and_were_for_several():
+    old = '[project]\ndependencies = ["tckdb-client>=0.1,<0.2", "tckdb-schemas>=0.3,<0.4"]\n'
+    one = old.replace("0.1,<0.2", "0.2,<0.3")
+    two = one.replace("0.3,<0.4", "0.4,<0.5")
+    kw = dict(previous="1.0.0", sha="a" * 40, schemas="0.4.0", client="0.2.0", schemas_line=(0, 4))
+    assert "(was `>=0.1,<0.2`)" in drift.release_body(CHEMKIN, old, one, **kw)
+    assert "(were `>=0.1,<0.2` and `>=0.3,<0.4`)" in " ".join(drift.release_body(CHEMKIN, old, two, **kw).split())

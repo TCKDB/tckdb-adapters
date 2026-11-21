@@ -97,8 +97,8 @@ TCKDB backend running on the same machine and reads the stored rows back. See
 
 ## The TCKDB pin
 
-The tested contract is `tckdb-client` 0.209.x with `tckdb-schemas` 0.176.x. Both packages
-bound the two dependencies to those release lines, and `tckdb-pin.toml` names the TCKDB
+The tested contract is `tckdb-client` 0.209.x with `tckdb-schemas` 0.176.x. Every package
+that depends on them bounds them to those release lines, and `tckdb-pin.toml` names the TCKDB
 commit that CI installs them from.
 
 A scheduled workflow compares the pin with TCKDB's main branch every day. When a newer

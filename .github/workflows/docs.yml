@@ -23,6 +23,10 @@ on:
       - "tckdb_core/CHANGELOG.md"
       - "tckdb_arc/README.md"
       - "tckdb_arc/CHANGELOG.md"
+      - "tckdb_chemkin/README.md"
+      - "tckdb_chemkin/CHANGELOG.md"
+      - "tckdb_qcschema/README.md"
+      - "tckdb_qcschema/CHANGELOG.md"
       - ".github/workflows/docs.yml"
   workflow_dispatch:
 
