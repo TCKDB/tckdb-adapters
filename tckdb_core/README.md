@@ -1,5 +1,7 @@
 # tckdb-adapters-core
 
+[![tckdb-adapters-core](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fcalvinp0%2Ftckdb-adapters%2Fmain%2Ftckdb_core%2Fpyproject.toml&query=%24.project.version&label=tckdb-adapters-core)](https://github.com/TCKDB/tckdb-adapters/blob/main/tckdb_core/CHANGELOG.md)
+
 The part of a TCKDB upload adapter that does not depend on which tool produced the data. A
 producer adapter (`tckdb_arc` today) reads its tool's output and builds TCKDB payloads.
 This package takes over once a payload exists, and it also holds the helpers that every

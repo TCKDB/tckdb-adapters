@@ -26,3 +26,6 @@ htmlcov/
 
 # Payloads written by a local adapter run
 tckdb_payloads/
+
+# Built documentation site
+site/

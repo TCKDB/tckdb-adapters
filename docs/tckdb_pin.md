@@ -48,6 +48,9 @@ Its `publish` job is the only one with write access (`tools/tckdb_drift_publish.
 - **The tests pass but no pull request could be made.** The issue "TCKDB drift: schemas
   X.Y / client A.B is ready to adopt" names the branch or the `--bump` command.
 
+The bot's pull request does not run the docs build, because the bot dispatches only
+`ci.yml`; the docs build for its README changes first runs on `main` after the merge.
+
 Pull requests and issues are keyed by the pair of release lines, so a patch release updates
 the existing one. An issue gets a new comment only when the versions or the failing tests
 change. A drift issue is closed when a later run finds no drift or the pull request path

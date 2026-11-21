@@ -20,6 +20,10 @@ TCKDB decides the contract. The adapter conforms.
 - Running the live gate: read `docs/contract/INTEGRATION_GATE.md`.
 - Releasing a package to PyPI, or changing `.github/workflows/publish-python.yml` or
   `tools/python_release.py`: read `docs/publishing.md`.
+- Adding a documentation page: add it to `nav` in `mkdocs.yml`. `mkdocs build --strict` is
+  the check; it must pass with no warnings. The site is built from `docs/`, `mkdocs.yml`,
+  the READMEs, the changelogs and `CONTRIBUTING.md`. Install `requirements-docs.txt` in a
+  separate virtualenv, never in the one the test suite uses.
 
 ## Read the producer contract before changing a mapping
 
