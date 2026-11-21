@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tckdb-arc"
-version = "0.15.13"
+version = "0.15.14"
 description = "ARC adapter for TCKDB: builds species, reaction and transition-state upload payloads from an ARC run and uploads them."
 requires-python = ">=3.11"
 readme = "README.md"
@@ -20,7 +20,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Chemistry",
 ]
 dependencies = [
-    "tckdb-adapters-core>=0.5.14,<0.6",  # producer-agnostic upload pipeline, numerics, rules, test kit
+    "tckdb-adapters-core>=0.5.15,<0.6",  # producer-agnostic upload pipeline, numerics, rules, test kit
     "tckdb-client>=0.208,<0.209",   # tested transport + replay contract
     "tckdb-schemas>=0.175,<0.176", # the producer contract module ships from 0.52
     "PyYAML>=6",                  # vendored read_yaml_file

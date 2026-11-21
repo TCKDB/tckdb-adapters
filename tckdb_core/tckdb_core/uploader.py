@@ -16,7 +16,7 @@ import hashlib
 import os
 import re
 import time
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
@@ -166,22 +166,67 @@ def _summarize_artifact_batch_results(batch_results: Any) -> Any:
     return batch_results
 
 
-def _artifact_batch_bodies(
-    prepared: list[PreparedArtifactUpload],
-) -> list[tuple[int | str, list[PreparedArtifactUpload], dict[str, Any]]]:
-    """Group a plan by calculation and build each ``ArtifactsUploadRequest`` body.
+class _ArtifactPlanError(Exception):
+    """A file of a plan could not be sized or read; ``items`` are the items of the request it belongs to."""
 
-    Groups keep first-seen order; each artifact carries its kind, filename,
-    base64 content and the declared sha256 and byte count.
+    def __init__(self, items: list[PreparedArtifactUpload]):
+        super().__init__("an artifact file could not be sized or read")
+        self.items = items
+
+
+def _artifact_batch_requests(
+    prepared: list[PreparedArtifactUpload],
+) -> Iterator[tuple[int | str, list[PreparedArtifactUpload]]]:
+    """The artifact requests a plan becomes: one per calculation, more when its files are large.
+
+    Items are grouped by calculation (first-seen order) and each group is cut into requests the
+    way ``TCKDBClient.upload_artifacts(batch_by_calculation=True)`` cuts it: a request starts
+    again when adding the next file would take the group's running total of file sizes on disk
+    (``stat().st_size``, not the encoded size or the prepared ``bytes``) past the client's inline
+    budget (``tckdb_client.builders.artifact.INLINE_TOTAL_BUDGET_BYTES``, read at call time). A file
+    over the budget on its own is sent alone. Item order is kept.
+
+    Requests are produced one at a time, and a file is sized when its turn comes, so the requests
+    that closed before a file that has gone missing are already out. Such a file raises
+    :class:`_ArtifactPlanError` carrying the items of the request it would have joined: that
+    request's cut is not known without the file's size, and a request sent without it would carry
+    a different set of files under the key the complete plan uses.
     """
+    from tckdb_client.builders import artifact as client_artifact
+
+    budget = client_artifact.INLINE_TOTAL_BUDGET_BYTES
     groups: dict[int | str, list[PreparedArtifactUpload]] = {}
     for item in prepared:
         groups.setdefault(item.handle, []).append(item)
-    return [
-        (
-            handle,
-            group,
-            {"artifacts": [
+    for handle, items in groups.items():
+        current: list[PreparedArtifactUpload] = []
+        used = 0
+        for item in items:
+            try:
+                size = item.path.stat().st_size
+            except Exception as exc:
+                raise _ArtifactPlanError([*current, item]) from exc
+            if current and used + size > budget:
+                yield handle, current
+                current, used = [], 0
+            current.append(item)
+            used += size
+        yield handle, current
+
+
+def _artifact_batch_bodies(
+    prepared: list[PreparedArtifactUpload],
+) -> Iterator[tuple[int | str, list[PreparedArtifactUpload], dict[str, Any]]]:
+    """Each request of a plan with its ``ArtifactsUploadRequest`` body, built one at a time.
+
+    Requests are those of :func:`_artifact_batch_requests`; each artifact carries its kind,
+    filename, base64 content and the declared sha256 and byte count. A body is read and encoded
+    only when it is asked for, so one calculation's several requests are not all in memory together.
+    A file that cannot be read raises :class:`_ArtifactPlanError` for its request.
+    """
+    for handle, group in _artifact_batch_requests(prepared):
+        try:
+            artifacts = [
                 {
                     "kind": item.kind,
                     "filename": item.filename,
@@ -190,10 +235,20 @@ def _artifact_batch_bodies(
                     "bytes": item.bytes,
                 }
                 for item in group
-            ]},
-        )
-        for handle, group in groups.items()
-    ]
+            ]
+        except Exception as exc:
+            raise _ArtifactPlanError(group) from exc
+        yield handle, group, {"artifacts": artifacts}
+        del artifacts  # this frame holds no encoded request while the next one is read and encoded
+
+
+@dataclasses.dataclass(frozen=True)
+class _ArtifactPostFailure:
+    """Where a plan's requests stopped: the error, the items it hit, and the items never sent."""
+
+    raised: BaseException
+    failed: list[PreparedArtifactUpload]
+    not_sent: list[PreparedArtifactUpload]
 
 
 def _server_warnings(response_data: Any) -> list[dict[str, Any]]:
@@ -1417,54 +1472,74 @@ class TCKDBUploaderBase(StandaloneSubmitMixin, PreUploadValidationMixin):
             self._ensure_ready(client, api_key=api_key)
             for item in prepared:
                 _attach_preflight(item.written.sidecar, self._preflight_metadata)
-            batch_results = self._post_artifact_batches(
+            sent, failure = self._post_artifact_batches(
                 client, prepared, idempotency_key_prefix=idempotency_key_prefix,
             )
         except Exception as exc:
             _close_quietly(client, "after artifact upload failure", self._log)
             return self._record_artifact_batch_failure(prepared, str(exc), exc)
         else:
-            _close_quietly(client, "after artifact upload success", self._log)
+            _close_quietly(
+                client,
+                "after artifact upload failure" if failure else "after artifact upload success",
+                self._log,
+            )
 
-        batch_summary = _summarize_artifact_batch_results(batch_results)
-        result_by_calculation = {result.handle: result for result in batch_results}
-        outcomes: list[ArtifactUploadOutcome] = []
-        for item in prepared:
-            sc = item.written.sidecar
-            # Each item takes the transport metadata and findings of the
-            # response to *its own* calculation's batch.
-            result = result_by_calculation[item.handle]
+        position = {id(item): index for index, item in enumerate(prepared)}
+        by_position: dict[int, ArtifactUploadOutcome] = {}
+        for group, result in sent:
+            # Each item takes the transport metadata and findings of the response to *its own*
+            # request: the requests before a failure were stored by the server, one by one.
+            request_summary = _summarize_artifact_batch_results([result])
             response = result.response
             response_data = getattr(response, "data", None)
-            sc.status = "uploaded"
-            sc.uploaded_at = utcnow_iso()
-            sc.response_status_code = getattr(response, "status_code", None)
-            sc.response_body = _summarize_response_body(batch_summary)
-            sc.public_refs = _extract_tckdb_public_refs(batch_summary)
-            server_warnings = _server_warnings(response_data)
-            for warning in server_warnings:
-                self._log.warning("TCKDB artifact upload warning: %s", warning)
-            sc.warnings = [*sc.warnings, *server_warnings]
-            _append_request_id(sc, "artifact_upload", result)
-            sc.idempotency_replayed = bool(getattr(response, "idempotency_replayed", False))
-            sc.last_error = None
-            sc.server_error_code = None
-            self._writer.update_artifact_sidecar(item.written.sidecar_path, sc)
-            self._log.info(
-                "TCKDB artifact batch upload succeeded: calc=%s kind=%s key=%s",
-                sc.calculation_ref or sc.calculation_id, sc.kind, sc.idempotency_key,
-            )
-            outcomes.append(ArtifactUploadOutcome(
-                status="uploaded",
-                sidecar_path=item.written.sidecar_path,
-                idempotency_key=sc.idempotency_key,
-                calculation_id=sc.calculation_id,
-                calculation_ref=sc.calculation_ref,
-                kind=sc.kind,
-                response=sc.response_body,
-                warnings=list(sc.warnings),
-            ))
-        return outcomes
+            for item in group:
+                sc = item.written.sidecar
+                sc.status = "uploaded"
+                sc.uploaded_at = utcnow_iso()
+                sc.response_status_code = getattr(response, "status_code", None)
+                sc.response_body = _summarize_response_body(request_summary)
+                sc.public_refs = _extract_tckdb_public_refs(request_summary)
+                server_warnings = _server_warnings(response_data)
+                for warning in server_warnings:
+                    self._log.warning("TCKDB artifact upload warning: %s", warning)
+                sc.warnings = [*sc.warnings, *server_warnings]
+                _append_request_id(sc, "artifact_upload", result)
+                sc.idempotency_replayed = bool(getattr(response, "idempotency_replayed", False))
+                sc.last_error = None
+                sc.server_error_code = None
+                self._writer.update_artifact_sidecar(item.written.sidecar_path, sc)
+                self._log.info(
+                    "TCKDB artifact batch upload succeeded: calc=%s kind=%s key=%s",
+                    sc.calculation_ref or sc.calculation_id, sc.kind, sc.idempotency_key,
+                )
+                by_position[position[id(item)]] = ArtifactUploadOutcome(
+                    status="uploaded",
+                    sidecar_path=item.written.sidecar_path,
+                    idempotency_key=sc.idempotency_key,
+                    calculation_id=sc.calculation_id,
+                    calculation_ref=sc.calculation_ref,
+                    kind=sc.kind,
+                    response=sc.response_body,
+                    warnings=list(sc.warnings),
+                )
+        if failure is not None:
+            message = str(failure.raised)
+            failed_handle = failure.failed[0].handle if failure.failed else None
+            for item in failure.failed:
+                by_position[position[id(item)]] = self._record_artifact_failure(
+                    item.written, message, failure.raised, raise_on_strict=False)
+            for item in failure.not_sent:
+                reason = (
+                    "not sent: an earlier request for the same calculation failed: "
+                    if item.handle == failed_handle else
+                    f"not sent: an earlier artifact request, for calculation {failed_handle}, failed: "
+                ) + message
+                by_position[position[id(item)]] = self._record_artifact_failure(
+                    item.written, reason, ValueError(reason), raise_on_strict=False)
+            if self._config.strict:
+                raise failure.raised
+        return [by_position[index] for index in range(len(prepared))]
 
     @staticmethod
     def _post_artifact_batches(
@@ -1472,39 +1547,70 @@ class TCKDBUploaderBase(StandaloneSubmitMixin, PreUploadValidationMixin):
         prepared: list[PreparedArtifactUpload],
         *,
         idempotency_key_prefix: str,
-    ) -> list[ArtifactBatchResult]:
-        """POST one artifact batch per calculation through ``client.request_json``.
+    ) -> tuple[list[tuple[list[PreparedArtifactUpload], ArtifactBatchResult]], _ArtifactPostFailure | None]:
+        """POST a plan's artifact requests through ``client.request_json``, stopping at the first failure.
 
-        ``TCKDBClient.upload_artifacts`` (tckdb-client 0.93 to 0.95) does the
-        same grouping and POSTs, but returns only each response's parsed body,
-        dropping the status code, the request-id and replay headers. The public
-        ``request_json`` returns the full ``TCKDBResponse``, so the batches are
-        composed here and sent through it, the way every bundle upload already
-        is. The bodies and idempotency keys follow ``upload_artifacts`` exactly
-        (one POST per ``calculation_id`` in first-seen order, key
-        ``<prefix>:<first calculation key>:artifact-batch``), so a replay of a
-        batch stored by an earlier adapter still matches.
+        The requests, bodies and idempotency keys are those of
+        ``TCKDBClient.upload_artifacts(batch_by_calculation=True)``: one request per calculation
+        in first-seen order, cut into several when its files exceed the client's inline budget
+        (see :func:`_artifact_batch_requests`). The first request of a calculation is keyed
+        ``<prefix>:<first calculation key>:artifact-batch``, later ones ``...:artifact-batch-2``,
+        ``-3``, and so on, each through ``validate_idempotency_key``. Sending through
+        ``request_json`` instead of ``upload_artifacts`` returns the full ``TCKDBResponse``, headers
+        included, where ``upload_artifacts`` returns the body with the status code, request id
+        and replay flag but without the headers; it also keeps a ``calc_`` ref without an integer
+        id, and lets the failure of one request be recorded against exactly the items it concerns.
+
+        Returns ``(sent, failure)``: the items and result of every request the server answered,
+        and ``None`` or, for the first request that raised, the error with its items and the
+        items of the requests that were not sent after it. A file that cannot be sized or read
+        fails its own request the same way. Each request is stored or refused whole by the
+        server, so ``sent`` is stored whatever came after.
         """
         from tckdb_client.idempotency import validate_idempotency_key
 
-        results: list[ArtifactBatchResult] = []
-        for handle, group, body in _artifact_batch_bodies(prepared):
+        sent: list[tuple[list[PreparedArtifactUpload], ArtifactBatchResult]] = []
+        covered: set[int] = set()
+        made: dict[int | str, int] = {}
+        bodies = _artifact_batch_bodies(prepared)
+        while True:
+            try:
+                handle, group, body = next(bodies)
+            except StopIteration:
+                return sent, None
+            except _ArtifactPlanError as plan_error:
+                # A file that cannot be sized or read: its request fails, the ones after it are not sent.
+                covered.update(id(item) for item in plan_error.items)
+                rest = [item for item in prepared if id(item) not in covered]
+                return sent, _ArtifactPostFailure(
+                    plan_error.__cause__ or plan_error, failed=plan_error.items, not_sent=rest)
+            except Exception as exc:  # the plan itself could not be made: nothing more is sent
+                rest = [item for item in prepared if id(item) not in covered]
+                return sent, _ArtifactPostFailure(exc, failed=rest, not_sent=[])
+            covered.update(id(item) for item in group)
             first_key = group[0].calculation_key if group else str(handle)
-            response = client.request_json(
-                "POST",
-                ARTIFACTS_ENDPOINT_TEMPLATE.format(calculation_id=handle),
-                json=body,
-                idempotency_key=validate_idempotency_key(
-                    f"{idempotency_key_prefix}:{first_key}:artifact-batch"
-                ),
-            )
-            results.append(ArtifactBatchResult(
+            number = made.get(handle, 0) + 1
+            suffix = "artifact-batch" if number == 1 else f"artifact-batch-{number}"
+            try:
+                response = client.request_json(
+                    "POST",
+                    ARTIFACTS_ENDPOINT_TEMPLATE.format(calculation_id=handle),
+                    json=body,
+                    idempotency_key=validate_idempotency_key(
+                        f"{idempotency_key_prefix}:{first_key}:{suffix}"
+                    ),
+                )
+            except Exception as exc:
+                rest = [item for item in prepared if id(item) not in covered]
+                return sent, _ArtifactPostFailure(exc, failed=list(group), not_sent=rest)
+            made[handle] = number
+            del body  # with the generator's own reference gone, the next request is built with this one freed
+            sent.append((group, ArtifactBatchResult(
                 handle=handle,
                 calculation_keys=tuple(item.calculation_key for item in group),
                 artifact_count=len(group),
                 response=response,
-            ))
-        return results
+            )))
 
     def _record_artifact_batch_failure(
         self,

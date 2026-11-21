@@ -364,7 +364,7 @@ are sent. How depends on the upload mode:
 | Mode | Artifacts |
 |---|---|
 | `computed_species`, `computed_reaction` | Encoded in base64 inside the bundle, under each calculation's `artifacts`. No separate request is made, and the standalone artifact call is suppressed in these modes. |
-| `conformer` | Posted to `/calculations/{calculation_ref}/artifacts` after the conformer upload is accepted, one batch per calculation. |
+| `conformer` | Posted to `/calculations/{calculation_ref}/artifacts` after the conformer upload is accepted, one request per calculation, or several when its files total more than 64 MiB (the first under the plain key, the rest under `artifact-batch-2`, `-3`). |
 | `computed_ts` | Not sent. The transition-state route has no artifact field and the sweep makes no artifact request in this mode. |
 
 A file larger than `max_size_mb` is skipped in every mode. In `conformer` mode a response

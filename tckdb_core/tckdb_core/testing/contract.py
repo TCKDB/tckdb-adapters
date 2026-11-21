@@ -142,22 +142,40 @@ def artifacts_request_bodies(prepared: Any) -> list[dict[str, Any]]:
     """The ``ArtifactsUploadRequest`` bodies an artifact plan becomes.
 
     Mirrors ``TCKDBClient.upload_artifacts(batch_by_calculation=True)``: one
-    body per calculation, each item carrying the kind, filename, base64
-    content and the declared sha256/bytes the adapter prepared.
+    body per calculation (by its ``calc_`` ref, else its id), cut into several
+    when its files exceed the client's inline budget, each item carrying the
+    kind, filename, base64 content and the declared sha256/bytes the adapter
+    prepared.
     """
     import base64
     from pathlib import Path
 
-    groups: dict[int, list[dict[str, Any]]] = {}
+    from tckdb_client.builders import artifact as client_artifact
+
+    budget = client_artifact.INLINE_TOTAL_BUDGET_BYTES
+    groups: dict[Any, list[Any]] = {}
     for item in prepared:
-        artifact = {
-            "kind": item.kind,
-            "filename": getattr(item, "filename", None) or Path(item.path).name,
-            "content_base64": base64.b64encode(Path(item.path).read_bytes()).decode("ascii"),
-        }
-        if getattr(item, "sha256", None) is not None:
-            artifact["sha256"] = item.sha256
-        if getattr(item, "bytes", None) is not None:
-            artifact["bytes"] = item.bytes
-        groups.setdefault(item.calculation_id, []).append(artifact)
-    return [{"artifacts": items} for items in groups.values()]
+        # The core addresses a calculation by its ref, so a plan of refs alone is cut by ref.
+        groups.setdefault(getattr(item, "calculation_ref", None) or item.calculation_id, []).append(item)
+    bodies: list[dict[str, Any]] = []
+    for items in groups.values():
+        current: list[dict[str, Any]] = []
+        used = 0
+        for item in items:
+            size = Path(item.path).stat().st_size
+            if current and used + size > budget:
+                bodies.append({"artifacts": current})
+                current, used = [], 0
+            artifact = {
+                "kind": item.kind,
+                "filename": getattr(item, "filename", None) or Path(item.path).name,
+                "content_base64": base64.b64encode(Path(item.path).read_bytes()).decode("ascii"),
+            }
+            if getattr(item, "sha256", None) is not None:
+                artifact["sha256"] = item.sha256
+            if getattr(item, "bytes", None) is not None:
+                artifact["bytes"] = item.bytes
+            current.append(artifact)
+            used += size
+        bodies.append({"artifacts": current})
+    return bodies
