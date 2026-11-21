@@ -23,6 +23,7 @@ htmlcov/
 .idea/
 .vscode/
 .axiomcode/
+.playwright-mcp/
 
 # Payloads written by a local adapter run
 tckdb_payloads/
