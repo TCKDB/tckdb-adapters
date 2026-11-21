@@ -57,6 +57,7 @@ Three rules shape every adapter here.
 | Bundle-local keys | `tckdb_core.keys` |
 | Pre-checks of TCKDB rules, run on your facts before upload | `tckdb_core.rules`, `ts_evidence`, `ts_evidence_rules`, `route_level` |
 | Software banners split the way TCKDB splits them | `tckdb_core.software_release` |
+| Posting a request you built to a standalone record route (thermo, kinetics, statmech, transport, reaction, network) | `TCKDBUploaderBase.submit_standalone`, `tckdb_core.standalone` |
 | Tests: contract validation, the pin, client stubs, the live gate | `tckdb_core.testing` |
 
 Reuse these as they are. If one almost fits, extend it in the core with a parameter; do not
@@ -137,7 +138,9 @@ payload, so the same input gives the same key and TCKDB replays its first answer
 to your mapping changes the hash. Say so in your changelog when it happens.
 
 The ARC adapter has four such methods and they repeat this sequence. The base class has
-no shared template for it yet, so follow the sequence by hand.
+no shared template for it yet, so follow the sequence by hand. For the standalone record
+routes (thermo, kinetics, statmech, transport, reaction, network) the base class does have one,
+`submit_standalone`; see "Posting a standalone record" under "Routes".
 
 The artifact route is the exception: the base class already has the whole submit path.
 `submit_artifacts_for_calculation(species_label=..., calculation_ref=..., file_path=...)`
@@ -237,9 +240,16 @@ repository never contact a shared or production TCKDB.
 
 ## Routes
 
-The core's endpoint constants, payload writer, uploader and test kit cover five of TCKDB's
-producer routes. The others are accepted by TCKDB and listed in the contract, but the core
-has no constant, payload kind or test-kit entry for them yet.
+The core's endpoint constants, payload writer, uploader and test kit cover twelve of
+TCKDB's producer routes. The others are accepted by TCKDB and listed in the contract, but
+the core has no constant, payload kind or test-kit entry for them.
+
+There are two levels of coverage. The first five routes are **built and sent**: the adapter
+builds the request from its tool's output, and the core handles the sidecar, upload and
+idempotency around it. The seven standalone record routes are **sent and validated only**:
+the core takes a request you have already built, checks it against the route's shipped JSON
+Schema, writes it with a sidecar and uploads it. It builds none of them: the core has no
+thermo, kinetics, statmech, transport, reaction or network builder, and the adapter writes it.
 
 | Route | Request | Core |
 |---|---|---|
@@ -248,38 +258,85 @@ has no constant, payload kind or test-kit entry for them yet.
 | `POST /uploads/computed-reaction` | `ComputedReactionUploadRequest` | covered |
 | `POST /uploads/transition-states` | `TransitionStateUploadRequest` | covered |
 | `POST /calculations/{calculation_ref}/artifacts` | `ArtifactsUploadRequest` | covered |
-| `POST /uploads/thermo` | `ThermoUploadRequest` | not covered. `thermo_numerics` builds NASA-7 and point blocks; NASA-9, Wilhoit and group-additivity records have no helper. |
-| `POST /uploads/kinetics` | `KineticsUploadRequest` | not covered. `rmg_units` maps A and Ea units; only the ARC adapter builds a modified-Arrhenius block, and no other rate form has a helper. |
-| `POST /uploads/statmech` | `StatmechUploadRequest` | not covered |
-| `POST /uploads/transport` | `TransportUploadRequest` | not covered |
-| `POST /uploads/reactions` | `ReactionUploadRequest` | not covered |
-| `POST /uploads/networks`, `/uploads/networks/pdep` | `NetworkUploadRequest`, `NetworkPDepUploadRequest` | not covered |
-| `POST /uploads/thermoml` | `ThermoMLUploadRequest` | not covered |
+| `POST /uploads/thermo` | `ThermoUploadRequest` | transport and validation (`submit_standalone("thermo", ...)`). Not built: `thermo_numerics` builds NASA-7 and point blocks; NASA-9, Wilhoit and group-additivity records have no helper. |
+| `POST /uploads/kinetics` | `KineticsUploadRequest` | transport and validation (`"kinetics"`). Not built: `rmg_units` maps A and Ea units; only the ARC adapter builds a modified-Arrhenius block, and no other rate form has a helper. |
+| `POST /uploads/statmech` | `StatmechUploadRequest` | transport and validation (`"statmech"`). Not built. |
+| `POST /uploads/transport` | `TransportUploadRequest` | transport and validation (`"transport"`). Not built. |
+| `POST /uploads/reactions` | `ReactionUploadRequest` | transport and validation (`"reaction"`). Not built. |
+| `POST /uploads/networks` | `NetworkUploadRequest` | transport and validation (`"network"`). Not built. |
+| `POST /uploads/networks/pdep` | `NetworkPDepUploadRequest` | transport and validation (`"network_pdep"`). Not built. |
+| `POST /uploads/thermoml` | `ThermoMLUploadRequest` | not covered. It uploads a ThermoML XML document (base64 in the body) and requires `rights` and an `Idempotency-Key`; it is a file ingest, not a record a tool builds. |
 | `POST /bundles/dry-run`, `/bundles/submit` | `ContributionBundle` | not covered |
-| `POST /submissions/{ref}/rights-attestations`, `/submissions/{ref}/supersede` | `RightsAttestationCreate`, `SubmissionSupersedeRequest` | not covered. The `rights` fragment inside an upload is supported through `TCKDBConfig.rights`. |
+| `POST /submissions/{ref}/rights-attestations`, `/submissions/{ref}/supersede` | `RightsAttestationCreate`, `SubmissionSupersedeRequest` | not covered. They act on an existing submission by its ref. The `rights` fragment inside an upload is supported through `TCKDBConfig.rights`. |
 | `POST /jobs/*` (asynchronous twins of the upload routes) | same requests | not covered |
 
-If your tool's natural output is standalone thermo, kinetics or transport, the first step
-is to add that route to the core: an endpoint constant, a payload kind and subdirectory in
-`PayloadWriter`, a `ROUTE_SCHEMAS` entry in `tckdb_core.testing.contract`, and tests. A
-new `ROUTE_SCHEMAS` entry does not affect another adapter's pin test, which checks only the
-routes that adapter posts to; the core's own pin test requires an endpoint constant for
-every entry. The
-JSON Schema for every route already ships, so `assert_matches_contract(payload,
-"ThermoUploadRequest")` works today. Do that in the core, in its own pull request, before
-the adapter that needs it.
+### Posting a standalone record
+
+The standalone routes share one method, `TCKDBUploaderBase.submit_standalone`
+(`tckdb_core.standalone`):
+
+```python
+outcome = adapter.submit_standalone(
+    "thermo",                    # a key of tckdb_core.standalone.STANDALONE_ROUTES
+    request,                     # the finished request dictionary
+    label="ethane",              # file name and the species-or-reaction part of the key
+    qualifier="ccsd-t",          # optional: tells apart several records of one kind under one label
+    warnings=sink,               # optional: your findings, written to the sidecar
+)
+```
+
+It follows the submit sequence above, minus the build step: `config.rights` is added to a copy
+of the request when the request has none (a request whose `rights` differ from the configured
+ones is refused), the request is validated against the shipped schema, the key is built from
+the finished request (`<namespace>:<project>:<label>:<qualifier>:<kind>:<hash>`), the payload
+and a `pending` sidecar are written, and the request is skipped or uploaded exactly as the other
+routes are (readiness probe, POST, sidecar status, strict mode). It returns `None` when the
+config is disabled.
+
+An invalid request raises `StandalonePayloadError` before any file is written, in strict mode
+or not. A payload that never passed the contract has nothing worth replaying, so no sidecar is
+left for it.
+
+What validation covers: the shipped JSON Schema, which checks shape; its `format` keywords are
+not enforced. tckdb-schemas publishes
+no pydantic model for these requests (the models are backend-side), so there is no model check.
+The route handlers' rules are not checked: ownership of cited calculations, composition
+checks, `enthalpy_reference_kind` values (the schema takes any string; TCKDB refuses an unknown
+one), and the rest of the "Will be refused if" lists in the contract. Only the live gate
+reaches those. In your tests, put the request through
+`tckdb_core.testing.contract.assert_matches_contract` as well, and use the example that
+tckdb-schemas ships in each schema's `examples` as a starting point.
+
+Sidecars of these kinds carry `payload_kind` `thermo`, `kinetics`, and so on. Like every sidecar
+the core writes, they are not replayable by `tckdb-client` (see "Client replay" below); re-run the
+adapter instead.
+
+Two records under one label need a `qualifier`: it is part of the idempotency key and of the file
+name (`<label>.<qualifier>`), so they do not overwrite each other. A label, qualifier and project
+label that make the key longer than the server's 200 characters raise `StandalonePayloadError`
+before anything is written.
+
+If your tool's output also needs a route that is not in the table, add it in the core, in its
+own pull request, before the adapter that needs it: an endpoint and kind constant, a subdirectory
+constant in `PayloadWriter`, a row in `tckdb_core.standalone.STANDALONE_ROUTES`, a
+`ROUTE_SCHEMAS` entry in `tckdb_core.testing.contract`, and tests. A new `ROUTE_SCHEMAS` entry
+does not affect another adapter's pin test, which checks only the routes that adapter posts to;
+the core's own pin test requires an endpoint constant for every entry.
 
 Other limits of the core that an adapter author should know:
 
 - **Retries.** A failed POST is recorded in the sidecar and not retried. Only the
   readiness probe retries. `tckdb-client` has a `RetryPolicy`; the core does not pass one
   yet.
-- **Client replay.** The sidecars are replayed by re-running the adapter. They are not in
-  the format `tckdb-client`'s own replay tool reads.
+- **Client replay.** The sidecars are replayed by re-running the adapter. `tckdb-client`'s own
+  replay tool (0.208) does not replay any sidecar the core writes: it accepts only an integer
+  `bundle_format_version` of 1, and the core writes the string `"0"`. It would also report the
+  transition-state and standalone kinds as unknown, since it dispatches on four kinds only.
 - **Artifacts.** Only the `output_log` and `input` kinds are implemented. The size limit is
   per file; a calculation's batch is not split by total size.
 - **Payload validation at run time.** The request models and JSON Schemas run in tests.
-  The uploader does not validate a payload before posting it.
+  The built-and-sent routes are not validated before posting; `submit_standalone` validates
+  the standalone routes against the shipped JSON Schema (shape only) before it writes anything.
 
 ## Checklist
 

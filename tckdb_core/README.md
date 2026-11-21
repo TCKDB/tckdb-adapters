@@ -15,10 +15,11 @@ TCKDB contract, and **nothing that reads a producer's output format**.
 
 | Module | What it holds |
 |--------|---------------|
-| `payload_writer` | Writes the payload JSON once and the sidecar eagerly; sidecar and replay types. |
+| `payload_writer` | Writes the payload JSON once and the sidecar eagerly, in one subdirectory per payload kind; sidecar and replay types. |
 | `uploader` | `TCKDBUploaderBase`: readiness probe with backoff, POST, sidecar bookkeeping (status, response, server warnings, request ids), strict mode, artifact batches. |
+| `standalone` | `submit_standalone` (a method of `TCKDBUploaderBase`) and `STANDALONE_ROUTES`: posts a finished thermo, kinetics, statmech, transport, reaction, network or pressure-dependent network request. It validates the request against the route's shipped JSON Schema (shape only), attaches `config.rights`, writes the payload and sidecar, and uploads with the same readiness, idempotency and strict-mode behaviour as the other routes. It builds none of these requests. |
 | `outcomes` | `UploadOutcome`, `ArtifactUploadOutcome`, `TCKDBReadinessError`. |
-| `constants` | Route endpoints, payload kinds, the readiness retry policy, and the `origin_kind` values and log-file extensions read from tckdb-schemas. |
+| `constants` | Route endpoints and payload kinds (the four built routes, artifacts and the seven standalone record routes), the readiness retry policy, and the `origin_kind` values and log-file extensions read from tckdb-schemas. |
 | `idempotency` | Idempotency-key composition. The key namespace is a required argument. |
 | `config` | Config fields and defaults, API-key resolution (env, key file, dotenv file), the artifact kinds read from tckdb-schemas. No parser. |
 | `level_rules` | Replica of TCKDB's level-of-theory identity (folded dispersion, hash), which tckdb-schemas does not ship. The method identity key is imported from `tckdb_schemas.method_names`. |
@@ -38,7 +39,7 @@ TCKDB contract, and **nothing that reads a producer's output format**.
 | `rules` | TCKDB rule pre-checks with the producer's facts as arguments: `energy_level_declaration` (`assert_role_consistency`), `kinetics_energy_level_assessment` (per-participant kinetics spin), `designate_reaction_coordinate_index` (the window rule), `designate_by_tau` (the tau rule), `describe_level`. |
 | `ts_evidence` | Transition-state `validation_evidence` record shapes (`irc_record`, `energy_ordering_record`, `imaginary_mode_record`) and the numeric rule that a pass its own energies contradict is not sent. |
 | `ts_evidence_rules` | `offline_evidence_errors`: an offline replica of the server's evidence rules, to run on any built request. |
-| `testing` | The test kit (below). Needs `pytest` and `jsonschema`; never imported by the runtime package. |
+| `testing` | The test kit (below). Needs `pytest`; never imported by the runtime package. |
 
 ## What does not belong here
 
@@ -110,6 +111,11 @@ class MyToolAdapter(TCKDBUploaderBase):
         return self._upload(written, payload, endpoint=COMPUTED_SPECIES_ENDPOINT)
 ```
 
+For a thermo, kinetics, statmech, transport, reaction or network request, skip all of that:
+build the request yourself and call `self.submit_standalone("thermo", request, label=...)`. The
+core adds what the sequence below does after the build, and refuses a request the shipped
+JSON Schema rejects. It does not build these requests; that stays in your package.
+
 The order is fixed: build the payload, write it with its sidecar, then upload. The base
 class owns everything after the write: the readiness probe with backoff, the POST, the
 sidecar's status, response, warnings and request ids, strict mode, and artifact batches
@@ -143,13 +149,13 @@ its own enum and generates its code table from it; the ARC adapter's table is
 
 ## Test kit: `tckdb_core.testing`
 
-Any adapter's tests can import it. It imports `pytest` and `jsonschema` at module level,
-so it needs the `[test]` extra. `tckdb_core/__init__` does not import it, and the runtime
-package works without those two.
+Any adapter's tests can import it. It imports `pytest` at module level, so it needs the
+`[test]` extra. `tckdb_core/__init__` does not import it, and the runtime package works
+without `pytest`. (`jsonschema` is a runtime dependency since 0.5.11, for `standalone`.)
 
 | Module | Use |
 |--------|-----|
-| `contract` | `contract_validate(model, payload)`, `assert_request_is_accepted`, `REQUEST_MODELS`, `ROUTE_SCHEMAS`, and `TARGET_SCHEMAS_LINE`, the one tckdb-schemas line every suite pins. Validates with the published pydantic model, then the shipped JSON Schema. |
+| `contract` | `contract_validate(model, payload)`, `assert_request_is_accepted`, `REQUEST_MODELS` (only the routes whose request model tckdb-schemas publishes), `ROUTE_SCHEMAS` (every route the core carries), and `TARGET_SCHEMAS_LINE`, the one tckdb-schemas line every suite pins. Validates with the published pydantic model when there is one, then the shipped JSON Schema. |
 | `contract_hook` | `contract_checks_fixture(adapter_cls=..., payload_builders={"_build_x": "<schema name>", ...})`: the autouse fixture that checks every request the adapter builds. `register_markers(config)` registers `payload_refused_by_contract`. An adapter's `conftest.py` names its own builders. |
 | `contract_pin` | The four assertions of a package's `test_contract_pin.py`: installed tckdb-schemas line, `pyproject.toml` bound, contract document stamp, a shipped schema for every route. |
 | `stubs` | `StubClient`, `StubResponse`, `SequencedReadyzClient` and `upload_calls`: stand-ins for `TCKDBClient`, handed to an adapter through `client_factory`. |

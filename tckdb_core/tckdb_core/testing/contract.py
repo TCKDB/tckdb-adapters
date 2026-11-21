@@ -49,11 +49,21 @@ ROUTE_SCHEMAS = {
     "/uploads/computed-reaction": "ComputedReactionUploadRequest",
     "/uploads/transition-states": "TransitionStateUploadRequest",
     "/calculations/{calculation_id}/artifacts": "ArtifactsUploadRequest",
+    "/uploads/thermo": "ThermoUploadRequest",
+    "/uploads/kinetics": "KineticsUploadRequest",
+    "/uploads/statmech": "StatmechUploadRequest",
+    "/uploads/transport": "TransportUploadRequest",
+    "/uploads/reactions": "ReactionUploadRequest",
+    "/uploads/networks": "NetworkUploadRequest",
+    "/uploads/networks/pdep": "NetworkPDepUploadRequest",
 }
 
 
 #: The published pydantic model of each route's request. The artifact
 #: route's request model lives in the backend; its items are ``ArtifactIn``.
+#: The standalone thermo, kinetics, statmech, transport, reaction and network
+#: requests are backend-side too (tckdb-schemas publishes only nested payloads
+#: of them), so for those routes the shipped JSON Schema is the check.
 REQUEST_MODELS = {
     "ConformerUploadRequest": ConformerUploadRequest,
     "ComputedSpeciesUploadRequest": ComputedSpeciesUploadRequest,
@@ -117,7 +127,7 @@ def assert_fragment_matches_contract(payload: Any, model_name: str) -> None:
 
 
 def assert_request_is_accepted(payload: Any, schema_name: str) -> None:
-    """Run the route's published pydantic model, then its shipped JSON Schema.
+    """Run the route's published pydantic model (when there is one), then its shipped JSON Schema.
 
     The model runs its validators (the JSON Schema cannot express them);
     the schema is the contract's own statement of the wire shape. Neither
@@ -126,7 +136,7 @@ def assert_request_is_accepted(payload: Any, schema_name: str) -> None:
     if schema_name == "ArtifactsUploadRequest":
         for artifact in payload["artifacts"]:
             ArtifactIn.model_validate(artifact)
-    else:
+    elif schema_name in REQUEST_MODELS:
         REQUEST_MODELS[schema_name].model_validate(_wire_json(payload))
     assert_matches_contract(payload, schema_name)
 

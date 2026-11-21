@@ -57,6 +57,7 @@ from tckdb_core.payload_writer import (
     utcnow_iso,
 )
 from tckdb_core.adapter_warnings import AdapterWarning
+from tckdb_core.standalone import StandaloneSubmitMixin
 from tckdb_core.warning_codes import CoreWarning
 
 # Upload modes whose bundle payload already carries input/output_log
@@ -532,7 +533,7 @@ def _close_quietly(client: Any, context: str, log: Any = None) -> None:
         resolve_log(log).debug("TCKDB client close errored %s", context, exc_info=True)
 
 
-class TCKDBUploaderBase:
+class TCKDBUploaderBase(StandaloneSubmitMixin):
     """The producer-agnostic upload, sidecar and readiness pipeline.
 
     A producer adapter subclasses this, builds its payload, writes it with
@@ -541,6 +542,8 @@ class TCKDBUploaderBase:
     with backoff, the POST, the sidecar status/response/warning/request-id
     bookkeeping, strict-mode raising, artifact batching and idempotency, and the
     outcome objects. It reads nothing from the producer's output format.
+    :meth:`submit_standalone` (from :class:`~tckdb_core.standalone.StandaloneSubmitMixin`)
+    posts an already-built thermo, kinetics, statmech, transport, reaction or network request.
 
     A subclass sets the three class attributes below and may override the hooks.
     """
