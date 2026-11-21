@@ -6,7 +6,10 @@ Every self-check finding the ARC adapter writes to a sidecar's `warnings` list h
 server's shape, `{code, message, field, context}`, with `context.source` set to
 `tckdb_arc_self_check`. The `code` is registered below: the ARC adapter's own codes
 (`tckdb_arc/warning_codes.py`, `ArcWarning`) and the codes the shared upload code emits
-(`tckdb_core/warning_codes.py`, `CoreWarning`; the `source` is then the producer's).
+(`tckdb_core/warning_codes.py`, `CoreWarning`). The shared code's sidecar warnings carry
+the `source` `tckdb_core_self_check`, whichever adapter runs the upload;
+`calculation_ref_not_returned` is not one of them: it goes to a log line and to the
+`skip_reason` of the artifact outcome.
 
 The adapter is not the only emitter of warnings: the thermo enthalpy guard also passes
 through the refusal codes of `tckdb_schemas.enthalpy_reference` (owned by tckdb-schemas),

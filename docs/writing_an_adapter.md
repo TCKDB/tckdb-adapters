@@ -113,7 +113,8 @@ class MyToolAdapter(TCKDBUploaderBase):
     LOGGER_NAME = "tckdb_mytool"
 ```
 
-`PRODUCER_TAG` appears in every warning as `context.source = "tckdb_mytool_self_check"`.
+`PRODUCER_TAG` appears in your adapter's own warnings as `context.source = "tckdb_mytool_self_check"`;
+the core's pre-POST check writes its two codes with `tckdb_core_self_check` instead.
 `IDEMPOTENCY_NAMESPACE` is the first part of every key. Choose both once: changing the
 namespace later changes every key, and TCKDB then treats old uploads as new deposits.
 
