@@ -115,10 +115,15 @@ Done when the package's suite passes, every item in the checklist at the end of
 
 Every code is a member of the package's `CodedEnum` registry (`tckdb_arc/warning_codes.py`
 is `ArcWarning`; the core's is `CoreWarning`) and is emitted through the registry member.
-After adding or changing a code, run `python tools/gen_warning_codes.py` and commit
-`docs/contract/WARNING_CODES.md` with it. `tckdb_arc/tests/test_warning_registry.py` fails
-on a stale document, an unregistered code or a registered code nothing emits. A new
-package gets its own registry, generated table and registry test.
+After adding or changing a code, run `python tools/gen_warning_codes.py` and commit the
+generated page with it. `tckdb_arc/tests/test_warning_registry.py` fails on a stale page,
+an unregistered code or a registered code nothing emits.
+
+Each adapter has its own registry, its own page and its own registry test. ARC's page is
+`docs/contract/WARNING_CODES.md`, a name that READMEs and tests already use; a new adapter's
+is `docs/contract/<TOOL>_WARNING_CODES.md`, added to `DOCUMENTS` in
+`tools/gen_warning_codes.py`. A page lists the adapter's codes and then the core's, because
+the shared upload code emits those under the adapter's `source`.
 
 ## Contract tests and the pin
 

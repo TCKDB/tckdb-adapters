@@ -213,12 +213,19 @@ class MyToolWarning(CodedEnum):
 Emit them through the sink: `warnings.add(MyToolWarning.X, "message", "field.path",
 action="...")`. Never write a code as a bare string at the call site.
 
-The ARC adapter generates `docs/contract/WARNING_CODES.md` from its registry with
-`python tools/gen_warning_codes.py`, and `tckdb_arc/tests/test_warning_registry.py` fails
-when the document is stale, when a code is unregistered, or when a registered code is
-never emitted. Give your package the same: a `render_markdown()`, a branch in the
-generator that writes your table, and a registry test. Regenerate the document in the same
-commit that adds a code.
+Each adapter has its own registry and its own generated page,
+`docs/contract/<TOOL>_WARNING_CODES.md`. ARC's page is `docs/contract/WARNING_CODES.md` only
+because READMEs and tests already link that name. Give your package a `render_markdown()`
+that writes the page, add its `(path, render)` pair to `DOCUMENTS` in
+`tools/gen_warning_codes.py`, and write a registry test like
+`tckdb_arc/tests/test_warning_registry.py`: it fails when the page is stale, when a code is
+unregistered, or when a registered code is never emitted. List your page in your nav group
+(section 7). Regenerate it with `python tools/gen_warning_codes.py` in the same commit that
+adds a code.
+
+Your page lists your codes and then `CoreWarning`, as ARC's does: the shared upload code
+emits the core's codes under your `source`, so a reader of your sidecar finds every code
+there. ARC's registry test asserts that no code is in both registries; yours should too.
 
 ### 6. Configuration and a command
 
@@ -250,8 +257,8 @@ The site is built from `docs/`, `mkdocs.yml` and files that stub pages include. 
 6. If the adapter has a mapping document, write it at `docs/contract/<TOOL>_MAPPING.md` and
    list it in the adapter's nav group. Do not move the existing files in `docs/contract/`:
    READMEs, tests and the generator name their paths.
-7. The warning-code table that the generator writes (section 5) is a page under
-   `docs/contract/`. List that page in the adapter's nav group.
+7. The warning-code page that the generator writes (section 5) is
+   `docs/contract/<TOOL>_WARNING_CODES.md`. List it in the adapter's nav group.
 8. Update the root `README.md`, which is also the site's home page: add a row to the package
    table, add the package's version badge, and change the sentence that says which adapters
    exist.
@@ -266,7 +273,7 @@ The site is built from `docs/`, `mkdocs.yml` and files that stub pages include. 
 |---|---|
 | Every built request validates against the contract | In `tests/conftest.py`, register `tckdb_core.testing.contract_hook.contract_checks_fixture` with your adapter class and a map of builder-method name to schema name. It runs the published pydantic model and the shipped JSON Schema on every request any test builds. Call `contract_validate` yourself where a test checks a fragment. |
 | The contract pin | `tests/test_contract_pin.py` with the four assertions of `tckdb_core.testing.contract_pin`, pointed at your `pyproject.toml` and your routes. `assert_routes_have_shipped_schemas` takes the set of endpoints your adapter posts to, which can be any subset of the kit's `ROUTE_SCHEMAS`. |
-| Warning registry | Codes are unique and registered, the generated document is current. |
+| Warning registry | Codes are unique and registered, the adapter's generated page is current. |
 | Upload behaviour without a network | `tckdb_core.testing.stubs.StubClient`, passed as `client_factory=lambda config, key: client`. |
 | Refusals | For each convention the source may not state, a test that the block is omitted and the warning is present. |
 
@@ -462,7 +469,8 @@ Other limits of the core that an adapter author should know:
       registered warning code and a test.
 - [ ] Every interpretation is marked in the payload and in the sidecar.
 - [ ] The contract hook, the pin test and the registry test are in place.
-- [ ] The warning-code document is regenerated.
+- [ ] The adapter's own warning-code page, `docs/contract/<TOOL>_WARNING_CODES.md`, is
+      regenerated and listed in its nav group.
 - [ ] The package has a README and a changelog, and the changelog marks releases that
       change payloads.
 - [ ] The adapter is on the documentation site as section 7 describes, and

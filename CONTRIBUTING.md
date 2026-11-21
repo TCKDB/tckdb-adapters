@@ -45,8 +45,8 @@ mkdocs build --strict    # the check CI runs; writes site/
   fragment.
 - A patch version bump and a `CHANGELOG.md` entry for each package whose code changed.
   Say so when the release changes a payload, because that changes idempotency keys.
-- A regenerated `docs/contract/WARNING_CODES.md` when a warning code is added or changed
-  (`python tools/gen_warning_codes.py`).
+- The regenerated warning-code page (`docs/contract/WARNING_CODES.md` for ARC) when a warning
+  code is added or changed (`python tools/gen_warning_codes.py`).
 - An updated `docs/contract/ARC_MAPPING.md` when the ARC mapping changes.
 
 Run the full suite once before opening the pull request. CI runs both packages on Python
