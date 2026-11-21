@@ -1,11 +1,13 @@
 # tckdb-adapters
 
 Producer adapters that turn a tool's output into TCKDB upload payloads. `tckdb_core/`
-(`tckdb-adapters-core`) is the shared, producer-agnostic core. `tckdb_arc/` is the ARC
-adapter. `tckdb_chemkin/` (`tckdb-chemkin`) and `tckdb_qcschema/` (`tckdb-qcschema`) are
+(`tckdb-adapters-core`) is the shared, producer-agnostic core, at the repository root. Every
+adapter is a package under `adapters/`. `adapters/tckdb_arc/` is the ARC adapter.
+`adapters/tckdb_chemkin/` (`tckdb-chemkin`) and `adapters/tckdb_qcschema/` (`tckdb-qcschema`) are
 file-format adapters for CHEMKIN mechanisms and MolSSI QCSchema documents; they import
 `tckdb-client` and `tckdb-schemas` directly and do not use the core. A new producer adapter is a
-sibling package `tckdb_<producer>/`.
+sibling package `adapters/tckdb_<producer>/`. (`adapters/` is the directory of adapter source
+packages; `docs/adapters/` is the documentation site's section about them and holds no code.)
 
 TCKDB decides the contract. The adapter conforms.
 
@@ -46,7 +48,7 @@ ARC or RMG conventions are not.
   omit the field, and report a registered warning code. Add no new default.
 - An interpretation may be sent only when it is visibly marked as one in the payload and
   in the sidecar. The pattern is `_kinetics_declarations` in
-  `tckdb_arc/tckdb_arc/kinetics.py`: `claim_origin: depositor_interpretation`, a closing
+  `adapters/tckdb_arc/tckdb_arc/kinetics.py`: `claim_origin: depositor_interpretation`, a closing
   sentence in the kinetics `note`, and the `kinetics_declarations_interpreted` warning.
   Sending a new interpretation is the repository owner's decision. Ask before adding one.
 - The ARC adapter has three documented exceptions to the two rules above: `formation_298k`
@@ -98,16 +100,17 @@ repository is allowed only for a rule that exists solely in TCKDB's backend, and
 a parity test (`tckdb_core.testing.backend_import`). Build thermo blocks in the adapter;
 `tckdb_client.builders` fills a default `enthalpy_reference_kind`.
 
-## Scaffolding `tckdb_<producer>/`
+## Scaffolding `adapters/tckdb_<producer>/`
 
-1. Create `pyproject.toml` (depends on `tckdb-adapters-core`; bounds `tckdb-schemas` and
-   `tckdb-client` to the core's minor lines), `README.md`, `CHANGELOG.md`, the package and
-   `tests/`.
+1. Create the directory `adapters/tckdb_<producer>/` with `pyproject.toml` (depends on
+   `tckdb-adapters-core`; bounds `tckdb-schemas` and `tckdb-client` to the core's minor lines;
+   its pytest `pythonpath` is `[".", "../../tckdb_core"]`, as in `adapters/tckdb_arc/pyproject.toml`),
+   `README.md`, `CHANGELOG.md`, the package `tckdb_<producer>/` and `tests/`.
 2. Add the package to `pythonpath` and `testpaths` under `[tool.pytest.ini_options]` in the
    root `pyproject.toml` (that is what makes a root `pytest` run find it), to
    `.github/workflows/ci.yml`, to the `PACKAGES` table of `tools/tckdb_drift.py` (what
    `--bump` moves; the publish script and the drift workflow read the packages and files from
-   it). Add it to the install lines in "Running tests" below and in `CONTRIBUTING.md`.
+   it; its `directory` is `adapters/tckdb_<producer>`). Add it to the install lines in "Running tests" below and in `CONTRIBUTING.md`.
 3. Add it to the documentation site: stub pages under `docs/adapters/<tool>/`, `mkdocs.yml`,
    `docs/adapters/index.md`, `.github/workflows/docs.yml` and the root `README.md`. The steps
    are in section 7 of `docs/writing_an_adapter.md`.
@@ -127,11 +130,11 @@ goes into its `DEFAULT_TARGETS`.
 
 ## Warning codes
 
-Every code is a member of the package's `CodedEnum` registry (`tckdb_arc/warning_codes.py`
-is `ArcWarning`; the core's is `CoreWarning`) and is emitted through the registry member.
+Every code is a member of the package's `CodedEnum` registry (`adapters/tckdb_arc/tckdb_arc/warning_codes.py`
+is `ArcWarning`; `tckdb_core/tckdb_core/warning_codes.py` is `CoreWarning`) and is emitted through the registry member.
 After adding or changing a code, run `python tools/gen_warning_codes.py` and commit the
 generated pages with it (a change to a core code regenerates every adapter's page).
-`tckdb_arc/tests/test_warning_registry.py` fails on a stale page, an unregistered code or a
+`adapters/tckdb_arc/tests/test_warning_registry.py` fails on a stale page, an unregistered code or a
 registered code nothing emits.
 
 Each adapter has its own registry, its own page and its own registry test. ARC's page is
@@ -153,8 +156,8 @@ and pin the tckdb-schemas version the tests ran against.
 
 - The kit is `tckdb_core.testing.contract` and `.contract_hook`. The pin,
   `TARGET_SCHEMAS_LINE`, is one line in `tckdb_core/tckdb_core/testing/contract.py`.
-- ARC wiring: `tckdb_arc/tests/_contract.py`, `tckdb_arc/tests/conftest.py` and
-  `tckdb_arc/tests/test_contract_pin.py` (twin: `tckdb_core/tests/test_core_contract_pin.py`).
+- ARC wiring: `adapters/tckdb_arc/tests/_contract.py`, `adapters/tckdb_arc/tests/conftest.py` and
+  `adapters/tckdb_arc/tests/test_contract_pin.py` (twin: `tckdb_core/tests/test_core_contract_pin.py`).
   A new package needs its own `conftest.py` hook registration and `test_contract_pin.py`,
   built from `tckdb_core.testing.contract_pin`.
 - The conftest hook checks the four whole-request builders (conformer, computed-species,
@@ -172,7 +175,7 @@ together with `python tools/tckdb_drift.py --bump`, never by hand in one place.
 
 ## Live integration gate
 
-`tckdb_arc/tests/integration` uploads to a TCKDB backend and reads the rows back. It is
+`adapters/tckdb_arc/tests/integration` uploads to a TCKDB backend and reads the rows back. It is
 skipped unless `TCKDB_INTEGRATION_URL` is set. The target must be loopback, on a port other
 than 8010, with an artifact bucket named `tckdb-integ*`; the fixture in
 `tckdb_core.testing.live` fails the run otherwise. Keep those guards intact in any new
@@ -185,11 +188,11 @@ backend, and an agent starts one only when the user asks.
 - While working, run only the test files your change touches. Run the full suite once at
   the end, from the repository root.
 - In a git worktree whose editable installs point at another checkout, prefix
-  `PYTHONPATH=$PWD/tckdb_core:$PWD/tckdb_arc`.
-- Install order from a checkout: `pip install -e tckdb_core -e tckdb_arc` (then each further
+  `PYTHONPATH=$PWD/tckdb_core:$PWD/adapters/tckdb_arc`.
+- Install order from a checkout: `pip install -e tckdb_core -e adapters/tckdb_arc` (then each further
   adapter).
-- `tckdb_chemkin` and `tckdb_qcschema` run from their own directories
-  (`cd tckdb_chemkin && python -m pytest`). They are not in the root run: their
+- `adapters/tckdb_chemkin` and `adapters/tckdb_qcschema` run from their own directories
+  (`cd adapters/tckdb_chemkin && python -m pytest`). They are not in the root run: their
   `tests/conftest.py` and `test_uploader.py` share module names with the core's and the ARC
   adapter's, and collection fails.
 - A new package with its own `pyproject.toml` also goes into `PACKAGES` in
@@ -200,8 +203,9 @@ backend, and an agent starts one only when the user asks.
 A change to package code bumps that package's patch version and adds an entry to its
 `CHANGELOG.md`. When `tckdb_arc` needs the new core, raise its `tckdb-adapters-core`
 bound. Say in the entry when a release changes a payload: the payload hash is part of the
-idempotency key, so TCKDB records a re-upload as a new deposit. `tckdb_core/__init__.py`,
-`tckdb_chemkin/__init__.py` and `tckdb_qcschema/__init__.py` hold `__version__`; keep each equal
+idempotency key, so TCKDB records a re-upload as a new deposit.
+`tckdb_core/tckdb_core/__init__.py`, `adapters/tckdb_chemkin/tckdb_chemkin/__init__.py` and
+`adapters/tckdb_qcschema/tckdb_qcschema/__init__.py` hold `__version__`; keep each equal
 to its `pyproject.toml` version. A `tckdb-qcschema` payload records the adapter version, so any
 version bump changes its request body (not its idempotency keys).
 

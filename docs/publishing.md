@@ -6,13 +6,13 @@ workflow is `.github/workflows/publish-python.yml`.
 | Distribution | Directory | Import name | Depends on |
 |---|---|---|---|
 | `tckdb-adapters-core` | `tckdb_core/` | `tckdb_core` | `tckdb-client`, `tckdb-schemas` |
-| `tckdb-arc` | `tckdb_arc/` | `tckdb_arc` | `tckdb-adapters-core`, `tckdb-client`, `tckdb-schemas` |
-| `tckdb-chemkin` | `tckdb_chemkin/` | `tckdb_chemkin` | `tckdb-client`, RDKit |
-| `tckdb-qcschema` | `tckdb_qcschema/` | `tckdb_qcschema` | `tckdb-client`, `tckdb-schemas`, `qcelemental` |
+| `tckdb-arc` | `adapters/tckdb_arc/` | `tckdb_arc` | `tckdb-adapters-core`, `tckdb-client`, `tckdb-schemas` |
+| `tckdb-chemkin` | `adapters/tckdb_chemkin/` | `tckdb_chemkin` | `tckdb-client`, RDKit |
+| `tckdb-qcschema` | `adapters/tckdb_qcschema/` | `tckdb_qcschema` | `tckdb-client`, `tckdb-schemas`, `qcelemental` |
 
 The list is `PACKAGES` in `tools/python_release.py`.
 `tools/tests/test_publish_python_workflow.py` fails when the workflow's choices,
-the table and the `tckdb_*/pyproject.toml` files on disk disagree.
+the table and the `tckdb_*/pyproject.toml` and `adapters/tckdb_*/pyproject.toml` files on disk disagree.
 
 `tckdb-client` and `tckdb-schemas` are published from the
 [TCKDB repository](https://github.com/TCKDB/TCKDB), by the same kind of

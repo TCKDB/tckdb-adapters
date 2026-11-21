@@ -62,8 +62,9 @@ def _project(package) -> dict:
 
 
 def test_the_release_tool_knows_every_package_in_the_repository():
-    """A ``tckdb_*/pyproject.toml`` the tool does not know is a package nobody can release."""
-    on_disk = sorted(p.parent.name for p in REPO_ROOT.glob("tckdb_*/pyproject.toml"))
+    """A ``tckdb_*/pyproject.toml`` or ``adapters/tckdb_*/pyproject.toml`` the tool does not know is a package nobody can release."""
+    pyprojects = [*REPO_ROOT.glob("tckdb_*/pyproject.toml"), *REPO_ROOT.glob("adapters/tckdb_*/pyproject.toml")]
+    on_disk = sorted(p.parent.relative_to(REPO_ROOT).as_posix() for p in pyprojects)
     assert sorted(package.directory for package in release.PACKAGES) == on_disk
     assert NAMES == ["tckdb-adapters-core", "tckdb-arc", "tckdb-chemkin", "tckdb-qcschema"]
 

@@ -117,15 +117,15 @@ PACKAGES: tuple[Package, ...] = (
         note="The contract kit's `TARGET_SCHEMAS_LINE` is {schemas_line}. Package code is unchanged.",
     ),
     Package(
-        "tckdb_arc", "tckdb_arc", "tckdb-arc", version_in_init=False, readme_sentence=True,
+        "adapters/tckdb_arc", "tckdb_arc", "tckdb-arc", version_in_init=False, readme_sentence=True,
         changelog_style="marker",
     ),
     Package(
-        "tckdb_chemkin", "tckdb_chemkin", "tckdb-chemkin", version_in_init=True, readme_sentence=False,
+        "adapters/tckdb_chemkin", "tckdb_chemkin", "tckdb-chemkin", version_in_init=True, readme_sentence=False,
         changelog_style="sections", note="Package code is unchanged.",
     ),
     Package(
-        "tckdb_qcschema", "tckdb_qcschema", "tckdb-qcschema", version_in_init=True, readme_sentence=False,
+        "adapters/tckdb_qcschema", "tckdb_qcschema", "tckdb-qcschema", version_in_init=True, readme_sentence=False,
         changelog_style="sections",
         note=(
             "Package code is unchanged. The payload records the adapter version, so its request "
@@ -145,7 +145,7 @@ def core_package() -> Package:
     return next(pkg for pkg in PACKAGES if pkg.dist == CORE_DIST)
 
 
-#: The one ``TARGET_SCHEMAS_LINE`` line the test suites share (tckdb_arc/tests/_contract.py re-exports it).
+#: The one ``TARGET_SCHEMAS_LINE`` line the test suites share (adapters/tckdb_arc/tests/_contract.py re-exports it).
 CONTRACT_PY = f"{core_package().directory}/{core_package().module}/testing/contract.py"
 
 

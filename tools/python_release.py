@@ -50,9 +50,9 @@ class Package:
 #: Every distribution this repository publishes, dependencies first.
 PACKAGES: tuple[Package, ...] = (
     Package("tckdb-adapters-core", "tckdb_core", "tckdb_core"),
-    Package("tckdb-arc", "tckdb_arc", "tckdb_arc"),
-    Package("tckdb-chemkin", "tckdb_chemkin", "tckdb_chemkin"),
-    Package("tckdb-qcschema", "tckdb_qcschema", "tckdb_qcschema"),
+    Package("tckdb-arc", "adapters/tckdb_arc", "tckdb_arc"),
+    Package("tckdb-chemkin", "adapters/tckdb_chemkin", "tckdb_chemkin"),
+    Package("tckdb-qcschema", "adapters/tckdb_qcschema", "tckdb_qcschema"),
 )
 
 TAG_RE = re.compile(r"^(?P<name>tckdb-[a-z0-9]+(?:-[a-z0-9]+)*?)-v(?P<version>[0-9][^\s/]*)$")

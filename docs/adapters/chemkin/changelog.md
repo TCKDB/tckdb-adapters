@@ -1,5 +1,5 @@
-<!-- The site page for tckdb_chemkin/CHANGELOG.md. The file is included at build time; edit that file, not this one. -->
+<!-- The site page for adapters/tckdb_chemkin/CHANGELOG.md. The file is included at build time; edit that file, not this one. -->
 
 {%
-  include-markdown "../../../tckdb_chemkin/CHANGELOG.md"
+  include-markdown "../../../adapters/tckdb_chemkin/CHANGELOG.md"
 %}

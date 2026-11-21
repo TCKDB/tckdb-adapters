@@ -2,7 +2,7 @@
 
 This page describes the current mapping from an ARC project to TCKDB payloads: what is
 read, what each value becomes, and what is left out. The history of how it got here is in
-[`tckdb_arc/CHANGELOG.md`](../../tckdb_arc/CHANGELOG.md). The codes in `this form` that
+[`adapters/tckdb_arc/CHANGELOG.md`](../../adapters/tckdb_arc/CHANGELOG.md). The codes in `this form` that
 end a rule are warning codes; [`WARNING_CODES.md`](WARNING_CODES.md) lists them all.
 
 The contract itself is TCKDB's. Read it with `python -m tckdb_schemas.contract --print`.

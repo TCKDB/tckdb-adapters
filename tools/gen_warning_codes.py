@@ -3,7 +3,7 @@
 
 Each adapter has one document, listed in ``DOCUMENTS``. The ARC adapter's is
 ``docs/contract/WARNING_CODES.md``, from ``tckdb_arc.warning_codes.ArcWarning`` and
-``tckdb_core.warning_codes.CoreWarning``. ``tckdb_arc/tests/test_warning_registry.py`` fails
+``tckdb_core.warning_codes.CoreWarning``. ``adapters/tckdb_arc/tests/test_warning_registry.py`` fails
 when the committed document differs from what this writes::
 
     python tools/gen_warning_codes.py          # rewrite the documents

@@ -8,7 +8,7 @@ distributed under the MIT License:
 
     Copyright (c) 2018-2023, Dana Research Group, Technion -- Israel Institute of Technology
 
-The ARC adapter (tckdb_arc/) began as ARC's own TCKDB upload module. The
+The ARC adapter (adapters/tckdb_arc/) began as ARC's own TCKDB upload module. The
 following files hold code or data ported from ARC:
 
   tckdb_core/tckdb_core/xyz.py
@@ -20,9 +20,9 @@ following files hold code or data ported from ARC:
       Element symbols, numbers and masses, loaded by xyz.py.
   tckdb_core/tckdb_core/physical_constants.py
       Physical constants, from arc/constants.py.
-  tckdb_arc/tckdb_arc/_vendor.py
+  adapters/tckdb_arc/tckdb_arc/_vendor.py
       read_yaml_file, from arc/common.py.
-  tckdb_arc/tckdb_arc/levels.py
+  adapters/tckdb_arc/tckdb_arc/levels.py
       The level-of-theory normaliser used to compare an atom-correction
       level with an energy level, ported from ARC's
       _normalized_method_and_basis.
