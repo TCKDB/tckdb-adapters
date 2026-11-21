@@ -11,6 +11,9 @@ python tools/tckdb_drift.py --install-specs      # prints the two pinned TCKDB r
 pip install "<TCKDB_CLIENT_SPEC value>" "<TCKDB_SCHEMAS_SPEC value>"
 pip install -e "tckdb_core[test]" -e "tckdb_arc[test]"
 python -m pytest
+pip install -e "tckdb_chemkin[test]" -e "tckdb_qcschema[test]"   # when changing either
+(cd tckdb_chemkin && python -m pytest)
+(cd tckdb_qcschema && python -m pytest)
 ```
 
 Python 3.11 or newer. ARC is optional; the tests that need it skip without it.
@@ -39,8 +42,9 @@ Python 3.11 or newer. ARC is optional; the tests that need it skip without it.
   (`python tools/gen_warning_codes.py`).
 - An updated `docs/contract/ARC_MAPPING.md` when the ARC mapping changes.
 
-Run the full suite once before opening the pull request. CI runs both packages on Python
-3.11 and 3.12 with the TCKDB packages installed from the pinned commit.
+Run the full suite once before opening the pull request. CI runs every package's suite on Python
+3.11 and 3.12 with the TCKDB packages installed from the pinned commit, and builds every
+distribution with `twine check --strict`.
 
 ## TCKDB pin bumps
 

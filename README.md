@@ -2,9 +2,10 @@
 
 Producer adapters for [TCKDB](https://github.com/TCKDB/TCKDB), a database of computed
 thermochemistry and kinetics. An adapter reads the output of one tool and turns it into
-TCKDB upload payloads. Today there is one, for
-[ARC](https://github.com/ReactionMechanismGenerator/ARC), and a shared core that the next
-adapter builds on.
+TCKDB upload payloads. There is one for
+[ARC](https://github.com/ReactionMechanismGenerator/ARC) with a shared core that the next
+producer adapter builds on, and two file-format adapters: CHEMKIN mechanisms and MolSSI
+QCSchema documents.
 
 TCKDB publishes its upload contract in two packages, and this repository depends on both:
 
@@ -21,14 +22,18 @@ source states.
 |---|---|---|
 | `tckdb-adapters-core` | [`tckdb_core/`](tckdb_core/README.md) | Everything an adapter needs after it has built a payload, and every helper two adapters would write the same way: the payload writer, the upload pipeline with its sidecar files, idempotency keys, configuration, shared numerics, pre-checks of TCKDB's rules, the warning-code registry and a test kit. It reads no tool's output format. |
 | `tckdb-arc` | [`tckdb_arc/`](tckdb_arc/README.md) | The ARC adapter. It reads an ARC project's `output.yml` and builds species, reaction and transition-state uploads. Its command is `tckdb-arc-upload`. |
+| `tckdb-chemkin` | [`tckdb_chemkin/`](tckdb_chemkin/README.md) | Reads a CHEMKIN mechanism (`chem.inp`, with `therm.dat` and `tran.dat`) and builds thermo, transport and kinetics uploads. Its command is `tckdb-chemkin-import`. Needs RDKit. |
+| `tckdb-qcschema` | [`tckdb_qcschema/`](tckdb_qcschema/README.md) | Imports MolSSI QCSchema documents (QCEngine, Psi4, QCArchive) as conformer deposits and exports TCKDB calculations as QCSchema. Its command is `tckdb-qcschema`. |
 
 Dependencies point one way: `tckdb_arc` imports `tckdb_core`, and `tckdb_core` imports
 `tckdb-client` and `tckdb-schemas`. The core never imports an adapter or the tool behind
-it, and a test in `tckdb_core/tests` fails if it does.
+it, and a test in `tckdb_core/tests` fails if it does. `tckdb_chemkin` and `tckdb_qcschema`
+read a file format rather than a tool's run; they import `tckdb-client` (and `tckdb-schemas`)
+directly and do not use the core.
 
 ## Install
 
-Python 3.11 or newer. Neither package is on PyPI yet, so install from a checkout. The two
+Python 3.11 or newer. None of the packages is on PyPI yet, so install from a checkout. The two
 TCKDB packages come from the TCKDB commit this repository is tested against:
 
 ```bash
@@ -36,6 +41,7 @@ pip install \
   "tckdb-client @ git+https://github.com/TCKDB/TCKDB.git@d4d53462db2b75ed699cb6bd7b39964b2b645254#subdirectory=clients/python" \
   "tckdb-schemas @ git+https://github.com/TCKDB/TCKDB.git@d4d53462db2b75ed699cb6bd7b39964b2b645254#subdirectory=schemas/python/tckdb-schemas"
 pip install -e tckdb_core -e tckdb_arc
+pip install -e tckdb_chemkin -e tckdb_qcschema   # the file-format adapters, as needed
 ```
 
 Install `tckdb_core` before `tckdb_arc`, as above, because the ARC adapter depends on it. With a
@@ -77,6 +83,16 @@ python -m pytest                                    # both suites, from the repo
 python -m pytest tckdb_arc/tests/test_sweep.py -q   # one file
 ```
 
+The file-format adapters run from their own directories: their `tests/conftest.py` and
+`test_uploader.py` share module names with the core's and the ARC adapter's, so a single root
+run fails at collection:
+
+```bash
+pip install -e "tckdb_chemkin[test]" -e "tckdb_qcschema[test]"
+(cd tckdb_chemkin && python -m pytest)
+(cd tckdb_qcschema && python -m pytest)
+```
+
 The suites run without ARC and without a TCKDB server. Tests that need ARC skip when it is
 not importable. The tests that compare the level-of-theory hash with TCKDB's own code need
 a TCKDB `backend/` directory at the pinned commit, named by `TCKDB_BACKEND_PATH`; they
@@ -108,6 +124,11 @@ and maps its tool's output to the payloads. Start with
 you, what you write yourself, and which TCKDB routes the core does not cover yet.
 [`AGENTS.md`](AGENTS.md) holds the same rules in the short form coding agents read, and
 [`CONTRIBUTING.md`](CONTRIBUTING.md) covers pull requests.
+
+## Releases
+
+Each package is released to PyPI on its own, from a tag `<dist-name>-v<version>`.
+[`docs/publishing.md`](docs/publishing.md) is the maintainer's runbook.
 
 ## Licence
 

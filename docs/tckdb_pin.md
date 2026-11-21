@@ -90,6 +90,11 @@ Running it twice changes nothing. It refuses to move a line backwards unless giv
 `--allow-downgrade`. It does not change the `tckdb-adapters-core` version or its
 changelog; do that by hand in the same pull request.
 
+`--bump` does not touch `tckdb_chemkin/pyproject.toml` or `tckdb_qcschema/pyproject.toml`.
+Their `tckdb-client` (and `tckdb-schemas`) windows are their own, and CI installs both
+packages against the pin, so a pin moved past a window fails that package's CI job. Move its
+window by hand, bump its patch version and add a changelog entry in the same pull request.
+
 `--since-output` needs the new `tckdb-schemas` installed. After a bump, pass `--from` the
 line the pin had before. `--install-specs` prints the two pip requirement strings built
 from `tckdb-pin.toml`.

@@ -7,6 +7,9 @@
 # tckdb_arc/ distribution dirs (no __init__.py) would otherwise shadow the real
 # packages as namespace packages when cwd is on sys.path; pythonpath is inserted
 # ahead of cwd. Per-package runs (cd tckdb_arc && pytest) use that package's own ini.
+# tckdb_chemkin and tckdb_qcschema are not listed: their tests/conftest.py and test_uploader.py
+# share module names with tckdb_core's and tckdb_arc's, and one process fails at collection, so
+# they run from their own directories.
 [tool.pytest.ini_options]
 pythonpath = ["tckdb_core", "tckdb_arc"]
 testpaths = ["tckdb_core/tests", "tckdb_arc/tests"]
