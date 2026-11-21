@@ -5,6 +5,7 @@ import importlib.util
 import json
 import os
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -18,8 +19,8 @@ drift = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(drift)
 
 NEW_SHA = "74aae9a2" + "0" * 32
-FILES = fx.BUMPED
-UNTOUCHED = [rel for rel in fx.FILES if rel not in fx.BUMPED]
+FILES = drift.bumped_files()  # the tool's list; test_a_full_bump_rewrites_exactly_the_files_the_tool_lists checks it
+UNTOUCHED = [rel for rel in fx.FILES if rel not in FILES]
 
 
 @pytest.fixture
@@ -154,7 +155,7 @@ def test_bump_rewrites_only_the_pins_and_versions(root):
     assert "`tckdb-schemas>=0.58,<0.59`" in after[QCSCHEMA.changelog].split("## 0.9.9")[0]
 
     # The ARC adapter's floor on the core follows the core's new version.
-    assert '"tckdb-adapters-core>=0.1.1,<0.2",  # pipeline' in after[ARC.pyproject]
+    assert '"tckdb-adapters-core>=0.1.1,<0.2"' in after[ARC.pyproject]
 
     # Nothing else moved, in any bumped file.
     for rel in FILES:
@@ -213,8 +214,26 @@ def test_bump_repairs_a_package_that_lags(root):
     assert drift.read_pins(root) == {"schemas_line": (0, 54), "client_line": (0, 95), "sha": fx.OLD_SHA}
 
 
-def test_the_tools_file_list_is_the_fixtures():
-    assert sorted(drift.bumped_files()) == sorted(fx.BUMPED)
+def test_a_full_bump_rewrites_exactly_the_files_the_tool_lists(root):
+    """The list is checked against what a bump does, not against a second copy of it: a file the
+    bump rewrites but the tool does not list (the publish script would leave it unstaged), or one
+    it lists and never touches, fails here."""
+    before = {rel: (root / rel).read_text() for rel in fx.FILES}
+    drift.run_bump(root, NEW_SHA, "0.58.0", "0.98.0")  # moves every bound, so every package is released
+    changed = {rel for rel in fx.FILES if (root / rel).read_text() != before[rel]}
+    assert changed == set(drift.bumped_files())
+    assert len(drift.bumped_files()) == len(set(drift.bumped_files()))
+
+
+def test_on_the_real_repository_every_listed_file_exists_and_is_tracked():
+    listed = drift.bumped_files()
+    for rel in listed:
+        assert (REPO / rel).is_file(), rel
+    probe = subprocess.run(["git", "-C", str(REPO), "rev-parse", "--is-inside-work-tree"], capture_output=True, text=True)
+    if probe.returncode != 0 or not (REPO / ".git").exists():
+        pytest.skip("not a git checkout")
+    tracked = subprocess.run(["git", "-C", str(REPO), "ls-files", "--", *listed], capture_output=True, text=True, check=True)
+    assert sorted(tracked.stdout.split()) == sorted(listed), "a listed file is not tracked, so the publish script could not commit it"
 
 
 def _code_lines(path):
@@ -224,7 +243,9 @@ def _code_lines(path):
 
 def test_the_publish_script_stages_what_the_tool_lists_and_names_no_package():
     script = _code_lines(REPO / "tools" / "tckdb_drift_publish.sh")
-    assert '--bumped-files' in script and '"$TOOL"' in script and "tckdb_drift.py" in script
+    assert 'mapfile -t bumped < <(python "$TOOL" --bumped-files)' in script
+    assert script.count("git add") == 1 and 'git add -- "${bumped[@]}"' in script  # only what the tool lists is staged
+    assert 'TOOL="$(dirname "${BASH_SOURCE[0]}")/tckdb_drift.py"' in script  # and $TOOL is the tool beside the script
     for pkg in drift.PACKAGES:
         assert pkg.directory not in script, pkg.directory  # the tool is the one source of the file list
 
@@ -442,71 +463,31 @@ def _lines(root, pkg, name):
     return drift.pinned_line((root / pkg.pyproject).read_text(), name)
 
 
-def test_a_package_ahead_of_the_target_keeps_its_line_and_the_others_move_up(root):
-    """One package is hand-moved to a newer line. A bump to a line between the two moves the
-    packages that are behind and leaves the one that is ahead: that is not a downgrade."""
-    _move(root, QCSCHEMA, schemas=(0, 60), client=(0, 99))
-    before = _snapshot(root)
-    assert drift.run_bump(root, NEW_SHA, "0.58.0", "0.98.0") == 0
-    for pkg in (CORE, ARC):
-        assert _lines(root, pkg, "tckdb-schemas") == (0, 58) and _lines(root, pkg, "tckdb-client") == (0, 98)
-    assert _lines(root, CHEMKIN, "tckdb-client") == (0, 98)
-    assert _lines(root, QCSCHEMA, "tckdb-schemas") == (0, 60) and _lines(root, QCSCHEMA, "tckdb-client") == (0, 99)
-    # Nothing of the package left alone changed: it is not released.
-    for rel in (QCSCHEMA.pyproject, QCSCHEMA.init, QCSCHEMA.changelog):
-        assert (root / rel).read_text() == before[rel], rel
-    # The contract line the core's tests target moved up with the core, and the root README states the core's.
-    assert "TARGET_SCHEMAS_LINE = (0, 58)" in (root / drift.CONTRACT_PY).read_text()
-    assert "`tckdb-client` 0.98.x with `tckdb-schemas` 0.58.x" in (root / drift.README).read_text()
-    # The tool says the lines now differ, in both its modes.
-    note = drift.lines_note(drift.read_pyprojects(root))
-    assert "0.58 in tckdb_core, adapters/tckdb_arc; 0.60 in adapters/tckdb_qcschema" in note
-    assert "0.98 in tckdb_core, adapters/tckdb_arc, adapters/tckdb_chemkin; 0.99 in adapters/tckdb_qcschema" in note
-    # Running it again changes nothing.
-    once = _snapshot(root)
-    drift.run_bump(root, NEW_SHA, "0.58.0", "0.98.0")
-    assert _snapshot(root) == once
-
-
-def test_the_bump_output_and_the_lines_note_say_when_the_packages_are_on_different_lines(root, capsys):
+def test_a_package_ahead_of_the_target_makes_the_bump_refuse_and_write_nothing(root, capsys):
+    """Packages on different lines cannot be installed into one environment, so a package that is
+    ahead of the target is not left where it is: the bump refuses, naming the package and its file."""
     _move(root, QCSCHEMA, schemas=(0, 60))
-    assert drift.main(["--root", str(root), "--bump", "--sha", NEW_SHA, "--schemas", "0.58.0", "--client", "0.98.0"]) == 0
-    out = capsys.readouterr().out
-    assert "note: The packages are on different tckdb-schemas lines" in out and "not all on one line" in out
-    assert drift.main(["--root", str(root), "--lines-note"]) == 0
-    assert "different tckdb-schemas lines: 0.58 in tckdb_core, adapters/tckdb_arc; 0.60 in adapters/tckdb_qcschema" in capsys.readouterr().out
-    # With the lines level again the note is empty and the bump says nothing about it.
-    _move(root, QCSCHEMA, schemas=(0, 58))
-    assert drift.main(["--root", str(root), "--lines-note"]) == 0
-    assert capsys.readouterr().out == ""
-
-
-def test_a_target_behind_every_package_is_still_a_downgrade_even_when_the_lines_differ(root):
-    _move(root, QCSCHEMA, schemas=(0, 56))  # core and arc 0.54, qcschema 0.56
     before = _snapshot(root)
-    with pytest.raises(drift.DriftError, match="every package that states it is on a newer line"):
-        drift.run_bump(root, NEW_SHA, "0.53.0", "0.95.0")
+    with pytest.raises(drift.DriftError, match=r"tckdb-schemas in adapters/tckdb_qcschema/pyproject.toml back from 0.60 to 0.58"):
+        drift.run_bump(root, NEW_SHA, "0.58.0", "0.98.0")
     assert _snapshot(root) == before
-    # The client target is judged separately from the schemas one.
-    with pytest.raises(drift.DriftError, match="tckdb-client back to 0.90"):
-        drift.run_bump(root, NEW_SHA, "0.58.0", "0.90.0")
-    assert _snapshot(root) == before
-    # A target ahead of some and behind others is not one: the behind ones move, the ahead one stays.
-    drift.run_bump(root, NEW_SHA, "0.55.0", "0.95.0")
-    assert _lines(root, CORE, "tckdb-schemas") == (0, 55) and _lines(root, ARC, "tckdb-schemas") == (0, 55)
-    assert _lines(root, QCSCHEMA, "tckdb-schemas") == (0, 56)
+    assert drift.main(["--root", str(root), "--bump", "--sha", NEW_SHA, "--schemas", "0.58.0", "--client", "0.98.0"]) == 2
+    assert "--allow-downgrade" in capsys.readouterr().err
+    # The client bound is judged on its own.
+    _move(root, QCSCHEMA, schemas=(0, 54), client=(0, 99))
+    with pytest.raises(drift.DriftError, match=r"tckdb-client in adapters/tckdb_qcschema/pyproject.toml back from 0.99 to 0.98"):
+        drift.run_bump(root, NEW_SHA, "0.58.0", "0.98.0")
 
 
-def test_allow_downgrade_moves_every_package_to_the_target_whatever_its_line(root):
-    _move(root, QCSCHEMA, schemas=(0, 56))
-    drift.run_bump(root, NEW_SHA, "0.53.0", "0.95.0", allow_downgrade=True)
+def test_allow_downgrade_moves_every_package_to_the_target(root):
+    _move(root, QCSCHEMA, schemas=(0, 60))
+    drift.run_bump(root, NEW_SHA, "0.58.0", "0.98.0", allow_downgrade=True)
     for pkg in (CORE, ARC, QCSCHEMA):
-        assert _lines(root, pkg, "tckdb-schemas") == (0, 53), pkg.directory
-    assert "TARGET_SCHEMAS_LINE = (0, 53)" in (root / drift.CONTRACT_PY).read_text()
+        assert _lines(root, pkg, "tckdb-schemas") == (0, 58), pkg.directory
     assert drift.lines_note(drift.read_pyprojects(root)) == ""
 
 
-def test_check_reports_drift_from_the_oldest_package_and_says_the_lines_differ(root, monkeypatch, capsys):
+def test_check_reports_drift_from_the_oldest_package_and_names_the_lines_that_differ(root, monkeypatch, capsys):
     _move(root, QCSCHEMA, schemas=(0, 60))
     pin = drift.read_pin_file((root / drift.PIN_FILE).read_text())
     available = {
@@ -518,21 +499,26 @@ def test_check_reports_drift_from_the_oldest_package_and_says_the_lines_differ(r
     assert drift.run_check(root, None, "main") == drift.EXIT_DRIFT  # core and arc are behind 0.58
     captured = capsys.readouterr()
     summary = json.loads(captured.out)
-    assert summary["schemas"]["pinned_line"] == "0.54" and "adapters/tckdb_qcschema" in summary["lines_differ"]
+    assert summary["schemas"]["pinned_line"] == "0.54"
+    assert summary["lines_differ"] == (
+        "The packages are on different tckdb-schemas lines: 0.54 in tckdb_core, adapters/tckdb_arc; "
+        "0.60 in adapters/tckdb_qcschema."
+    )
     assert "different lines" in captured.err
-    drift.run_bump(root, NEW_SHA, "0.58.0", "0.95.0")
-    assert drift.run_check(root, None, "main") == 0  # the packages that were behind caught up: no more drift
+    # With the lines level the field is empty.
+    _move(root, QCSCHEMA, schemas=(0, 54))
+    assert drift.run_check(root, None, "main") == drift.EXIT_DRIFT
+    assert json.loads(capsys.readouterr().out)["lines_differ"] == ""
 
 
 def test_the_marker_line_names_the_core_floor_only_when_it_was_raised(root):
-    # Core ahead of the target, ARC behind: ARC is released without the core being released.
+    # The core is already on the target and its contract line is too, so it is not released; ARC is behind.
     _move(root, CORE, schemas=(0, 58), client=(0, 98))
     contract = root / drift.CONTRACT_PY
     contract.write_text(contract.read_text().replace("(0, 54)", "(0, 58)"))
     drift.run_bump(root, NEW_SHA, "0.58.0", "0.98.0")
     arc_changelog = (root / ARC.changelog).read_text()
     assert f"{drift.CHANGELOG_MARKER}\n- Adapter 1.2.4: tracked TCKDB 74aae9a (schemas 0.58.0, client 0.98.0).\n" in arc_changelog
-    assert "requires" not in arc_changelog
     assert '"tckdb-adapters-core>=0.1.0,<0.2"' in (root / ARC.pyproject).read_text()
 
 
@@ -585,6 +571,32 @@ def test_cap_text_mode_copies_stdin_to_stdout(monkeypatch, capsysbinary):
     assert drift.main(["--cap-text", "1000"]) == 0
     out = capsysbinary.readouterr().out
     assert len(out) <= 1000 and b"truncated" in out
+
+
+def test_a_lagging_package_does_not_let_the_others_move_backwards(root):
+    """The refusal is per package: with one package behind, the older target is still a downgrade
+    for every package that is already ahead."""
+    path = root / QCSCHEMA.pyproject
+    path.write_text(path.read_text().replace(">=0.54,<0.55", ">=0.53,<0.54"))
+    before = _snapshot(root)
+    with pytest.raises(drift.DriftError, match="back from 0.54 to 0.53"):
+        drift.run_bump(root, NEW_SHA, "0.53.0", "0.95.0")
+    assert _snapshot(root) == before
+
+
+def test_comments_in_the_dependency_arrays_survive_a_bump_in_every_real_shape(root):
+    """The fixture's pyprojects are the real ones with their bounds replaced, so the comment lines
+    and trailing comments the real dependency arrays carry are what the rewrite runs against."""
+    comments = {}
+    for pkg in drift.PACKAGES:
+        text = (root / pkg.pyproject).read_text()
+        comments[pkg.pyproject] = [line[line.index("#"):].rstrip() for line in text.splitlines() if "#" in line]
+    assert any(comments[CHEMKIN.pyproject]) and any(comments[QCSCHEMA.pyproject]), "the real chemkin and qcschema arrays carry comments"
+    drift.run_bump(root, NEW_SHA, "0.58.0", "0.98.0")
+    for pkg in drift.PACKAGES:
+        after = (root / pkg.pyproject).read_text()
+        for comment in comments[pkg.pyproject]:
+            assert comment in after, (pkg.directory, comment)
 
 
 def test_main_exits_2_on_a_refused_bump(root, capsys):

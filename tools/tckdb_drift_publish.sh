@@ -11,8 +11,9 @@
 set -euo pipefail
 
 # GitHub rejects an issue, pull request or comment body of more than 65,536 characters. Every
-# body this script sends goes through cap_file or cap_arg first (tools/tckdb_drift.py --cap-text
-# cuts by bytes, which is never fewer than characters), whatever the inputs are.
+# body this script sends to gh (an issue or pull request body, a comment, the comment on closing an
+# issue) goes through cap_file or cap_arg first (tools/tckdb_drift.py --cap-text cuts by bytes,
+# which is never fewer than characters), whatever the inputs are.
 BODY_LIMIT=60000
 SECTION_LIMIT=20000   # the failing-test summary and the --since output get this much each
 TOOL="$(dirname "${BASH_SOURCE[0]}")/tckdb_drift.py"
@@ -48,9 +49,10 @@ open_issue_numbers() {  # $1 = title prefix
 }
 
 close_drift_issues() {  # $1 = reason
-  local n
+  local n comment
   for n in $(open_issue_numbers "$ISSUE_PREFIX"); do
-    gh issue close "$n" --comment "$1"
+    comment="$(cap_arg "$1")"
+    gh issue close "$n" --comment "$comment"
   done
 }
 
@@ -67,9 +69,14 @@ PUSH_URL="${PUSH_URL:-https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git}
 # The --since output carries its own headings; nest them under this page's sections.
 SINCE="$(cap_text "$SECTION_LIMIT" < "$SINCE_FILE" | sed -E 's/^#{1,6}[[:space:]]+/#### /')"
 SUMMARY="$(cap_text "$SECTION_LIMIT" < "$SUMMARY_FILE")"
-# What identifies the failures is read from the whole file, not from the capped text above, so
-# the issue's dedup marker does not depend on where the display was cut.
-FAILED_LINES="$(grep -E '^(FAILED|ERROR) ' "$SUMMARY_FILE" || true)"
+# The dedup marker hashes the failing-test lines of the summary file as the test job wrote it, not
+# of the display text above, so cutting the display changes nothing. (The test job cuts the summary
+# itself at 40 lines per package and 40,000 bytes in all, and writes the tallies first; the marker
+# covers the failing-test lines that survived those cuts.) For a summary under those cuts the lines
+# are exactly the ones this script hashed before it capped anything, the same way: via a command
+# substitution and a here-string.
+SUMMARY_FULL="$(cat "$SUMMARY_FILE")"
+FAILED_LINES="$(grep -E '^(FAILED|ERROR) ' <<<"$SUMMARY_FULL" || true)"
 
 # Create the issue for this line pair, or update the open one (title and body);
 # comment only when the versions or the failing tests changed since the last body.
@@ -112,20 +119,22 @@ BODY
 reproduce() {  # prints the steps that rerun this job's suites on a developer machine
   local steps
   steps="$(cat <<'REPRO'
-To reproduce locally, in a clean virtualenv at a checkout of this repository. The suites run one at a time and each from its own package directory, as the workflow runs them: the chemkin and qcschema suites are not part of a root `pytest` run (AGENTS.md, "Running tests").
+To reproduce locally, in a clean virtualenv at a checkout of this repository (paste into bash or zsh). The suites run one at a time and each from its own package directory, as the workflow runs them: the chemkin and qcschema suites are not part of a root `pytest` run (AGENTS.md, "Running tests").
 
 ```bash
 @BUMP_CMD@
-python tools/tckdb_drift.py --install-specs > /tmp/tckdb-specs
-spec() { sed -n "s/^$1=//p" /tmp/tckdb-specs; }
+specs="$(mktemp)" && python tools/tckdb_drift.py --install-specs > "$specs"
+spec() { sed -n "s/^$1=//p" "$specs"; }
 pip install "$(spec TCKDB_CLIENT_SPEC)" "$(spec TCKDB_SCHEMAS_SPEC)"
-editable=(); for d in $(python tools/tckdb_drift.py --list-packages); do editable+=(-e "./$d[test]"); done
+editable=(); for d in $(python tools/tckdb_drift.py --list-packages); do editable+=(-e "./${d}[test]"); done
 pip install "${editable[@]}"
-# TCKDB's backend identity rules at that commit; without them the comparison tests skip.
-export $(bash tools/fetch_tckdb_backend.sh "$(spec TCKDB_SCHEMAS_SPEC)" /tmp/tckdb-backend)
-for d in $(python tools/tckdb_drift.py --list-packages); do
-  (cd "$d" && python -m pytest -p no:xdist -p no:cacheprovider)
-done
+# TCKDB's backend identity rules at that commit, fetched into a fresh directory (the comparison tests
+# skip without them). The suites run only if the fetch worked.
+backend_env="$(mktemp)" && bash tools/fetch_tckdb_backend.sh "$(spec TCKDB_SCHEMAS_SPEC)" "$(mktemp -d)/tckdb" > "$backend_env" \
+  && [ -s "$backend_env" ] && export $(cat "$backend_env") \
+  && for d in $(python tools/tckdb_drift.py --list-packages); do
+    (cd "$d" && python -m pytest -p no:xdist -p no:cacheprovider)
+  done
 ```
 REPRO
 )"
@@ -137,10 +146,17 @@ if [ "$RESULT" != pass ]; then
     install-failed)
       kind="install failed"; desc="could not be installed with the adapter's pins" ;;
     setup-failed)
-      kind="setup failed"; desc="could not be tested: the drift job's own setup failed before any suite ran (this says nothing about the adapter; see the summary)" ;;
+      kind="setup failed"; desc="could not be tested: the drift job stopped before it ran any suite (see the summary for why)" ;;
     *)
       kind="breaks the adapter"; desc="does not work with the adapter's tests" ;;
   esac
+  if [ "$RESULT" = setup-failed ]; then
+    steps=""
+    closing="This is not a failing test, but a person has to look: the cause named in the summary may be in this repository's pins, in the drift job, or in TCKDB itself (for example a moved or removed \`backend/app/chemistry\`, which the adapter's comparison with TCKDB's identity rules would then have to follow). The next scheduled run, or a manual dispatch, tries again."
+  else
+    steps="$(reproduce)"
+    closing="Read the contract diff above (AGENTS.md) and fix the adapter to conform before moving the pins."
+  fi
   cat > "$tmp/issue.md" <<BODY
 TCKDB ${SHA7} (schemas ${SCHEMAS}, client ${CLIENT}) ${desc}.
 
@@ -152,9 +168,9 @@ ${SUMMARY}
 ### \`python -m tckdb_schemas.contract --since ${OLD_SCHEMAS}\`
 ${SINCE}
 
-$(reproduce)
+${steps}
 
-Read the contract diff above (AGENTS.md) and fix the adapter to conform before moving the pins.
+${closing}
 BODY
   upsert_issue "$kind" "$tmp/issue.md"
   exit 0
@@ -166,22 +182,12 @@ git config user.name "$BOT_NAME"
 git config user.email "$BOT_EMAIL"
 BASE_SHA="$(git rev-parse HEAD)"
 python "$TOOL" --bump --sha "$SHA" --schemas "$SCHEMAS" --client "$CLIENT"
-# Empty unless the packages are not all on one line (a package hand-moved ahead is never moved back).
-LINES_NOTE="$(python "$TOOL" --lines-note)"
-LINES_SECTION=""
-if [ -n "$LINES_NOTE" ]; then
-  LINES_SECTION="### The packages are on different lines
-${LINES_NOTE}
-\`--bump\` moves a package up to the target and leaves one that is already ahead where it is, so the lines above are what the packages state now and the suites ran against them. A test in \`tools/tests\` fails while the lines differ: decide whether the others follow the newer line, or the newer one is brought back, before merging.
-"
-fi
 cat > "$tmp/pr.md" <<BODY
 Automated bump by \`tckdb-drift.yml\` (run: ${RUN_URL}).
 
 - tckdb-schemas ${SCHEMAS}, tckdb-client ${CLIENT}, TCKDB ${SHA}
-- \`tools/tckdb_drift.py --bump\` moved the pyproject bounds of every package that states them and is behind the new line (one already ahead keeps its line), \`TARGET_SCHEMAS_LINE\`, \`tckdb-pin.toml\` and the README install lines and version sentences. It released each package one of whose own files changed: patch version in \`pyproject.toml\` (and \`__version__\` where the package has one) and an entry in its \`CHANGELOG.md\`. When it released the core, it also raised the \`tckdb-adapters-core\` floor of each package that requires it to the new core version, which releases that package as well; the changelog line of \`tckdb-arc\` says so.
+- \`tools/tckdb_drift.py --bump\` moved the pyproject bounds of every package that states them, \`TARGET_SCHEMAS_LINE\`, \`tckdb-pin.toml\` and the README install lines and version sentences. It released each package one of whose own files changed: patch version in \`pyproject.toml\` (and \`__version__\` where the package has one) and an entry in its \`CHANGELOG.md\`. When it released the core, it also raised the \`tckdb-adapters-core\` floor of each package that requires it to the new core version, which releases that package as well; the changelog line of \`tckdb-arc\` says so.
 
-${LINES_SECTION}
 ### What the bot already did
 It ran the test suite of every package against the new TCKDB packages with the target already moved, with TCKDB's backend identity rules fetched at the new commit for the comparison tests, and each suite passed. It did not read the contract change: that is your job. Read the \`--since\` changelog below (and \`python -m tckdb_schemas.contract --print\`), decide whether the adapter handles what moved, then merge or close. CI on this PR re-runs the suite.
 

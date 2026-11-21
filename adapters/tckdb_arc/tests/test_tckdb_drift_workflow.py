@@ -11,6 +11,7 @@ at the commit the bumped pin names, and the fake ``pytest`` records what each su
 Only ``pip`` and ``pytest`` are fakes.
 """
 
+import json
 import os
 import re
 import shutil
@@ -68,31 +69,8 @@ def test_the_test_job_keeps_its_read_only_token_and_no_commit_is_written_in_the_
     assert not re.search(r"\b[0-9a-f]{40}\b", re.sub(r"uses:\s*[\w.-]+/[\w./-]+@[0-9a-f]{40}\b", "", WORKFLOW.read_text()))
 
 
-def _git(cwd, *args):
-    env = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@x", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@x"}
-    return subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True, text=True, env=env).stdout.strip()
-
-
-def make_tckdb(tmp: Path) -> tuple[str, str, str]:
-    """A local stand-in for the TCKDB repository with two commits: ``(url, old sha, new sha)``.
-
-    ``backend/app/chemistry/marker.txt`` says which commit a checkout is at (OLD, then NEW), and a
-    file outside ``backend/app/chemistry`` is there to show the checkout is sparse.
-    """
-    src = tmp / "tckdb-src"
-    (src / "backend" / "app" / "chemistry").mkdir(parents=True)
-    (src / "schemas").mkdir()
-    _git(src, "init", "-q", "-b", "main")
-    _git(src, "config", "uploadpack.allowFilter", "true")
-    (src / "schemas" / "elsewhere.txt").write_text("not part of the backend\n")
-    marker = src / "backend" / "app" / "chemistry" / "marker.txt"
-    shas = []
-    for text in ("OLD", "NEW"):
-        marker.write_text(text)
-        _git(src, "add", "-A")
-        _git(src, "commit", "-q", "-m", text)
-        shas.append(_git(src, "rev-parse", "HEAD"))
-    return f"file://{src}", shas[0], shas[1]
+_git = fx.run_git
+make_tckdb = fx.make_tckdb
 
 
 class Run:
@@ -101,10 +79,11 @@ class Run:
         (self.root / "tools").mkdir()
         for name in ("tckdb_drift.py", "fetch_tckdb_backend.sh"):
             shutil.copy(REPO / "tools" / name, self.root / "tools" / name)
-        # The bump step has already moved the pin to the NEW commit when this step runs.
+        # The pin names the OLD commit; the step bumps it to the NEW one (what the drift check found).
         self.tckdb_src = tmp / "tckdb-src"
         self.tckdb_url, self.old_sha, self.new_sha = make_tckdb(tmp)
-        self.set_pin(self.tckdb_url, self.new_sha)
+        self.set_pin(self.tckdb_url, self.old_sha)
+        self.bump = {"sha": self.new_sha, "schemas": "0.58.0", "client": "0.98.0"}
         self.fake = tmp / "fake"
         self.fake.mkdir()
         self.runner_temp = tmp / "runner"
@@ -117,13 +96,43 @@ class Run:
             (bin_dir / name).chmod(0o755)
         self.bin = bin_dir
         self.output = tmp / "github_output"
+        self.set_drift_json()
 
     def set_pin(self, url: str, sha: str) -> None:
-        text = fx.FILES[fx.drift.PIN_FILE].replace(fx.PIN_REPO, url).replace(fx.OLD_SHA, sha)
-        (self.root / fx.drift.PIN_FILE).write_text(text)
+        (self.root / fx.drift.PIN_FILE).write_text(fx.pin_text(url, sha))
+        # The README's install lines name the same repository and commit (the bump rewrites them).
+        readme = self.root / fx.drift.README
+        readme.write_text(fx.FILES[fx.drift.README].replace(fx.PIN_REPO, url).replace(fx.OLD_SHA, sha))
+
+    def set_drift_json(self, lines_differ: str = "") -> None:
+        """What the check step wrote: the test step reads ``lines_differ`` from it."""
+        (self.runner_temp / "drift.json").write_text(json.dumps({"lines_differ": lines_differ}))
+
+    def move_package(self, directory: str, schemas=None, client=None) -> None:
+        """Hand-edit a package's TCKDB bounds, as a person moving it would."""
+        path = self.root / directory / "pyproject.toml"
+        text = path.read_text()
+        for name, line in (("tckdb-schemas", schemas), ("tckdb-client", client)):
+            if line is not None:
+                text = re.sub(rf'"{name}[^"]*"', f'"{name}{fx.drift.bound_for(line)}"', text)
+        path.write_text(text)
+
+    def wrap_tool(self, body: str) -> None:
+        """Replace tools/tckdb_drift.py with a wrapper that runs ``body`` first, then the real tool."""
+        real = self.root / "tools" / "tckdb_drift_real.py"
+        if not real.exists():
+            shutil.copy(self.root / "tools" / "tckdb_drift.py", real)
+        (self.root / "tools" / "tckdb_drift.py").write_text(
+            f"import runpy, sys\n{body}\nrunpy.run_path({str(real)!r}, run_name='__main__')\n")
+
+    def pin_sha(self) -> str:
+        return fx.drift.read_pin_file((self.root / fx.drift.PIN_FILE).read_text())["sha"]
 
     def run(self) -> dict:
-        script = _test_step()["run"].replace("${{ steps.check.outputs.old_schemas }}", "0.54.0")
+        script = _test_step()["run"]
+        for name, value in (("sha", self.bump["sha"]), ("schemas", self.bump["schemas"]),
+                            ("client", self.bump["client"]), ("old_schemas", "0.54.0")):
+            script = script.replace("${{ steps.check.outputs.%s }}" % name, value)
         env = {**os.environ, "PATH": f"{self.bin}:{os.environ['PATH']}", "FAKE": str(self.fake),
                "RUNNER_TEMP": str(self.runner_temp), "GITHUB_OUTPUT": str(self.output)}
         proc = subprocess.run(["bash", "-e", "-c", script], cwd=self.root, env=env, capture_output=True, text=True)
@@ -194,32 +203,85 @@ def test_every_suite_gets_tckdbs_backend_at_the_new_commit_and_requires_it(run):
     assert not (run.runner_temp / "tckdb" / "schemas" / "elsewhere.txt").exists()  # sparse, as in ci.yml
 
 
+def test_the_step_bumps_the_pins_itself_before_it_installs_and_tests(run):
+    assert run.pin_sha() == run.old_sha
+    assert run.run() == {"result": "pass"}
+    assert run.pin_sha() == run.new_sha  # the suites ran against the moved pins
+    assert fx.drift.pinned_line((run.root / DIRECTORIES[0] / "pyproject.toml").read_text(), "tckdb-schemas") == (0, 58)
+    install = run.log("pip.log")
+    assert "pip install tckdb-client @ git+" in install and run.new_sha in install  # the specs name the new commit
+
+
 @pytest.mark.parametrize("breakage", ["unreachable repository", "commit without the backend directory"])
 def test_a_failed_backend_fetch_is_a_failed_run_that_runs_no_suite(run, breakage):
     if breakage == "unreachable repository":
-        run.set_pin(f"file://{run.runner_temp}/no-such-repository", run.new_sha)
+        run.set_pin(f"file://{run.runner_temp}/no-such-repository", run.old_sha)
     else:  # a TCKDB commit that has no backend/app/chemistry (the directory moved)
         _git(run.tckdb_src, "rm", "-q", "-r", "backend")
         _git(run.tckdb_src, "commit", "-q", "-m", "restructure")
-        run.set_pin(run.tckdb_url, _git(run.tckdb_src, "rev-parse", "HEAD"))
+        run.bump["sha"] = _git(run.tckdb_src, "rev-parse", "HEAD")
     assert run.run() == {"result": "setup-failed"}  # never "pass": nothing was tested against the new backend
     assert run.log("pytest.log") == ""
     summary = run.summary()
-    assert "could not set up its tests" in summary and "Fetching TCKDB's backend/app/chemistry" in summary
+    assert "stopped before it ran any suite" in summary and "Fetching TCKDB's backend/app/chemistry" in summary
     assert not re.search(r"^(FAILED|ERROR) ", summary, re.M)
 
 
-@pytest.mark.parametrize("tool", [
-    "import sys\nsys.exit(3)\n",  # --list-packages fails
-    "",                           # --list-packages prints nothing
+@pytest.mark.parametrize("body", [
+    "if '--list-packages' in sys.argv: sys.exit(3)",  # --list-packages fails
+    "if '--list-packages' in sys.argv: sys.exit(0)",  # --list-packages prints nothing
 ], ids=["fails", "prints-nothing"])
-def test_a_missing_package_list_is_a_distinct_setup_failure_not_an_install_failure(run, tool):
-    (run.root / "tools" / "tckdb_drift.py").write_text(tool)
+def test_a_missing_package_list_is_a_distinct_setup_failure_not_an_install_failure(run, body):
+    run.wrap_tool(body)
     assert run.run() == {"result": "setup-failed"}
     assert run.log("pytest.log") == "" and run.log("pip.log") == ""
     summary = run.summary()
     assert "--list-packages failed or printed no packages" in summary
     assert "Installing the new packages" not in summary
+
+
+def test_packages_on_different_lines_are_reported_without_a_bump_or_a_suite(run):
+    """The drift check names the lines; the step turns that into a setup failure (an issue) instead of
+    a bump that would refuse, an install that would conflict, and a red run with no signal."""
+    run.move_package("adapters/tckdb_qcschema", schemas=(0, 60))
+    note = fx.drift.lines_note(fx.drift.read_pyprojects(run.root))
+    assert "0.60 in adapters/tckdb_qcschema" in note
+    run.set_drift_json(note)
+    before = run.pin_sha()
+    assert run.run() == {"result": "setup-failed"}
+    assert run.pin_sha() == before  # not bumped
+    assert run.log("pip.log") == "" and run.log("pytest.log") == ""
+    summary = run.summary()
+    assert note in summary  # exactly which package is on which line
+    assert "A person must bring them onto one line by hand" in summary
+    assert "stopped before it ran any suite" in summary
+    for wrong in ("Installing the new packages", "Fetching TCKDB", "could not be installed"):
+        assert wrong not in summary
+
+
+def test_a_target_behind_the_pins_is_a_setup_failure_that_names_the_versions(run):
+    """TCKDB's main is older than every package's pin for one bound: the bump refuses, and the run
+    files an issue that says so rather than only going red."""
+    for directory in DIRECTORIES:
+        run.move_package(directory, schemas=(0, 60))  # level with each other, ahead of TCKDB's 0.58
+    assert fx.drift.lines_note(fx.drift.read_pyprojects(run.root)) == ""
+    before = run.pin_sha()
+    assert run.run() == {"result": "setup-failed"}
+    assert run.pin_sha() == before and run.log("pip.log") == "" and run.log("pytest.log") == ""
+    summary = run.summary()
+    assert "exited 2" in summary and "refusing to move tckdb-schemas in" in summary
+    assert "the target is behind the pins" in summary
+    assert "tckdb-schemas 0.58.0 and tckdb-client 0.98.0" in summary
+    assert "Installing the new packages" not in summary and "Fetching TCKDB" not in summary
+
+
+def test_any_other_failure_of_the_bump_ends_in_an_issue_with_the_tools_error_text(run):
+    run.wrap_tool("if '--bump' in sys.argv:\n    print('error: something unexpected', file=sys.stderr)\n    sys.exit(5)")
+    assert run.run() == {"result": "setup-failed"}
+    assert run.log("pip.log") == "" and run.log("pytest.log") == ""
+    summary = run.summary()
+    assert "--bump exited 5" in summary and "error: something unexpected" in summary
+    assert "the target is behind the pins" not in summary  # that sentence is only for a refusal
 
 
 def test_the_fetch_script_prints_only_the_two_variables_and_fails_loudly(tmp_path):
@@ -278,3 +340,9 @@ def test_the_summary_is_bounded_whatever_the_suites_print(run):
     assert len(summary.encode()) <= 40000
     assert "truncated" in summary  # 4 x 40 lines of ~330 bytes is more than the cap
     assert sum(1 for line in summary.splitlines() if line.startswith("```")) % 2 == 0  # the fence is closed
+    # The cut took failing-test lines from the end, and every package's tally survived it: the
+    # tallies are written before the failing tests.
+    lines = summary.splitlines()
+    tallies = [next(i for i, line in enumerate(lines) if line.startswith(f"{directory}: ")) for directory in DIRECTORIES]
+    assert max(tallies) < min(i for i, line in enumerate(lines) if line.startswith("FAILED "))
+    assert sum(1 for line in lines if line.startswith("FAILED ")) < 160

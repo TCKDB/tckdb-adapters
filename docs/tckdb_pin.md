@@ -57,21 +57,45 @@ adapter refuses to build that block; it does not fill a default to make the suit
 Its `test` job has a read-only token. It compares the pinned release lines with the `main`
 branch of the TCKDB repository named in `tckdb-pin.toml`. On a newer line it:
 
-1. bumps the pins in the runner;
+1. bumps the pins in the runner (unless the packages already state different lines, below);
 2. installs both TCKDB packages from the new commit and every package of this repository;
 3. fetches TCKDB's `backend/app/chemistry` at that new commit (`tools/fetch_tckdb_backend.sh`,
    the script `ci.yml` uses at the old one) and exports `TCKDB_BACKEND_PATH` and
    `TCKDB_REQUIRE_BACKEND=1` to the suites, so the comparisons with TCKDB's own code (the
-   level-of-theory hash, the energy-level declaration, the method families) run and cannot skip;
+   level-of-theory hash, the energy-level declaration, the method families) run, and fail rather
+   than skip when the backend cannot be imported. One comparison still skips, in the drift job
+   and in `ci.yml` alike: `test_hash_matches_the_real_backend_function` imports TCKDB's own
+   `_level_of_theory_hash`, which needs the backend's web dependencies (fastapi, sqlalchemy)
+   that neither job installs; the section below says how to run it;
 4. runs each package's suite from its own directory.
 
 The suites are `ci.yml`'s, with these real differences: one Python version (3.12; `ci.yml` runs
 3.11 and 3.12), all four packages installed into one environment (`ci.yml` installs what each job
 needs, so a conflict between the packages shows up only here), and none of the
-`package-metadata` job (the builds, `twine check`, `tools/tests` and the non-ASCII check). The
-`result` is `pass` or `fail` (a suite failed), or a failure of the job itself that says nothing about
-the adapter and is never a pass: `install-failed` (pip) or `setup-failed` (the package list from
-`--list-packages` was empty or failed, or the backend could not be fetched).
+`package-metadata` job (the builds, `twine check`, `tools/tests` and the non-ASCII check).
+
+The step ends in one `result`, and only an exact `pass` leads to a pull request:
+
+| `result` | Means | Leads to |
+|---|---|---|
+| `pass` | Every suite passed. | The pull request. |
+| `fail` | A suite failed. | The issue "... breaks the adapter" with the failing tests. |
+| `install-failed` | pip could not install the new packages. | The issue "... install failed" with the pip log. |
+| `setup-failed` | The job stopped before any suite ran, for a reason that is not a failing test and not pip. | The issue "... setup failed" with the reason. |
+
+`setup-failed` has four causes, each named in the issue and none of them a pass. A person has to
+look at every one: the cause may be in this repository's pins, in the job, or in TCKDB.
+
+- The packages already state different `tckdb-schemas` or `tckdb-client` lines (the `--check`
+  output names which package is on which line, as `lines_differ`). They cannot be installed into
+  one environment, so the bump is not tried; the issue says which package is on which line, and
+  a person brings them onto one line by hand.
+- The bump was refused or failed. The usual refusal is a target behind the pins: TCKDB's `main`
+  is older than a package's pin for one bound while the other bound drifted. The issue names the
+  versions and carries the tool's error text, as it does for any other failure of the bump.
+- `--list-packages` failed or printed nothing.
+- TCKDB's `backend/app/chemistry` could not be fetched at the new commit. If TCKDB moved or
+  removed that directory, the adapter's comparison with TCKDB's identity rules has to follow.
 
 Its `publish` job is the only one with write access (`tools/tckdb_drift_publish.sh`):
 
@@ -79,7 +103,7 @@ Its `publish` job is the only one with write access (`tools/tckdb_drift_publish.
   and opens or updates the pull request "Track TCKDB: schemas X.Y.Z / client A.B.C (TCKDB
   <sha7>)", then starts `ci.yml` on the branch. The body carries the output of
   `python -m tckdb_schemas.contract --since <old pin>`, what `--bump` did (the floor raise
-  included), a note when the packages ended up on different lines, and a checklist. The
+  included) and a checklist. The
   checklist asks the reviewer to complete each package's changelog entry (the two styles are
   described under "The tool").
 - **The tests fail.** It opens or updates the issue "TCKDB drift: schemas X.Y / client A.B
@@ -87,18 +111,27 @@ Its `publish` job is the only one with write access (`tools/tckdb_drift_publish.
   command, the two TCKDB requirements from `--install-specs`, every package from
   `--list-packages` installed editable with `[test]`, the backend fetch, and each suite run
   from its own directory with `python -m pytest -p no:xdist -p no:cacheprovider`; the chemkin
-  and qcschema suites are not part of a root run, see `AGENTS.md`, "Running tests"). An install
-  failure is titled "... install failed", and a failure of the job's own setup "... setup
-  failed".
+  and qcschema suites are not part of a root run, see `AGENTS.md`, "Running tests"; the block can
+  be pasted into bash or zsh, fetches the backend into a fresh directory each time and runs the
+  suites only if that worked). An install failure is titled "... install failed". A `setup-failed`
+  issue is titled "... setup failed" and has no steps to rerun: its text names the cause.
 - **The tests pass but no pull request could be made.** The issue "TCKDB drift: schemas
   X.Y / client A.B is ready to adopt" names the branch or the `--bump` command.
 
-Every body the script sends to `gh` (issue, pull request, comment) is under GitHub's limit of
-65,536 characters, whatever the inputs: the failing-test summary and the `--since` output are each
-cut to 20,000 bytes, and the finished body to 60,000, with a marker that says how much was
-omitted (`tckdb_drift.py --cap-text`; the issue's state marker is added after the first cut so it
-always survives). The summary the test job writes is itself capped, and the dedup state below
-is computed from the failing-test lines of the whole summary, not from the displayed part.
+Every body the script sends to `gh` (issue, pull request, comment, the comment on closing an
+issue) is under GitHub's limit of 65,536 characters, whatever the inputs: the failing-test
+summary and the `--since` output are each cut to 20,000 bytes, and the finished body to 60,000,
+with a marker that says how much was omitted (`tckdb_drift.py --cap-text`; the issue's state
+marker is added after the first cut so it always survives). The summary the test job writes is
+itself cut to 40,000 bytes at the end, and it lists each package's tally before its failing tests,
+so the tallies survive that cut and failing-test lines are what is lost.
+
+The dedup state below hashes the failing-test lines of that summary file as the test job wrote
+it: not the displayed text, so the display cuts change nothing, but the lines that survived the
+test job's own cuts (40 per package, 40,000 bytes in all). For a summary under those cuts the
+hash is exactly the one the script computed before it capped any body, so no open issue gets a
+spurious comment. It differs only for a summary the 40,000-byte cut shortened: before the cut
+existed such a run hashed every failing-test line it listed, now it hashes the ones that remain.
 
 The bot's pull request does not run the docs build, because the bot dispatches only
 `ci.yml`; the docs build for its README changes first runs on `main` after the merge.
@@ -125,7 +158,6 @@ python tools/tckdb_drift.py --check --repo /path/or/url --ref some-branch
 python tools/tckdb_drift.py --bump --sha <40-hex> --schemas X.Y.Z --client A.B.C
 python tools/tckdb_drift.py --since-output --from <old X.Y.0>
 python tools/tckdb_drift.py --install-specs
-python tools/tckdb_drift.py --lines-note
 ```
 
 `--check` prints a JSON summary on stdout and one line on stderr. It exits 0 for no drift,
@@ -142,16 +174,17 @@ patch release inside the pinned line is already allowed by the bounds.
 - the install lines and the "tested contract" sentence in `README.md`;
 - the version sentence in `adapters/tckdb_arc/README.md`.
 
-Each package moves up to the target line and no further. A package already on or ahead of the
-target keeps its line: that is not a downgrade, so one package hand-moved to a newer line does
-not stop the others from following TCKDB. The bump is refused (exit 2) only when the target is
-behind *every* package that states the bound, unless `--allow-downgrade`, which moves every
-package to the target. `TARGET_SCHEMAS_LINE` moves up the same way. When the packages end up on
-different lines the tool says so on its output, `--lines-note` prints the same sentences, the
-bot's pull request carries them, and `tools/tests/test_pin_lines.py` fails until the lines agree
-again: someone decides whether the others follow the newer line or it is brought back.
+Every package moves to the target line. The bump is refused (exit 2, naming the package and its
+`pyproject.toml`) when any package's line would move backwards, which includes a package that is
+already ahead of the target, unless `--allow-downgrade`. It cannot leave such a package where it
+is: every package states `tckdb-client` and the core states both bounds, so packages on different
+lines cannot be installed into one environment, and `tools/tests/test_pin_lines.py` fails in CI
+while they differ. Bringing them onto one line is a person's decision.
+
 `--check` counts the oldest package as the pin, so it keeps reporting drift until every package
-has caught up.
+has caught up. When the packages already state different lines it also names them in the JSON's
+`lines_differ` (empty when they agree) and says so on stderr; the drift workflow then does not
+bump or run suites, and files a `setup-failed` issue instead.
 
 A package is released when one of its own files changed in that: its `pyproject.toml` bounds,
 for `tckdb_arc` its README sentence, for the core also `TARGET_SCHEMAS_LINE`. For each package

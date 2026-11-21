@@ -43,8 +43,9 @@ def disagreements(texts: dict[str, str]) -> list[str]:
 def test_every_package_states_the_cores_tckdb_lines():
     problems = disagreements(drift.read_pyprojects(REPO_ROOT))
     assert not problems, (
-        "; ".join(problems) + ". Move them together with `python tools/tckdb_drift.py --bump` "
-        "(it leaves a package that is ahead where it is), after reading the contract change (docs/tckdb_pin.md)."
+        "; ".join(problems) + ". Bring them onto one line by hand (the bump refuses to move a package that is "
+        "ahead of its target; `--allow-downgrade` moves every package to the target), after reading the "
+        "contract change (docs/tckdb_pin.md)."
     )
 
 
