@@ -1,0 +1,83 @@
+name: docs
+
+# Builds the documentation site (MkDocs, Material theme; see mkdocs.yml). A pull request
+# only gets `mkdocs build --strict`; a push to main also publishes the site to GitHub Pages.
+
+on:
+  pull_request:
+    paths:
+      # Everything the site is built from (the same list is under push).
+      - "docs/**"
+      - "mkdocs.yml"
+      - "requirements-docs.txt"
+      - "tools/mkdocs_hooks.py"
+      - "README.md"
+      - "CONTRIBUTING.md"
+      - "tckdb_core/README.md"
+      - "tckdb_core/CHANGELOG.md"
+      - "tckdb_arc/README.md"
+      - "tckdb_arc/CHANGELOG.md"
+      - ".github/workflows/docs.yml"
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - "mkdocs.yml"
+      - "requirements-docs.txt"
+      - "tools/mkdocs_hooks.py"
+      - "README.md"
+      - "CONTRIBUTING.md"
+      - "tckdb_core/README.md"
+      - "tckdb_core/CHANGELOG.md"
+      - "tckdb_arc/README.md"
+      - "tckdb_arc/CHANGELOG.md"
+      - ".github/workflows/docs.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-docs.txt
+
+      - name: Install the documentation tools
+        run: pip install -r requirements-docs.txt
+
+      - name: Build the site (warnings fail the build)
+        run: mkdocs build --strict
+
+      - name: Configure Pages
+        if: github.event_name != 'pull_request'
+        uses: actions/configure-pages@v6
+
+      - name: Upload the site
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

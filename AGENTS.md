@@ -15,6 +15,8 @@ TCKDB decides the contract. The adapter conforms.
 - Moving the TCKDB pin, or reviewing a `chore/tckdb-drift-*` pull request: read
   `docs/tckdb_pin.md`.
 - Running the live gate: read `docs/contract/INTEGRATION_GATE.md`.
+- Adding a documentation page: add it to `nav` in `mkdocs.yml`. `mkdocs build --strict` is
+  the check; it must pass with no warnings.
 
 ## Read the producer contract before changing a mapping
 
