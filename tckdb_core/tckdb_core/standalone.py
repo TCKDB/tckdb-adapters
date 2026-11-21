@@ -15,12 +15,11 @@ For one request it
 2. validates the request against the route's shipped JSON Schema, and raises
    :class:`StandalonePayloadError` before anything is written when TCKDB's contract
    would refuse it;
-3. builds the idempotency key from the finished request;
-4. writes the payload and a ``pending`` sidecar with
-   :class:`~tckdb_core.payload_writer.PayloadWriter`;
-5. finishes as ``skipped`` when upload is off, otherwise uploads through
-   :meth:`~tckdb_core.uploader.TCKDBUploaderBase._upload` (readiness probe, POST,
-   sidecar bookkeeping, strict mode).
+3. hands the finished request to
+   :meth:`~tckdb_core.uploader.TCKDBUploaderBase._write_and_upload`, which builds the
+   idempotency key, writes the payload and a ``pending`` sidecar, and finishes as
+   ``skipped`` when upload is off or uploads (readiness probe, POST, sidecar bookkeeping,
+   strict mode).
 
 What it does not do: build, complete or repair a request, or apply a rule the route
 handlers apply on the server (ownership of cited calculations, composition checks).
@@ -58,7 +57,6 @@ from tckdb_core.constants import (
     TRANSPORT_ENDPOINT,
     TRANSPORT_KIND,
 )
-from tckdb_core.idempotency import IdempotencyInputs, build_idempotency_key
 from tckdb_core.payload_writer import PayloadWriter
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -171,8 +169,7 @@ class StandaloneSubmitMixin:
     """:meth:`submit_standalone`, for a class that has the base uploader's pipeline.
 
     :class:`~tckdb_core.uploader.TCKDBUploaderBase` inherits it; it relies on that class's
-    ``_config``, ``_writer``, ``_finalize_skipped``, ``_upload``, ``_log`` and
-    ``IDEMPOTENCY_NAMESPACE``.
+    ``_config``, ``_idempotency_key``, ``_write_and_upload`` and ``_log``.
     """
 
     def submit_standalone(
@@ -232,16 +229,14 @@ class StandaloneSubmitMixin:
         validate_standalone_payload(kind, request)
 
         project = project_label if project_label is not None else self._config.project_label
-        try:
-            key = build_idempotency_key(
-                IdempotencyInputs.from_payload(
-                    project_label=project,
-                    species_label=label,
-                    conformer_label=qualifier or DEFAULT_QUALIFIER,
-                    payload_kind=route.kind,
-                    payload=request,
-                ),
-                namespace=self.IDEMPOTENCY_NAMESPACE,
+        species_label, conformer_label = label, qualifier or DEFAULT_QUALIFIER
+        try:  # fail before any write, with the contract error, when the key cannot be built
+            self._idempotency_key(
+                request,
+                kind=route.kind,
+                project_label=project,
+                species_label=species_label,
+                conformer_label=conformer_label,
             )
         except ValueError as exc:  # e.g. over the server's 200-character key limit
             raise StandalonePayloadError(
@@ -249,22 +244,21 @@ class StandaloneSubmitMixin:
                 "shorten the label, qualifier or project label",
                 [f"label: {_clip(str(exc))}"],
             ) from exc
-        written = self._writer.write(
+        return self._write_and_upload(
+            payload=request,
+            kind=route.kind,
+            endpoint=route.endpoint,
             # The qualifier is in the key, so it is in the file name too: two records under one
             # label must not overwrite each other on disk.
             label=f"{label}.{qualifier}" if qualifier else label,
-            payload=request,
-            endpoint=route.endpoint,
-            idempotency_key=key,
-            payload_kind=route.kind,
-            base_url=self._config.base_url,
+            project_label=project,
+            species_label=species_label,
+            conformer_label=conformer_label,
+            log_name=route.kind,
             subdir=route.subdir,
             warnings=[dict(item) for item in warnings or ()],
+            attach_rights=False,  # reconciled with config.rights above
         )
-        self._log.info("TCKDB %s payload written: %s (key=%s)", route.kind, written.payload_path, key)
-        if not self._config.upload:
-            return self._finalize_skipped(written)
-        return self._upload(written, request, endpoint=route.endpoint)
 
 
 __all__ = [

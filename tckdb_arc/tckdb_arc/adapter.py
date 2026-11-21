@@ -64,12 +64,6 @@ from tckdb_arc.config import (
     UPLOAD_MODE_COMPUTED_SPECIES,
 )
 
-from tckdb_arc.idempotency import (
-    ArtifactIdempotencyInputs,
-    IdempotencyInputs,
-    build_artifact_idempotency_key,
-    build_idempotency_key,
-)
 from tckdb_arc.evidence import EvidenceStore
 from tckdb_core.constraints import serialize_constraints
 from tckdb_core.level_rules import method_identity_key
@@ -1219,40 +1213,20 @@ class TCKDBAdapter(TCKDBUploaderBase):
             species_record=species_record,
             warnings=build_warnings,
         )
-        self._attach_rights(payload)
         self._report_adaptive_omissions(output_doc, build_warnings)
 
         species_label = species_record.get("label") or "unlabeled"
         conformer_label = extra_label or f"conf{conformer_index}"
-        project_label = self._config.project_label or output_doc.get("project")
-        idempotency_inputs = IdempotencyInputs.from_payload(
-            project_label=project_label,
+        return self._write_and_upload(
+            payload=payload,
+            kind=PAYLOAD_KIND,
+            endpoint=CONFORMER_UPLOAD_ENDPOINT,
+            label=f"{species_label}.{conformer_label}",
+            project_label=self._config.project_label or output_doc.get("project"),
             species_label=species_label,
             conformer_label=conformer_label,
-            payload_kind=PAYLOAD_KIND,
-            payload=payload,
-        )
-        idempotency_key = build_idempotency_key(idempotency_inputs)
-
-        written = self._writer.write(
-            label=f"{species_label}.{conformer_label}",
-            payload=payload,
-            endpoint=CONFORMER_UPLOAD_ENDPOINT,
-            idempotency_key=idempotency_key,
-            payload_kind=PAYLOAD_KIND,
-            base_url=self._config.base_url,
             warnings=build_warnings,
         )
-        logger.info(
-            "TCKDB payload written: %s (key=%s)",
-            written.payload_path,
-            idempotency_key,
-        )
-
-        if not self._config.upload:
-            return self._finalize_skipped(written)
-
-        return self._upload(written, payload)
 
     def submit_artifacts_for_calculation(
         self,
@@ -1380,45 +1354,22 @@ class TCKDBAdapter(TCKDBUploaderBase):
             conformer_key=conformer_label,
             warnings=build_warnings,
         )
-        self._attach_rights(payload)
         _enforce_geometry_anchoring(payload, "computed_species", build_warnings)
         _withhold_unlabelled_point_geometries(payload, "computed_species", build_warnings)
         self._report_adaptive_omissions(output_doc, build_warnings)
 
-        idempotency_inputs = IdempotencyInputs.from_payload(
+        return self._write_and_upload(
+            payload=payload,
+            kind=COMPUTED_SPECIES_KIND,
+            endpoint=COMPUTED_SPECIES_ENDPOINT,
+            label=f"{species_label}.{conformer_label}",
             project_label=project_label,
             species_label=species_label,
             conformer_label=conformer_label,
-            payload_kind=COMPUTED_SPECIES_KIND,
-            payload=payload,
-        )
-        idempotency_key = build_idempotency_key(idempotency_inputs)
-
-        written = self._writer.write(
-            label=f"{species_label}.{conformer_label}",
-            payload=payload,
-            endpoint=COMPUTED_SPECIES_ENDPOINT,
-            idempotency_key=idempotency_key,
-            payload_kind=COMPUTED_SPECIES_KIND,
-            base_url=self._config.base_url,
+            log_name="computed-species",
             subdir=PayloadWriter.COMPUTED_SPECIES_SUBDIR,
             warnings=build_warnings,
         )
-        logger.info(
-            "TCKDB computed-species payload written: %s (key=%s)",
-            written.payload_path,
-            idempotency_key,
-        )
-
-        if not self._config.upload:
-            return self._finalize_skipped(written)
-
-        return self._upload(written, payload, endpoint=COMPUTED_SPECIES_ENDPOINT)
-
-    def _attach_rights(self, payload: dict[str, Any]) -> None:
-        """Set the upload's ``rights`` fragment from the configuration, when it states one."""
-        if self._config.rights is not None:
-            payload["rights"] = dict(self._config.rights)
 
     def _build_computed_species_payload(
         self,
@@ -2764,12 +2715,15 @@ class TCKDBAdapter(TCKDBUploaderBase):
             reaction_record=reaction_record,
             warnings=build_warnings,
         )
-        self._attach_rights(payload)
         _enforce_geometry_anchoring(payload, "computed_reaction", build_warnings)
         _withhold_unlabelled_point_geometries(payload, "computed_reaction", build_warnings)
         self._report_adaptive_omissions(output_doc, build_warnings)
 
-        idempotency_inputs = IdempotencyInputs.from_payload(
+        return self._write_and_upload(
+            payload=payload,
+            kind=COMPUTED_REACTION_KIND,
+            endpoint=COMPUTED_REACTION_ENDPOINT,
+            label=reaction_label,
             project_label=project_label,
             species_label=reaction_label,
             # The reaction has no conformer concept at the bundle level —
@@ -2778,48 +2732,12 @@ class TCKDBAdapter(TCKDBUploaderBase):
             # consistent with the species path while still uniquely
             # identifying the reaction within a project.
             conformer_label=str(reaction_record.get("ts_label") or "noTS"),
-            payload_kind=COMPUTED_REACTION_KIND,
-            payload=payload,
-        )
-        idempotency_key = build_idempotency_key(idempotency_inputs)
-
-        written = self._writer.write(
-            label=reaction_label,
-            payload=payload,
-            endpoint=COMPUTED_REACTION_ENDPOINT,
-            idempotency_key=idempotency_key,
-            payload_kind=COMPUTED_REACTION_KIND,
-            base_url=self._config.base_url,
+            log_name="computed-reaction",
             subdir=PayloadWriter.COMPUTED_REACTION_SUBDIR,
-            is_partial=is_partial,
             warnings=build_warnings,
+            # A partial reaction is written (payload and sidecar) and never posted.
+            is_partial=is_partial,
         )
-        if is_partial:
-            # Phase-1 policy: partial reaction sidecars never POST. The
-            # server has not been verified to accept transition_state=null
-            # bundles, and partial-record semantics on the server side
-            # are out of scope until a follow-up. Sidecar lands on disk
-            # with the .partial infix; status reuses "skipped" because
-            # is_partial=true on the sidecar already disambiguates this
-            # from an upload=false skip.
-            logger.info(
-                "TCKDB partial computed-reaction sidecar written; "
-                "live upload skipped: %s (key=%s)",
-                written.payload_path,
-                idempotency_key,
-            )
-            return self._finalize_skipped(written)
-
-        logger.info(
-            "TCKDB computed-reaction payload written: %s (key=%s)",
-            written.payload_path,
-            idempotency_key,
-        )
-
-        if not self._config.upload:
-            return self._finalize_skipped(written)
-
-        return self._upload(written, payload, endpoint=COMPUTED_REACTION_ENDPOINT)
 
     def _build_computed_reaction_payload(
         self,
@@ -3956,12 +3874,15 @@ class TCKDBAdapter(TCKDBUploaderBase):
             reaction_record=reaction_record,
             warnings=build_warnings,
         )
-        self._attach_rights(payload)
         _enforce_geometry_anchoring(payload, "transition_state", build_warnings)
         _withhold_unlabelled_point_geometries(payload, "transition_state", build_warnings)
         self._report_adaptive_omissions(output_doc, build_warnings)
 
-        idempotency_inputs = IdempotencyInputs.from_payload(
+        return self._write_and_upload(
+            payload=payload,
+            kind=TRANSITION_STATE_KIND,
+            endpoint=TRANSITION_STATE_ENDPOINT,
+            label=str(ts_label),
             project_label=project_label,
             species_label=str(ts_label),
             # A TS has no conformer concept at this endpoint — one saddle
@@ -3970,31 +3891,10 @@ class TCKDBAdapter(TCKDBUploaderBase):
             # keeps distinct keys; the payload hash tail still makes any
             # content change replay as a new upload.
             conformer_label=str(reaction_record.get("label") or "ts"),
-            payload_kind=TRANSITION_STATE_KIND,
-            payload=payload,
-        )
-        idempotency_key = build_idempotency_key(idempotency_inputs)
-
-        written = self._writer.write(
-            label=str(ts_label),
-            payload=payload,
-            endpoint=TRANSITION_STATE_ENDPOINT,
-            idempotency_key=idempotency_key,
-            payload_kind=TRANSITION_STATE_KIND,
-            base_url=self._config.base_url,
+            log_name="transition-state",
             subdir=PayloadWriter.TRANSITION_STATE_SUBDIR,
             warnings=build_warnings,
         )
-        logger.info(
-            "TCKDB transition-state payload written: %s (key=%s)",
-            written.payload_path,
-            idempotency_key,
-        )
-
-        if not self._config.upload:
-            return self._finalize_skipped(written)
-
-        return self._upload(written, payload, endpoint=TRANSITION_STATE_ENDPOINT)
 
     def _compose_transition_state_request(
         self,

@@ -59,7 +59,6 @@ TCKDB contract, and **nothing that reads a producer's output format**.
 ```python
 from tckdb_core.adapter_warnings import WarningSink
 from tckdb_core.constants import COMPUTED_SPECIES_ENDPOINT, COMPUTED_SPECIES_KIND
-from tckdb_core.idempotency import IdempotencyInputs, build_idempotency_key
 from tckdb_core.payload_writer import PayloadWriter
 from tckdb_core.uploader import TCKDBUploaderBase
 from tckdb_core.warning_codes import CodedEnum
@@ -94,21 +93,11 @@ class MyToolAdapter(TCKDBUploaderBase):
             return None
         warnings = WarningSink(self.PRODUCER_TAG)
         payload = self._build_species_payload(record, warnings)
-        if self._config.rights is not None:
-            payload["rights"] = dict(self._config.rights)
-        key = build_idempotency_key(
-            IdempotencyInputs.from_payload(
-                project_label=self._config.project_label, species_label=record.label,
-                conformer_label="bundle", payload_kind=COMPUTED_SPECIES_KIND, payload=payload),
-            namespace=self.IDEMPOTENCY_NAMESPACE)
-        written = self._writer.write(
-            label=record.label, payload=payload, endpoint=COMPUTED_SPECIES_ENDPOINT,
-            idempotency_key=key, payload_kind=COMPUTED_SPECIES_KIND,
-            subdir=PayloadWriter.COMPUTED_SPECIES_SUBDIR,
-            base_url=self._config.base_url, warnings=warnings)
-        if not self._config.upload:
-            return self._finalize_skipped(written)
-        return self._upload(written, payload, endpoint=COMPUTED_SPECIES_ENDPOINT)
+        return self._write_and_upload(
+            payload=payload, kind=COMPUTED_SPECIES_KIND, endpoint=COMPUTED_SPECIES_ENDPOINT,
+            label=record.label, project_label=self._config.project_label,
+            species_label=record.label, conformer_label="bundle",
+            subdir=PayloadWriter.COMPUTED_SPECIES_SUBDIR, warnings=warnings)
 ```
 
 For a thermo, kinetics, statmech, transport, reaction or network request, skip all of that:
@@ -116,8 +105,11 @@ build the request yourself and call `self.submit_standalone("thermo", request, l
 core adds what the sequence below does after the build, and refuses a request the shipped
 JSON Schema rejects. It does not build these requests; that stays in your package.
 
-The order is fixed: build the payload, write it with its sidecar, then upload. The base
-class owns everything after the write: the readiness probe with backoff, the POST, the
+The order is fixed: build the payload, write it with its sidecar, then upload.
+`_write_and_upload` does the part after the build: it sets `config.rights` on the payload
+(overwriting), builds the idempotency key from the finished payload, writes the payload and
+its sidecar, and finishes as skipped or uploads. Run your pre-checks before calling it. The
+base class owns everything after the write: the readiness probe with backoff, the POST, the
 sidecar's status, response, warnings and request ids, strict mode, and artifact batches
 (`_prepare_artifact_upload`, `_upload_artifact_batch`). A producer that uploads a calculation's
 log or input file calls `submit_artifacts_for_calculation(species_label=..., calculation_ref=...,

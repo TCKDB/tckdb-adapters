@@ -41,7 +41,9 @@ from tckdb_core.constants import (
 )
 from tckdb_core.idempotency import (
     ArtifactIdempotencyInputs,
+    IdempotencyInputs,
     build_artifact_idempotency_key,
+    build_idempotency_key,
 )
 from tckdb_core.outcomes import (
     ArtifactUploadOutcome,
@@ -74,6 +76,11 @@ _BUNDLE_MODES_WITH_INLINE_ARTIFACTS = frozenset({
 # ----------------------------------------------------------------------
 # Helpers
 # ----------------------------------------------------------------------
+
+
+def _escape_percent(text: str) -> str:
+    """``text`` safe to build into a ``logging`` format string (``%`` doubled)."""
+    return text.replace("%", "%%")
 
 
 def coerce_artifact_filename(name: str, kind: str) -> str:
@@ -1189,6 +1196,113 @@ class TCKDBUploaderBase(StandaloneSubmitMixin):
             ),
         )
         return outcomes + batch_outcomes
+
+    # ------------------------------------------------------------------
+    # The submit sequence every route shares
+    # ------------------------------------------------------------------
+
+    def _attach_rights(self, payload: dict[str, Any]) -> None:
+        """Set the upload's ``rights`` fragment from the configuration, when it states one.
+
+        Overwrites a ``rights`` the payload already has.
+        """
+        if self._config.rights is not None:
+            payload["rights"] = dict(self._config.rights)
+
+    def _idempotency_key(
+        self,
+        payload: Mapping[str, Any],
+        *,
+        kind: str,
+        project_label: str | None,
+        species_label: str,
+        conformer_label: str,
+    ) -> str:
+        """The producer's idempotency key for ``payload``: its namespace, the labels, the kind and the payload hash.
+
+        Raises ``ValueError`` when the key would break the server's constraint (200 characters).
+        """
+        return build_idempotency_key(
+            IdempotencyInputs.from_payload(
+                project_label=project_label,
+                species_label=species_label,
+                conformer_label=conformer_label,
+                payload_kind=kind,
+                payload=payload,
+            ),
+            namespace=self.IDEMPOTENCY_NAMESPACE,
+        )
+
+    def _write_and_upload(
+        self,
+        *,
+        payload: dict[str, Any],
+        kind: str,
+        endpoint: str,
+        label: str,
+        project_label: str | None,
+        species_label: str,
+        conformer_label: str,
+        log_name: str = "",
+        subdir: str | None = None,
+        warnings: list[dict[str, Any]] | None = None,
+        is_partial: bool = False,
+        attach_rights: bool = True,
+    ) -> UploadOutcome:
+        """The tail of every submit method, once the producer has built and checked the payload.
+
+        In order: set ``config.rights`` on ``payload`` (overwriting; ``attach_rights=False`` when
+        the caller already reconciled them), build the idempotency key from the finished payload,
+        write the payload and a ``pending`` sidecar (``label`` is the file name, ``subdir`` the
+        directory, ``warnings`` the producer's findings), log the write, then finish as
+        ``skipped`` when ``config.upload`` is off or upload through :meth:`_upload`.
+
+        ``kind`` is the sidecar's ``payload_kind`` and the key's kind part; ``project_label``,
+        ``species_label`` and ``conformer_label`` are the key's other parts. ``log_name`` words
+        the log line (``"TCKDB <log_name> payload written"``). ``is_partial`` writes a deliberately
+        incomplete record: the files gain the partial infix and the record is never posted.
+
+        ``payload`` is modified (``rights``). Raises ``ValueError`` before anything is written
+        when the key is too long; the outcome is otherwise that of :meth:`_upload` or
+        :meth:`_finalize_skipped`, strict mode included.
+        """
+        if attach_rights:
+            self._attach_rights(payload)
+        key = self._idempotency_key(
+            payload,
+            kind=kind,
+            project_label=project_label,
+            species_label=species_label,
+            conformer_label=conformer_label,
+        )
+        written = self._writer.write(
+            label=label,
+            payload=payload,
+            endpoint=endpoint,
+            idempotency_key=key,
+            payload_kind=kind,
+            base_url=self._config.base_url,
+            subdir=subdir,
+            is_partial=is_partial,
+            warnings=warnings,
+        )
+        if is_partial:
+            # Partial records are sidecar-only: nothing the server has been shown accepts
+            # one, and ``is_partial`` on the sidecar tells it apart from an upload=false skip.
+            self._log.info(
+                f"TCKDB partial {_escape_percent(log_name)} sidecar written; live upload skipped: %s (key=%s)",
+                written.payload_path,
+                key,
+            )
+            return self._finalize_skipped(written)
+        self._log.info(
+            f"TCKDB {_escape_percent(log_name) + ' ' if log_name else ''}payload written: %s (key=%s)",
+            written.payload_path,
+            key,
+        )
+        if not self._config.upload:
+            return self._finalize_skipped(written)
+        return self._upload(written, payload, endpoint=endpoint)
 
     def _upload_artifact_batch(
         self,

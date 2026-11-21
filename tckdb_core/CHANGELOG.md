@@ -3,6 +3,24 @@
 Releases are listed newest first. Each `tckdb-arc` release names the core version it needs in its
 own changelog.
 
+## 0.5.12
+
+The submit sequence every route shares moves into the base class. No payload, endpoint,
+idempotency key, file name or sidecar changes.
+
+- `TCKDBUploaderBase._write_and_upload(*, payload, kind, endpoint, label, project_label,
+  species_label, conformer_label, log_name="", subdir=None, warnings=None, is_partial=False,
+  attach_rights=True)`: sets `config.rights` on the payload (overwriting a `rights` it has),
+  builds the idempotency key from the finished payload in the producer's namespace, writes the
+  payload and a `pending` sidecar, logs the write, and finishes as `skipped` when upload is off
+  (always, for a partial record) or uploads through `_upload`. A producer's submit method builds
+  and checks the payload, then returns this call.
+- `TCKDBUploaderBase._attach_rights(payload)` and `_idempotency_key(payload, *, kind,
+  project_label, species_label, conformer_label)` are now methods of the core class.
+- `submit_standalone` ends in `_write_and_upload`. Its "payload written" log line has the same
+  message as before, but the record's `msg` now carries the route kind (`TCKDB thermo payload
+  written: %s (key=%s)`) and its `args` are `(path, key)` instead of `(kind, path, key)`.
+
 ## 0.5.11
 
 Adds the standalone record routes. No payload an existing route sends changes, and no existing

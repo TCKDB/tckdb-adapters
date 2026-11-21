@@ -125,22 +125,25 @@ example.
 1. Return `None` when the config is disabled.
 2. Create a `WarningSink(PRODUCER_TAG)` and build the payload, adding a warning for each
    thing omitted or interpreted.
-3. Attach `config.rights` when the user configured it.
-4. Run the pre-checks that apply (`tckdb_core.rules`).
-5. Build the idempotency key from the finished payload.
-6. Write the payload and sidecar with `self._writer.write(...)`, passing the warnings.
-7. Return `self._finalize_skipped(written)` when upload is off, else
-   `self._upload(written, payload, endpoint=...)`.
+3. Run the pre-checks that apply (`tckdb_core.rules`).
+4. Return `self._write_and_upload(payload=..., kind=..., endpoint=..., label=...,
+   project_label=..., species_label=..., conformer_label=..., subdir=..., warnings=...)`.
+   It sets `config.rights` on the payload when the user configured it (overwriting any
+   `rights` already there), builds the idempotency key from the finished payload, writes the
+   payload and sidecar with the warnings, logs the write, and then finishes as skipped when
+   upload is off or uploads with `_upload`. `log_name` words the log line; `is_partial` writes
+   a record that is never posted.
 
 The payload is written before the request so that a crash leaves a `pending` sidecar on
 disk, and so that the bytes can be replayed. The idempotency key includes a hash of the
 payload, so the same input gives the same key and TCKDB replays its first answer. A change
 to your mapping changes the hash. Say so in your changelog when it happens.
 
-The ARC adapter has four such methods and they repeat this sequence. The base class has
-no shared template for it yet, so follow the sequence by hand. For the standalone record
-routes (thermo, kinetics, statmech, transport, reaction, network) the base class does have one,
-`submit_standalone`; see "Posting a standalone record" under "Routes".
+The ARC adapter's four methods and `submit_standalone` all end in `_write_and_upload`; a new
+route's method differs from them only in how it builds the payload and the key's labels. For the
+standalone record routes (thermo, kinetics, statmech, transport, reaction, network) the base
+class has the whole method, `submit_standalone`; see "Posting a standalone record" under
+"Routes".
 
 The artifact route is the exception: the base class already has the whole submit path.
 `submit_artifacts_for_calculation(species_label=..., calculation_ref=..., file_path=...)`
@@ -287,10 +290,11 @@ outcome = adapter.submit_standalone(
 
 It follows the submit sequence above, minus the build step: `config.rights` is added to a copy
 of the request when the request has none (a request whose `rights` differ from the configured
-ones is refused), the request is validated against the shipped schema, the key is built from
-the finished request (`<namespace>:<project>:<label>:<qualifier>:<kind>:<hash>`), the payload
-and a `pending` sidecar are written, and the request is skipped or uploaded exactly as the other
-routes are (readiness probe, POST, sidecar status, strict mode). It returns `None` when the
+ones is refused), the request is validated against the shipped schema, and the finished request
+goes to `_write_and_upload`, which builds the key
+(`<namespace>:<project>:<label>:<qualifier>:<kind>:<hash>`), writes the payload and a `pending`
+sidecar, and skips or uploads exactly as the other routes do (readiness probe, POST, sidecar
+status, strict mode). It returns `None` when the
 config is disabled.
 
 An invalid request raises `StandalonePayloadError` before any file is written, in strict mode

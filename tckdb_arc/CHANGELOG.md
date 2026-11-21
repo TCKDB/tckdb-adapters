@@ -12,6 +12,7 @@ of tracked releases.
 `tools/tckdb_drift.py --bump` adds a line below the marker each time it moves the pin.
 
 <!-- tckdb-drift:changelog -->
+- Adapter 0.15.11: submit methods share one write-and-upload template in `tckdb_core`; same pin as 0.15.7 (TCKDB d4d5346).
 - Adapter 0.15.10: artifact submit methods moved to `tckdb_core`; same pin as 0.15.7 (TCKDB d4d5346).
 - Adapter 0.15.9: public names for core helpers and artifact kinds read from tckdb-schemas; same pin as 0.15.7 (TCKDB d4d5346).
 - Adapter 0.15.8: whole path-search paths (NEB images, GSM node energies); same pin as 0.15.7 (TCKDB d4d5346).
@@ -29,6 +30,16 @@ of tracked releases.
 - Adapter 0.10.0: tracked TCKDB 96b71b0 (schemas 0.73.0, client 0.111.0).
 - Adapter 0.6.9: tracked TCKDB f22d3a8 (schemas 0.64.0, client 0.102.0).
 - Adapter 0.6.8: tracked TCKDB a515fb9 (schemas 0.58.0, client 0.98.0).
+
+## 0.15.11
+
+Needs `tckdb-adapters-core` `>=0.5.12,<0.6`. No payload change.
+
+- `submit_from_output`, `submit_computed_species_from_output`,
+  `submit_computed_reaction_from_output` and `submit_computed_ts_from_output` keep their names and
+  signatures and end in `TCKDBUploaderBase._write_and_upload`, which holds the rights, key, write,
+  log and upload steps they each repeated. Request bodies, endpoints, idempotency keys, file
+  names, sidecars, warnings, log records, outcomes and exceptions are unchanged.
 
 ## 0.15.10
 
