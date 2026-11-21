@@ -12,8 +12,9 @@ of tracked releases.
 `tools/tckdb_drift.py --bump` adds a line below the marker each time it moves the pin.
 
 <!-- tckdb-drift:changelog -->
-- Adapter 0.15.18: ASCII refusal and log messages; same pin as 0.15.17 (TCKDB b129c88).
-- Adapter 0.15.17: tracked TCKDB b129c88 (schemas 0.176.0, client 0.209.2); path searches state their coordinate unit.
+- Adapter 0.15.19: ASCII refusal and log messages; same pin as 0.15.18 (TCKDB b129c88).
+- Adapter 0.15.18: tracked TCKDB b129c88 (schemas 0.176.0, client 0.209.2); path searches state their coordinate unit.
+- Adapter 0.15.17: documentation-text fix in the generated warning-codes page; same pin as 0.15.7 (TCKDB d4d5346).
 - Adapter 0.15.16: the payload builders moved out of the adapter module; same pin as 0.15.7 (TCKDB d4d5346).
 - Adapter 0.15.15: the adapter module split into sibling modules; same pin as 0.15.7 (TCKDB d4d5346).
 - Adapter 0.15.14: artifact requests over 64 MiB are split by `tckdb-adapters-core` 0.5.15; same pin as 0.15.7 (TCKDB d4d5346).
@@ -38,17 +39,17 @@ of tracked releases.
 - Adapter 0.6.9: tracked TCKDB f22d3a8 (schemas 0.64.0, client 0.102.0).
 - Adapter 0.6.8: tracked TCKDB a515fb9 (schemas 0.58.0, client 0.98.0).
 
-## 0.15.18
+## 0.15.19
 
 No payload change. Three refusal messages of the freq builder and three log messages use `--`
 where they had an em dash, so every string the adapter raises, logs or records as a warning is
 ASCII (`tools/check_runtime_ascii.py`). The refusals fire exactly as before.
 
-## 0.15.17
+## 0.15.18
 
 Payload change for path searches. A `path_search_result` whose points carry a `path_coordinate`
 now also sends `path_coordinate_unit: "angstrom"`, so its request body and idempotency key differ
-from 0.15.16's, and TCKDB records a re-upload as a new deposit. Every other payload is unchanged.
+from 0.15.17's, and TCKDB records a re-upload as a new deposit. Every other payload is unchanged.
 
 - ORCA NEB: the coordinate is the band summary's `Dist.(Ang.)` column.
 - xtb GSM: the coordinate is the cumulative displacement along the string in Angstrom, from ARC's
@@ -58,6 +59,17 @@ from 0.15.16's, and TCKDB records a re-upload as a new deposit. Every other payl
   `tckdb-schemas` 0.176.0 ships; earlier releases refuse the field.
 - Requires `tckdb-client>=0.209,<0.210`, `tckdb-schemas>=0.176,<0.177` and
   `tckdb-adapters-core>=0.5.16,<0.6`; the TCKDB pin is b129c88.
+
+## 0.15.17
+
+No payload change: every payload, idempotency key, sidecar and log record is byte-identical.
+
+- `docs/contract/WARNING_CODES.md` (rendered by `render_markdown()` in `tckdb_arc/warning_codes.py`)
+  said that the `source` of the shared upload code's codes "is then the producer's". It is not:
+  the core writes `payload_failed_local_validation` and `payload_local_validation_unavailable`
+  to a sidecar with the `source` `tckdb_core_self_check`, whichever adapter runs the upload. The
+  page also now says that `calculation_ref_not_returned` is not written to a sidecar: it goes to a
+  log line and to the `skip_reason` of each skipped artifact outcome. Only the generated text changed.
 
 ## 0.15.16
 
