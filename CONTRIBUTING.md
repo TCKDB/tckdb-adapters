@@ -9,7 +9,7 @@ and [`AGENTS.md`](AGENTS.md) states the repository's rules in short form.
 ```bash
 python tools/tckdb_drift.py --install-specs      # prints the two pinned TCKDB requirements
 pip install "<TCKDB_CLIENT_SPEC value>" "<TCKDB_SCHEMAS_SPEC value>"
-pip install -e "tckdb_core[test]" -e "tckdb_arc[test]"
+pip install -e "tckdb_core[test]" -e "tckdb_arc[test]"   # and each further adapter
 python -m pytest
 pip install -e "tckdb_chemkin[test]" -e "tckdb_qcschema[test]"   # when changing either
 (cd tckdb_chemkin && python -m pytest)
@@ -48,8 +48,8 @@ mkdocs build --strict    # the check CI runs; writes site/
   fragment.
 - A patch version bump and a `CHANGELOG.md` entry for each package whose code changed.
   Say so when the release changes a payload, because that changes idempotency keys.
-- A regenerated `docs/contract/WARNING_CODES.md` when a warning code is added or changed
-  (`python tools/gen_warning_codes.py`).
+- The regenerated warning-code page (`docs/contract/WARNING_CODES.md` for ARC) when a warning
+  code is added or changed (`python tools/gen_warning_codes.py`).
 - An updated `docs/contract/ARC_MAPPING.md` when the ARC mapping changes.
 
 Run the full suite once before opening the pull request. CI runs every package's suite on Python

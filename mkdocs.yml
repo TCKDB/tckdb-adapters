@@ -24,7 +24,9 @@ theme:
         icon: material/weather-sunny
         name: Switch to light mode
   features:
+    - navigation.tabs
     - navigation.sections
+    - navigation.indexes
     - navigation.top
     - navigation.footer
     - search.highlight
@@ -64,21 +66,25 @@ validation:
 
 nav:
   - Home: index.md
-  - Using the ARC adapter: arc.md
-  - Importing CHEMKIN mechanisms: chemkin.md
-  - Importing and exporting QCSchema: qcschema.md
-  - Reference:
-      - ARC mapping: contract/ARC_MAPPING.md
-      - Warning codes: contract/WARNING_CODES.md
-  - The core: core.md
-  - Writing an adapter: writing_an_adapter.md
-  - Maintenance:
+  - Adapters:
+      - Overview: adapters/index.md
+      - ARC:
+          - Using the ARC adapter: adapters/arc/index.md
+          - Mapping: contract/ARC_MAPPING.md
+          - Warning codes: contract/WARNING_CODES.md
+          - tckdb-arc changelog: adapters/arc/changelog.md
+      - CHEMKIN:
+          - Importing CHEMKIN mechanisms: adapters/chemkin/index.md
+          - tckdb-chemkin changelog: adapters/chemkin/changelog.md
+      - QCSchema:
+          - Importing and exporting QCSchema: adapters/qcschema/index.md
+          - tckdb-qcschema changelog: adapters/qcschema/changelog.md
+  - Core:
+      - The core: core/index.md
+      - tckdb-adapters-core changelog: core/changelog.md
+  - Developing:
+      - Writing an adapter: writing_an_adapter.md
       - The TCKDB pin: tckdb_pin.md
       - Integration gate: contract/INTEGRATION_GATE.md
       - Publishing to PyPI: publishing.md
-  - Changelogs:
-      - tckdb-adapters-core: changelog_core.md
-      - tckdb-arc: changelog_arc.md
-      - tckdb-chemkin: changelog_chemkin.md
-      - tckdb-qcschema: changelog_qcschema.md
-  - Contributing: contributing.md
+      - Contributing: contributing.md

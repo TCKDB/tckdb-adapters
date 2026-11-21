@@ -33,11 +33,11 @@ jobs:
       old_schemas: ${{ steps.check.outputs.old_schemas }}
       result: ${{ steps.test.outputs.result }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -110,7 +110,7 @@ jobs:
 
       - name: Keep the changelog and test summary for the publish job
         if: steps.check.outputs.drift == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: tckdb-drift
           path: |
@@ -126,18 +126,18 @@ jobs:
       issues: write
       actions: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           persist-credentials: false
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
       - name: Fetch the changelog and test summary
         if: needs.test.outputs.drift == 'true'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: tckdb-drift
           path: ${{ runner.temp }}/drift

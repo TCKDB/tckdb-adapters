@@ -1,5 +1,5 @@
 <!-- The site page for tckdb_arc/CHANGELOG.md. The file is included at build time; edit that file, not this one. -->
 
 {%
-  include-markdown "../tckdb_arc/CHANGELOG.md"
+  include-markdown "../../../tckdb_arc/CHANGELOG.md"
 %}

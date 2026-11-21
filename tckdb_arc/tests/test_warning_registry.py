@@ -1,6 +1,7 @@
 """The warning-code registry, the generated ``WARNING_CODES.md`` and the shape of what is emitted."""
 
 import ast
+import importlib.util
 import json
 import re
 import warnings
@@ -84,6 +85,14 @@ def test_the_generated_document_is_current():
     for member in ArcWarning:
         assert f"| `{member.value}` |" in path.read_text()
     assert "| `calculation_ref_not_returned` |" in path.read_text()
+
+
+def test_the_generator_lists_the_arc_document():
+    """A forgotten ``DOCUMENTS`` entry would leave the page unchecked and unregenerated."""
+    spec = importlib.util.spec_from_file_location("gen_warning_codes", REPO / "tools" / "gen_warning_codes.py")
+    generator = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(generator)
+    assert (warning_codes.DOC_RELATIVE_PATH, warning_codes.render_markdown) in generator.DOCUMENTS
 
 
 def test_self_check_is_the_shape_the_sidecar_has_always_held():
