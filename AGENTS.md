@@ -102,8 +102,11 @@ a parity test (`tckdb_core.testing.backend_import`). Build thermo blocks in the 
    root `pyproject.toml` (that is what makes a root `pytest` run find it), to
    `.github/workflows/ci.yml`, to `tools/tckdb_drift.py --bump` and to the `git add` list
    in `tools/tckdb_drift_publish.sh`.
-3. Write the `TCKDBUploaderBase` subclass, one submit method per route, and the builders.
-4. Register warning codes and wire the tests below.
+3. Add it to the documentation site: stub pages under `docs/adapters/<tool>/`, `mkdocs.yml`,
+   `docs/adapters/index.md`, `.github/workflows/docs.yml` and the root `README.md`. The steps
+   are in section 7 of `docs/writing_an_adapter.md`.
+4. Write the `TCKDBUploaderBase` subclass, one submit method per route, and the builders.
+5. Register warning codes and wire the tests below.
 
 Done when the package's suite passes, every item in the checklist at the end of
 `docs/writing_an_adapter.md` holds, and the full suite passes once.
