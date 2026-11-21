@@ -1,0 +1,4 @@
+# The three direct dependencies of the documentation build, pinned exactly; pip resolves the rest.
+mkdocs==1.6.1
+mkdocs-material==9.8.2
+mkdocs-include-markdown-plugin==7.3.2

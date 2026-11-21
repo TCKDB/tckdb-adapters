@@ -15,6 +15,16 @@ python -m pytest
 
 Python 3.11 or newer. ARC is optional; the tests that need it skip without it.
 
+The documentation site is built from `docs/`, `mkdocs.yml`, the READMEs, the changelogs and
+this file. Install its requirements in a separate virtualenv, never in the environment you
+run the tests in, then build or preview it:
+
+```bash
+pip install -r requirements-docs.txt
+mkdocs serve             # preview at http://127.0.0.1:8000
+mkdocs build --strict    # the check CI runs; writes site/
+```
+
 ## The rules a change must follow
 
 1. **Read the contract before changing a mapping.** Run
