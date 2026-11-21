@@ -54,11 +54,16 @@ message) is byte-identical.
   the class reads, and the re-exports.
 - `tckdb_arc.adapter` still exports every name it exported, as the same object, so
   `from tckdb_arc.adapter import ...` and the CLI work as before.
-- Every module logs through the one `tckdb_arc` logger object in `_logging.py`. Replacing the
-  `logger` name on `tckdb_arc.adapter` no longer reaches the moved functions; patch the methods of
-  the logger object instead. The tests that did so
+- The adapter module and the modules split out of it log through the one `tckdb_arc` logger
+  object in `_logging.py`; `adaptive.py` and `orca_neb.py` keep their own
+  `logging.getLogger(__name__)` child loggers (`tckdb_arc.adaptive`, `tckdb_arc.orca_neb`).
+  Replacing the `logger` name on `tckdb_arc.adapter` still redirects the `TCKDBAdapter` class and
+  the upload pipeline, but no longer reaches the moved functions; to intercept every record, patch
+  the methods of the logger object. The tests that replaced the name
   (`test_upload_warnings.py`, `test_ts_upload.py`, `test_warning_registry.py`) now patch
   `tckdb_arc._logging.logger.warning` (and `.debug`).
+- `TSReactionCoordinateNotDesignated.__module__` is now `tckdb_arc.calculation_payloads`, which
+  shows in tracebacks; the class is still importable from `tckdb_arc.adapter`.
 - A test that patches `_THERMO_ENTHALPY_REFERENCE_KIND` patches it on `thermo_payloads`; one that
   patches `_thermo_energy_level` patches it on `adapter` and on `kinetics_payloads`.
 

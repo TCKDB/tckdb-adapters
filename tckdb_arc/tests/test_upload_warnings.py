@@ -2,7 +2,7 @@
 
 import json
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -46,6 +46,30 @@ def test_upload_preserves_and_logs_complete_structured_warnings(tmp_path, monkey
     assert sidecar["response_body"] == body
     assert sidecar["idempotency_replayed"] is replayed
     logger.warning.assert_called_once_with("TCKDB upload warning: %s", warnings[0])
+
+
+def test_replacing_the_adapter_logger_name_redirects_the_upload_pipeline(tmp_path, monkeypatch):
+    """``TCKDBAdapter._log`` looks ``tckdb_arc.adapter.logger`` up when it is called, not when the class is built."""
+    monkeypatch.setenv("TCKDB_WARNING_TEST_KEY", "test-key")
+    warning = {"code": "freq_list_incomplete_for_geometry", "message": "Incomplete spectrum"}
+    client = Mock()
+    client.request_json.return_value = SimpleNamespace(
+        data={"species_entry_id": 1, "warnings": [warning]}, status_code=201,
+        idempotency_replayed=False, headers={},
+    )
+    adapter = TCKDBAdapter(
+        TCKDBConfig(base_url="https://example.invalid", payload_dir=str(tmp_path),
+                    api_key_env="TCKDB_WARNING_TEST_KEY", preflight=False,
+                    validate_before_upload=False),  # the test posts an empty body to read the response
+        client_factory=lambda *args, **kwargs: client,
+    )
+    written = adapter._writer.write(
+        label="redirect", payload={}, endpoint="/api/v1/uploads/computed-species",
+        idempotency_key="redirect-test",
+    )
+    with patch("tckdb_arc.adapter.logger") as replacement:
+        adapter._upload(written, {})
+    replacement.warning.assert_called_once_with("TCKDB upload warning: %s", warning)
 
 
 @pytest.mark.parametrize("body", [{}, {"warnings": None}, "accepted"])

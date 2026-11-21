@@ -570,6 +570,7 @@ _INLINE_ARTIFACT_SOURCES: tuple[tuple[str, dict[str, str]], ...] = (
     ("input", _INPUT_FIELD_BY_CALC_KEY),
 )
 
+
 class TCKDBAdapter(TCKDBUploaderBase):
     """Build, write, and optionally upload one conformer/calculation payload.
 
@@ -589,9 +590,11 @@ class TCKDBAdapter(TCKDBUploaderBase):
 
     @property
     def _log(self):
-        # Resolved at call time so ``tckdb_arc.adapter.logger`` (patched by tests
-        # and by anyone redirecting ARC's TCKDB logging) sees the shared pipeline's
-        # records exactly as it saw them before the pipeline moved to tckdb_core.
+        # Resolved at call time, so replacing ``tckdb_arc.adapter.logger`` redirects
+        # this class and the shared upload pipeline (which logs through this
+        # property). Code in the helper modules logs through the shared logger
+        # object itself and is not redirected: to intercept every record, patch the
+        # object's methods.
         return logger
 
     def _sleep_between_probes(self, seconds: float) -> None:

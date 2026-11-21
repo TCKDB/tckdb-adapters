@@ -150,7 +150,7 @@ def test_the_ts_reaction_coordinate_refusal_carries_the_previous_warning_dict():
     assert str(exc).startswith("[ts_reaction_coordinate_not_designated] label='TS0'")
 
 
-def test_moved_names_log_through_the_adapter_module_logger():
+def test_the_core_wrappers_log_through_the_package_logger():
     """Patching the package logger's methods intercepts the records of functions that moved to the core."""
     with mock.patch.object(_logging.logger, "warning") as warning, \
             mock.patch.object(_logging.logger, "debug") as debug:
