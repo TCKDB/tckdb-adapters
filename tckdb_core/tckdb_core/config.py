@@ -128,6 +128,7 @@ class TCKDBConfig:
     #: that fails is not posted and its sidecar is ``failed`` (``payload_failed_local_validation``).
     #: ``False`` posts whatever was built and leaves the check to the server.
     validate_before_upload: bool = True
+    #: Applies to each phase of a request (connect, each read), not to the whole request.
     timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS
     #: Total attempts (the first included) the client makes at one request that cannot create a
     #: second record when replayed: a ``GET``, or a ``POST`` that carries an ``Idempotency-Key``
@@ -136,7 +137,8 @@ class TCKDBConfig:
     #: An integer from 1 to :data:`MAX_RETRY_ATTEMPTS`.
     retry_max_attempts: int = DEFAULT_RETRY_MAX_ATTEMPTS
     #: The client's ``RetryPolicy.backoff_base``. Each wait is jittered and capped at 30 s: the
-    #: first is between 0.5 and 1 times this, and each later one is twice the one before it. A
+    #: first is between 0.5 and 1 times this, and the un-jittered wait doubles each time (each wait is
+    #: jittered separately). A
     #: ``Retry-After`` the server sends is honoured, up to 120 s per wait (above that, no replay).
     retry_backoff_seconds: float = DEFAULT_RETRY_BACKOFF_SECONDS
     project_label: str | None = field(

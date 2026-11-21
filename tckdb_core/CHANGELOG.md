@@ -18,17 +18,21 @@ No payload any route builds changes, so no idempotency key changes.
   the `Retry-After` handling are the client's own defaults and are not set here.
   `retry_max_attempts = 1` sends no policy and restores the earlier behaviour.
 - A `client_factory` still builds the whole client; the core passes it no policy.
-- Worst case: with the defaults one upload can take up to three times `timeout_seconds` plus the
-  waits. Each wait is jittered and capped at 30 s: the first is between 0.5 and 1 times
-  `retry_backoff_seconds`, and each later one is twice the one before. When the server sends
-  `Retry-After` the client waits at least that long, up to 120 s per wait, and does not replay at
-  all above 120 s. The readiness probe runs once per uploader, so a server that degrades mid-run
-  costs this on every remaining upload.
-- A replay that arrives while the first request with the same key is still running is refused by
-  TCKDB with `409 idempotency_conflict`, and no duplicate record is created. After a client-side
-  timeout the replay can therefore come back 409, and the sidecar is `failed` with
-  `server_error_code: idempotency_conflict` although the first request may have committed. Running
-  the upload again later returns the stored response.
+- `timeout_seconds` applies to each phase of a request (connect, each read), not to the whole
+  request. A request that makes no progress is given up after `timeout_seconds`, so with the
+  defaults one upload can then take about three such timeouts plus the waits; a slow but progressing
+  large upload can run longer on each attempt. Each wait is jittered separately and capped at 30 s:
+  the first is between 0.5 and 1 times `retry_backoff_seconds`, and the un-jittered wait doubles
+  each time. When the server sends `Retry-After` the client waits at least that long, up to 120 s
+  per wait, and does not replay at all above 120 s. The readiness probe runs once per uploader, so a
+  server that degrades mid-run costs this on every remaining upload.
+- TCKDB does not lock an idempotency key while a request is in progress. After a client-side timeout
+  both the original request and the replay can run, and whichever commits second is refused with
+  `409 idempotency_conflict` and rolled back, so no duplicate record is created. Either the original
+  or the replay can be the one refused, so the sidecar can be `failed` with `server_error_code:
+  idempotency_conflict` although the data was stored. Running the upload again later returns the
+  stored response when the server stored a receipt for the write; a response that carries
+  `Idempotency-Receipt: failed` means it did not, and a later run executes the write again.
 - The readiness probe is not retried by the client: it keeps its own five attempts and its own
   waits, so its worst case is what it was. When the core builds the client and a policy is set,
   the probe goes through a second client without one (same URL, key and timeout), closed when the

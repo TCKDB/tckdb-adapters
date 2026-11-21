@@ -49,9 +49,9 @@ run_upload_sweep(adapter=adapter, project_directory=project_directory, tckdb_con
 | `preflight` | `true` | Probe the server's `/readyz` before the first upload. |
 | `validate_before_upload` | `true` | Check each request against the shipped tckdb-schemas contract (the published model for the conformer, computed-species, computed-reaction and transition-state routes, the JSON Schema for the rest) just before it is posted. A request that fails is not posted: the payload stays on disk, the sidecar is `failed` with `payload_failed_local_validation` and the findings, and `strict` raises. `false` posts whatever was built; use it when the installed tckdb-schemas is not the version the server runs. |
 | `strict` | `false` | Raise on a failed upload. Otherwise the failure is logged and recorded in the sidecar, and the run continues. |
-| `timeout_seconds` | `30` | Timeout of each request. |
+| `timeout_seconds` | `30` | Timeout of each phase of a request (connect, each read), not of the whole request. |
 | `retry_max_attempts` | `3` | Attempts at one request, the first included, when it fails with a connection error, a timeout, or a 429, 502, 503 or 504. Each replay carries the same idempotency key, so TCKDB stores the upload once. A refusal is not replayed. `1` turns retrying off. An integer from 1 to 10. |
-| `retry_backoff_seconds` | `1.0` | Each wait is jittered and capped at 30 s: the first is between 0.5 and 1 times this, and each later one is twice the one before. A `Retry-After` from the server is honoured, up to 120 s per wait. A number of at least 0. |
+| `retry_backoff_seconds` | `1.0` | Each wait is jittered and capped at 30 s: the first is between 0.5 and 1 times this, and the un-jittered wait doubles each time (each wait is jittered separately). A `Retry-After` from the server is honoured, up to 120 s per wait. A number of at least 0. |
 | `project_label` | the project name in `output.yml` | Part of every idempotency key. |
 | `artifacts` | off | `{upload: true, kinds: [output_log, input], max_size_mb: 50}` sends calculation logs and input decks. In `computed_species` and `computed_reaction` mode they travel inside the bundle; in `conformer` mode they are posted separately after each upload; `computed_ts` mode sends none. Files over `max_size_mb` are skipped. |
 | `allow_partial_uploads` | `true` | Write a `.partial` sidecar for a reaction whose transition state did not converge. A partial sidecar is never posted. |
@@ -59,16 +59,21 @@ run_upload_sweep(adapter=adapter, project_directory=project_directory, tckdb_con
 
 The key is never stored in YAML. The environment variable wins over either file.
 
-Retry notes. Worst case: with the defaults one upload can take up to three times `timeout_seconds`
-plus the waits. Each wait is jittered and capped at 30 s: the first is between 0.5 and 1 times
-`retry_backoff_seconds`, and each later one is twice the one before. When the server sends
-`Retry-After` the client waits at least that long, up to 120 s per wait, and does not replay at all
-above 120 s. The readiness probe runs once per uploader, so a server that degrades mid-run costs
-this on every remaining upload. A replay that arrives while the first request with the same key is
-still running is refused by TCKDB with `409 idempotency_conflict`, and no duplicate record is
-created. After a client-side timeout the replay can therefore come back 409, and the sidecar is
-`failed` with `server_error_code: idempotency_conflict` although the first request may have
-committed. Running the upload again later returns the stored response.
+Retry notes. `timeout_seconds` applies to each phase of a request (connect, each read), not to the
+whole request. A request that makes no progress is given up after `timeout_seconds`, so with the
+defaults one upload can then take about three such timeouts plus the waits; a slow but progressing
+large upload can run longer on each attempt. Each wait is jittered separately and capped at 30 s:
+the first is between 0.5 and 1 times `retry_backoff_seconds`, and the un-jittered wait doubles each
+time. When the server sends `Retry-After` the client waits at least that long, up to 120 s per wait,
+and does not replay at all above 120 s. The readiness probe runs once per uploader, so a server that
+degrades mid-run costs this on every remaining upload. TCKDB does not lock an idempotency key while
+a request is in progress. After a client-side timeout both the original request and the replay can
+run, and whichever commits second is refused with `409 idempotency_conflict` and rolled back, so no
+duplicate record is created. Either the original or the replay can be the one refused, so the
+sidecar can be `failed` with `server_error_code: idempotency_conflict` although the data was stored.
+Running the upload again later returns the stored response when the server stored a receipt for the
+write; a response that carries `Idempotency-Receipt: failed` means it did not, and a later run
+executes the write again.
 
 Boolean keys (`enabled`, `upload`, `preflight`, `strict`, `validate_before_upload`, `allow_partial_uploads`) are read with Python's `bool()`: write YAML `true` or `false` (unquoted). A quoted `"false"` or `"no"` is a non-empty string and counts as true.
 
