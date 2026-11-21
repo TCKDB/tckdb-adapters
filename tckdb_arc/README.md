@@ -1,5 +1,7 @@
 # tckdb-arc
 
+[![tckdb-arc](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fcalvinp0%2Ftckdb-adapters%2Fmain%2Ftckdb_arc%2Fpyproject.toml&query=%24.project.version&label=tckdb-arc)](https://github.com/TCKDB/tckdb-adapters/blob/main/tckdb_arc/CHANGELOG.md)
+
 The ARC adapter for TCKDB. It reads an ARC project's `output/output.yml`, with ARC's
 parser evidence file when there is one, and builds TCKDB species, reaction and
 transition-state uploads. Each payload is written to disk before any request is made, so
@@ -12,15 +14,32 @@ Requires Python 3.11+, `tckdb-client` 0.208.x and `tckdb-schemas` 0.175.x, and
 ## Use
 
 ARC runs the adapter at the end of a run when the project's `input.yml` has an enabled
-`tckdb` block. The same sweep can be run later on a finished project:
+`tckdb` block. A block that uploads computed species:
+
+```yaml
+tckdb:
+  enabled: true
+  base_url: https://tckdb.example.org/api/v1
+  upload_mode: computed_species   # or conformer, computed_reaction, computed_ts
+  upload: true                    # false writes the payloads and sends nothing
+```
+
+Only `enabled` and `base_url` are required. `upload` defaults to `true` and `upload_mode`
+to `conformer`.
+
+Put the API key in the `TCKDB_API_KEY` environment variable; the `api_key_*` keys in the
+table below name other places to keep it. The same sweep can be run later on a finished
+project. Build and inspect first with `--offline`, then upload by leaving it off:
 
 ```bash
 tckdb-arc-upload /path/to/project/input.yml --offline
+tckdb-arc-upload /path/to/project/input.yml
 tckdb-arc-upload /path/to/project/input.yml --upload-mode computed_reaction
 tckdb-arc-upload /path/to/project/input.yml --project-directory /elsewhere/project
 ```
 
-`--offline` writes payloads and sidecars and makes no request. `--upload-mode` overrides
+`--offline` writes payloads and sidecars and makes no request. Payloads go under
+`<project>/tckdb_payloads/` unless `payload_dir` says otherwise. `--upload-mode` overrides
 the mode in the input file. The project directory is `--project-directory`, else
 `project_directory` in the input file, else the directory that holds the input file.
 
