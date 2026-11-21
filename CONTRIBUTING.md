@@ -9,7 +9,7 @@ and [`AGENTS.md`](AGENTS.md) states the repository's rules in short form.
 ```bash
 python tools/tckdb_drift.py --install-specs      # prints the two pinned TCKDB requirements
 pip install "<TCKDB_CLIENT_SPEC value>" "<TCKDB_SCHEMAS_SPEC value>"
-pip install -e "tckdb_core[test]" -e "tckdb_arc[test]"
+pip install -e "tckdb_core[test]" -e "tckdb_arc[test]"   # and each further adapter
 python -m pytest
 ```
 

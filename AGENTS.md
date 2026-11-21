@@ -101,7 +101,8 @@ a parity test (`tckdb_core.testing.backend_import`). Build thermo blocks in the 
 2. Add the package to `pythonpath` and `testpaths` under `[tool.pytest.ini_options]` in the
    root `pyproject.toml` (that is what makes a root `pytest` run find it), to
    `.github/workflows/ci.yml`, to `tools/tckdb_drift.py --bump` and to the `git add` list
-   in `tools/tckdb_drift_publish.sh`.
+   in `tools/tckdb_drift_publish.sh`. Add it to the install lines in "Running tests" below
+   and in `CONTRIBUTING.md`.
 3. Add it to the documentation site: stub pages under `docs/adapters/<tool>/`, `mkdocs.yml`,
    `docs/adapters/index.md`, `.github/workflows/docs.yml` and the root `README.md`. The steps
    are in section 7 of `docs/writing_an_adapter.md`.
@@ -116,14 +117,19 @@ Done when the package's suite passes, every item in the checklist at the end of
 Every code is a member of the package's `CodedEnum` registry (`tckdb_arc/warning_codes.py`
 is `ArcWarning`; the core's is `CoreWarning`) and is emitted through the registry member.
 After adding or changing a code, run `python tools/gen_warning_codes.py` and commit the
-generated page with it. `tckdb_arc/tests/test_warning_registry.py` fails on a stale page,
-an unregistered code or a registered code nothing emits.
+generated pages with it (a change to a core code regenerates every adapter's page).
+`tckdb_arc/tests/test_warning_registry.py` fails on a stale page, an unregistered code or a
+registered code nothing emits.
 
 Each adapter has its own registry, its own page and its own registry test. ARC's page is
 `docs/contract/WARNING_CODES.md`, a name that READMEs and tests already use; a new adapter's
-is `docs/contract/<TOOL>_WARNING_CODES.md`, added to `DOCUMENTS` in
-`tools/gen_warning_codes.py`. A page lists the adapter's codes and then the core's, because
-the shared upload code emits those under the adapter's `source`.
+is `docs/contract/<TOOL>_WARNING_CODES.md`. Its package defines `DOC_RELATIVE_PATH` and a
+`render_markdown()` that returns the page's text, and `tools/gen_warning_codes.py` gets
+`(warning_codes.DOC_RELATIVE_PATH, warning_codes.render_markdown)` added to `DOCUMENTS`. The
+tool imports every adapter it lists, so each must be installed to run it. A page lists the
+adapter's codes and then the core's, because every adapter's uploads run the shared upload
+code, so the core's codes (source `tckdb_core_self_check`) appear in its sidecars and logs
+too. `docs/writing_an_adapter.md`, section 5, has the full steps.
 
 ## Contract tests and the pin
 
@@ -167,7 +173,8 @@ backend, and an agent starts one only when the user asks.
   the end, from the repository root.
 - In a git worktree whose editable installs point at another checkout, prefix
   `PYTHONPATH=$PWD/tckdb_core:$PWD/tckdb_arc`.
-- Install order from a checkout: `pip install -e tckdb_core -e tckdb_arc`.
+- Install order from a checkout: `pip install -e tckdb_core -e tckdb_arc` (then each further
+  adapter).
 
 ## Versions and changelogs
 
