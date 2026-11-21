@@ -143,6 +143,209 @@ from tckdb_core.uploader import (  # noqa: F401
     _summarize_artifact_batch_results,
     _summarize_response_body,
 )
+# Helpers that moved to sibling modules; every name stays importable from here.
+from tckdb_arc.self_check import (  # noqa: F401
+    _PRODUCER_TAG,
+    _self_check,
+)
+from tckdb_arc.geometry import (  # noqa: F401
+    _assert_isotopes_reconcile,
+    _conformer_isotopes,
+    _formula,
+    _formula_element_symbols,
+    _FORMULA_TERM_RE,
+    _geometry_payload,
+    _is_single_atom_geometry,
+    _isotopic_substitutions,
+    _normalize_xyz_text,
+    _require_xyz_text,
+    _species_element_symbols,
+    _xyz_element_symbols,
+)
+from tckdb_arc.levels import (  # noqa: F401
+    _adaptive_kind_named,
+    _adaptive_level_status,
+    _ADAPTIVE_LEVELS_KEY,
+    _adaptive_marker,
+    _bac_frequency_level,
+    _canonical_dispersion,
+    _canonical_level_args,
+    _conformer_screen_level,
+    _describe_level,
+    _DISPERSION_SUFFIX_RE,
+    _energy_level_unattributable,
+    _header_adaptive_job_types,
+    _JOB_TYPES_BY_KIND,
+    _level_identity,
+    _level_keys_match,
+    _METHOD_REFIT_YEAR_RE,
+    _n_heavy_from_record,
+    _normalize_level_name,
+    _note_adaptive_omission,
+    _opt_level_software,
+    _resolve_level,
+    _RESTART_KEY,
+    _restart_levels,
+    _TCKDB_LOT_REF_FIELDS,
+    _thermo_energy_level,
+)
+from tckdb_arc.calculations import (  # noqa: F401
+    _ARC_STABILITY_INSTABILITY_TYPE,
+    _ARC_STABILITY_VERDICT_TO_STATUS,
+    _CALC_KEY_FREQ,
+    _CALC_KEY_IRC,
+    _CALC_KEY_OPT,
+    _CALC_KEY_OPT_COARSE,
+    _CALC_KEY_SCAN,
+    _CALC_KEY_SP,
+    _CALC_KEY_TS_GUESS,
+    _coarse_opt_result_payload,
+    _conformer_observed_lists,
+    _conformer_observed_provenance,
+    _CONTRADICTIONS_KEY,
+    _designate_reaction_coordinate_index,
+    _FINAL_SETTINGS_FIELD_BY_CALC_ROLE,
+    _final_settings_for_calc,
+    _hessian_parser_block,
+    _merge_parameters_json,
+    _note_route_contradiction,
+    _opt_result_payload,
+    _placeholder_origin,
+    _reused_origin,
+    _ROLE_COMPOSITE,
+    _route_observation,
+    _route_parameters,
+    _scan_job_type,
+    _SCAN_ROTOR_KEY_RE,
+    _scf_stability_payload,
+    _screened_conformer_origin,
+    _sp_is_reused_from_opt,
+    _sp_reuse_origin,
+    _spin_diagnostic_payload,
+    _stated_integer,
+    _TS_MAJOR_MODE_MAX_CM1,
+    _TS_MAJOR_MODE_MIN_CM1,
+    _wavefunction_diagnostic_payload,
+)
+from tckdb_arc.path_search import (  # noqa: F401
+    _detect_irc_direction,
+    _IRC_DIRECTION_FORWARD,
+    _IRC_DIRECTION_REVERSE,
+    _irc_level,
+    _IRC_NOT_GAUSSIAN_METHODS,
+    _LOG_FIELD_BY_CALC_KEY,
+    _parse_xtb_turbomole_energy_file,
+    _parse_xtb_turbomole_gradient_file,
+    _parse_xtb_xtbout_energy,
+    _read_gsm_node_outputs,
+    _resolve_irc_zero_energy_reference,
+    _resolve_log_field,
+    _resolve_ts_guess_path_search,
+    _resolve_ts_guess_path_search_for_record,
+    _TS_GUESS_LOG_FIELD_BY_METHOD,
+    _TS_GUESS_PATH_SEARCH_METHODS,
+    _TS_GUESS_UPLOAD_LOG_AS_ARTIFACT,
+    _with_irc_program,
+    _with_observed_irc_program,
+    _XTBOUT_TOTAL_ENERGY_RE,
+)
+from tckdb_arc.thermo import (  # noqa: F401
+    _arkane_composite_key_halves,
+    _ARKANE_COMPOSITE_KEY_RE,
+    _ARKANE_KEY_FIELD_RE,
+    _arkane_key_half,
+    _ARKANE_KEY_RE,
+    _arkane_key_software,
+    _ARKANE_KEY_SOFTWARE_RE,
+    _atom_params_from_reference_atom_energies,
+    _atom_without_sp_energy_error,
+    _BAC_COMPONENT_SUM_TOLERANCE,
+    _bond_corrections_flag,
+    _component_is_usable,
+    _ENERGY_UNITS,
+    _ENERGY_WITHHELD_KEY,
+    _enthalpy_magnitude_error,
+    _FORMATION_ENTHALPY_MAX_ABS_KJ_MOL,
+    _G4_FAMILY_METHOD_KEYS,
+    _g4_loader_energy_unreliable,
+    _GAS_CONSTANT_J_MOL_K,
+    _GAUSSIAN16_A03_BANNER,
+    _has_enthalpy_content,
+    _HEADER_CORRECTIONS_LEVEL_SOURCE,
+    _is_composite_atom_record,
+    _level_field_unverifiable_error,
+    _LEVEL_FIELDS_ARC_MATCHING_IGNORES,
+    _LIGHT_ATOM_TOTAL_ENERGY_HARTREE,
+    _light_species_raw_energy_kj_mol,
+    _nasa_h298_kj_mol,
+    _norm_level_token,
+    _note_omitted_bac_on_thermo,
+    _petersson_bac_omission_reason,
+    _skipped_bonds_note,
+    _strip_enthalpy_content,
+    _T298_K,
+    _unflagged_enthalpy_error,
+    _W_ENTHALPY_ATOM_CORRECTIONS_LEVEL_MISMATCH,
+    _W_ENTHALPY_ATOM_CORRECTIONS_LEVEL_UNVERIFIABLE,
+    _W_ENTHALPY_FORMATION_UNVERIFIABLE_LIGHT_SPECIES,
+    _W_ENTHALPY_NOT_FORMATION_MAGNITUDE,
+    _with_composite_role,
+)
+from tckdb_arc.provenance import (  # noqa: F401
+    _arc_aec_yml_digest,
+    _arc_analysis_software_release,
+    _arc_workflow_tool_release,
+    _arkane_workflow_tool_release,
+    _DATA_REVISION_MAX_CHARS,
+    _index_species,
+    _index_transition_states,
+    _is_output_schema_1_0,
+    _is_output_schema_1_3_or_later,
+    _rmg_database_data_revision,
+    _RMG_DATABASE_SCHEME_KINDS,
+    _scheme_data_revisions,
+    _sha256_or_none,
+)
+from tckdb_arc.statmech import (  # noqa: F401
+    _build_statmech_source_calculations,
+    _classify_statmech_treatment,
+    _coerce_torsion_coordinates,
+    _STATMECH_CALC_ROLES,
+)
+from tckdb_arc.kinetics import (  # noqa: F401
+    _any_level_states_solvation,
+    _build_kinetics_source_calculations,
+    _calculation_electron_counts,
+    _calculation_multiplicities,
+    _coerce_optional_float,
+    _header_levels,
+    _kinetics_declarations,
+    _KINETICS_DETERMINATION_KEY,
+    _kinetics_determination_key,
+    _KINETICS_FIT_KEYS,
+    _kinetics_interpretation_sentence,
+    _KINETICS_ROLE_PRODUCT_ENERGY,
+    _KINETICS_ROLE_REACTANT_ENERGY,
+    _KINETICS_ROLE_TS_ENERGY,
+    _KINETICS_ROLE_TS_FREQ,
+    _KINETICS_ROLE_TS_IRC,
+    _level_states_solvation,
+    _note_kinetics_declarations_interpreted,
+    _participant_electron_count,
+    _participant_levels_state_solvent,
+    _PRESSURE_DEPENDENCE_WORDS,
+    _SOLVATION_ARGS_TOKENS,
+    _source_levels_state_solvation,
+    _stringify_tunneling_model,
+    _TUNNELING_MODEL_ATTRS,
+    _TUNNELING_MODEL_KEYS,
+)
+from tckdb_arc.reactions import (  # noqa: F401
+    _is_plain_int,
+    _participant_slots,
+    _ts_route_atom_map_slots,
+    _ts_unmapped_smiles_handle,
+)
 
 
 def _serialize_calc_constraints(source) -> list[dict]:
@@ -322,100 +525,8 @@ def _neutral_scan_result_to_tckdb(
     return out
 
 
-_ENERGY_UNITS = frozenset({"hartree", "kj_mol", "kcal_mol"})
 # ``AtomParamApplication`` (tckdb-schemas 0.62).
 _ATOM_PARAM_APPLICATIONS = frozenset({"subtracted", "added"})
-
-
-def _atom_params_from_reference_atom_energies(
-    table: Any,
-) -> tuple[list[dict[str, Any]], str | None]:
-    """``(atom_params, unit)`` from ARC's ``reference_atom_energies`` block.
-
-    The block is ``{unit, applied_as, values: {element: energy}}``. Returns
-    ``([], None)`` (so the scheme is sent without parameters, which the
-    contract allows) when the unit is missing or not a TCKDB energy unit
-    (never guessed: ``scheme.units`` decides how TCKDB reads every value), or
-    when any element or value is unusable (a partial table would misstate
-    the scheme).
-    """
-    if not isinstance(table, Mapping):
-        return [], None
-    unit = table.get("unit")
-    values = table.get("values")
-    if unit not in _ENERGY_UNITS or not isinstance(values, Mapping) or not values:
-        return [], None
-    params: list[dict[str, Any]] = []
-    for key, value in sorted(values.items(), key=lambda kv: str(kv[0])):
-        element = str(key).strip()
-        if (
-            not 1 <= len(element) <= 3
-            or isinstance(value, bool)
-            or not isinstance(value, (int, float))
-            or not math.isfinite(value)
-        ):
-            return [], None
-        params.append({"element": element, "value": float(value)})
-    if len({p["element"] for p in params}) != len(params):
-        return [], None
-    return params, str(unit)
-
-
-def _is_output_schema_1_0(output_doc: Mapping[str, Any]) -> bool:
-    """Whether the document is ARC output schema 1.0 (keyed on the version alone).
-
-    1.0 wrote thermo Cp points as ``thermo.cp_data`` and the atom-energy table
-    as ``parameter_table``; 1.1 renamed them ``thermo_points`` and
-    ``reference_atom_energies``. The old names are read only for 1.0 documents.
-    """
-    return output_doc.get("schema_version") == "1.0"
-
-
-def _is_output_schema_1_3_or_later(output_doc: Mapping[str, Any]) -> bool:
-    """Whether the document is ARC output schema 1.3 or later (keyed on the version alone).
-
-    1.3 states what the Arkane run behind each number actually did: a Petersson
-    correction's ``components`` are the bonds it applied (``skipped_components``
-    the bonds it could not), a statmech block carries ``arkane_treatment`` and the
-    E0 switches, a TS record its frequencies in ESS order and the reaction-
-    coordinate index, a reaction its ``reversible`` and the kinetics run's
-    ``comment`` / ``atom_corrections_applied`` / ``ts_validation``, and the header
-    the ``rmg_database`` identity. A document of an earlier version never states
-    these, so they are read from 1.3 documents only.
-    """
-    version = output_doc.get("schema_version") if isinstance(output_doc, Mapping) else None
-    if not isinstance(version, str):
-        return False
-    try:
-        major, minor = (int(part) for part in version.split(".")[:2])
-    except ValueError:
-        return False
-    return (major, minor) >= (1, 3)
-
-
-def _skipped_bonds_note(skipped: Any) -> str | None:
-    """The correction note naming the bonds a Petersson table had no parameter for.
-
-    ``skipped`` is ARC's ``skipped_components`` (``[{bond, count}]``); ``None``
-    when nothing was skipped or the list is not usable.
-    """
-    if not isinstance(skipped, list):
-        return None
-    parts = []
-    for entry in skipped:
-        if not isinstance(entry, Mapping) or not isinstance(entry.get("bond"), str):
-            return None
-        count = entry.get("count")
-        if isinstance(count, bool) or not isinstance(count, int) or count < 1:
-            return None
-        parts.append(f"{entry['bond']} x{count}")
-    if not parts:
-        return None
-    return (
-        "Arkane's Petersson table has no parameter for " + ", ".join(parts)
-        + "; those bonds contributed nothing to this total, and the components "
-        "listed are the bonds it did apply."
-    )
 
 
 def _correction_records_from_record(
@@ -586,21 +697,6 @@ def _correction_records_from_record(
 
 logger = get_logger()
 
-#: Source tag of this adapter's sidecar warnings: ``context.source == "tckdb_arc_self_check"``.
-_PRODUCER_TAG = "tckdb_arc"
-
-
-def _self_check(
-    code: str, message: str, field: str | None = None, context: Mapping[str, Any] | None = None,
-) -> dict[str, Any]:
-    """The sidecar dict of one self-check finding, rendered through ``AdapterWarning``.
-
-    ``context`` is the finding's own details (``action``, ids, ...); ``source`` is added
-    first. Appending the result to a plain list or to a ``WarningSink`` stores the same
-    ``{code, message, field, context}`` dict the sidecar has always held.
-    """
-    return AdapterWarning(code, message, field, context or {}).to_dict(_PRODUCER_TAG)
-
 
 # ---------------------------------------------------------------------------
 # Names that moved to ``tckdb_core`` (the producer-agnostic numerics, rules
@@ -630,11 +726,6 @@ def arc_to_tckdb_ea_units(arc_units: str | None) -> str | None:
     return _rmg_units.ea_units_to_tckdb(arc_units, log=logger)
 
 
-_GAS_CONSTANT_J_MOL_K = _thermo_numerics.GAS_CONSTANT_J_MOL_K
-_T298_K = _thermo_numerics.T298_K
-_nasa_h298_kj_mol = _thermo_numerics.nasa_h298_kj_mol
-
-
 def _build_nasa_block(nasa_low: Any, nasa_high: Any) -> dict[str, Any] | None:
     """ARC's two NASA blocks as ``ThermoNASACreate`` (``tckdb_core.thermo_numerics``), or ``None``."""
     return _thermo_numerics.build_nasa_block(nasa_low, nasa_high, log=logger)
@@ -653,17 +744,10 @@ _REACTION_MODE_FIELDS_NOT_CARRIED = _reaction_flatten.REACTION_MODE_FIELDS_NOT_C
 _flatten_result_fields = _reaction_flatten.flatten_result_fields
 _flatten_all_reaction_calcs = _reaction_flatten.flatten_all_reaction_calcs
 
-_xyz_element_symbols = _composition.xyz_element_symbols
-_FORMULA_TERM_RE = _composition.FORMULA_TERM_RE
-_formula_element_symbols = _composition.formula_element_symbols
-_is_single_atom_geometry = _composition.is_single_atom_geometry
-_formula = _composition.formula
-
 _XTB_BANNER_RE = _software_release.XTB_BANNER_RE
 _split_ess_version_banner = _software_release.split_version_banner
 
 _calculations_by_key = _rules.calculations_by_key
-_describe_level = _rules.describe_level
 _finite_float = _ts_evidence.finite_float
 
 
@@ -704,43 +788,11 @@ def _energy_level_declaration(
 _TS_STANDALONE_STRIP_CALC_KEYS = ("key", "depends_on", "geometry_key", "artifacts")
 
 
-# Local calculation-key namespace within a computed-species bundle.
-# These keys are referenced from `depends_on.parent_calculation_key` and
-# `thermo.source_calculations[].calculation_key`. They have no relation
-# to TCKDB-assigned calculation_ids — the bundle endpoint mints those
-# server-side and returns them in the response.
-_CALC_KEY_OPT = "opt"
-_CALC_KEY_OPT_COARSE = "opt_coarse"
-_CALC_KEY_FREQ = "freq"
-_CALC_KEY_SP = "sp"
-
-# ``ThermoCalculationRole`` / ``StatmechCalculationRole`` ``composite``: the
-# calculation is a composite-method job (CBS-QB3, G4, ...). TCKDB has no
-# composite *calculation type*; the role "describes a scientific origin rather
-# than a specific job type" and accepts any type, so a composite run's job (filed
-# as the record's ``opt``, see ``_with_composite_role``) is linked under it.
-_ROLE_COMPOSITE = "composite"
-
 # Version tag stamped onto every parsed Hessian payload. Bump when the
 # Cartesian-Hessian parsing in ``arc/parser/adapters/{gaussian,orca}.py``
 # changes in a way that would alter the emitted lower-triangle values.
 _HESSIAN_PARSER_VERSION = "arc-hessian-1"
 
-
-def _hessian_parser_block(stamp: str) -> dict[str, Any]:
-    """The Hessian's ``parser`` block (tckdb-schemas 0.130 ``ParserStamp``) from ARC's stamp.
-
-    ARC spells the parser as one token, ``arc-hessian-1`` (``HESSIAN_PARSER_VERSION``);
-    TCKDB wants the name beside the version and refuses a name that embeds one. The split
-    is ARC's own ``<name>-<version>`` shape: the trailing ``-<digits>`` is the version
-    (kept as the text ARC wrote) and what precedes it the name. A stamp that does not
-    have that shape is not guessed at: the block is left out (``parser`` is optional)
-    rather than invent a name.
-    """
-    name, sep, version = str(stamp).rpartition("-")
-    if not sep or not name or not version.isdigit():
-        return {}
-    return {"parser": {"name": name, "version": version}}
 
 # ESS name (from ``arc.parser.parser.determine_ess``) → TCKDB
 # ``HessianSource`` enum value. Gaussian prints the Hessian inside the log
@@ -750,23 +802,6 @@ def _hessian_parser_block(stamp: str) -> dict[str, Any]:
 _HESSIAN_SOURCE_BY_ESS = {
     "gaussian": "parsed_log",
     "orca": "parsed_hess",
-}
-
-# Per-calc record-field map for output_log artifacts. Same convention as
-# `_LOG_FIELD_BY_CALC_KEY` in the existing artifact path: the species
-# record carries `<job>_log` paths that come straight from
-# `arc/output.py::_spc_to_dict`.
-_LOG_FIELD_BY_CALC_KEY = {
-    _CALC_KEY_OPT: "opt_log",
-    _CALC_KEY_OPT_COARSE: "coarse_opt_log",
-    _CALC_KEY_FREQ: "freq_log",
-    _CALC_KEY_SP: "sp_log",
-    # ts_guess role is method-dispatched at lookup time (see
-    # ``_resolve_log_field``) because the producing TS-guess adapter
-    # determines which record field carries the log path
-    # (``neb_log`` for orca_neb, ``gsm_log`` for xtb_gsm). The gate in
-    # ``_build_ts_block`` is what decides whether the calc is emitted
-    # at all.
 }
 
 # Same shape, for input-deck paths. `arc/output.py` emits these per-job
@@ -798,55 +833,6 @@ _INLINE_ARTIFACT_SOURCES: tuple[tuple[str, dict[str, str]], ...] = (
     ("input", _INPUT_FIELD_BY_CALC_KEY),
 )
 
-# TS-side calc role; reaction bundles can also carry an irc on the TS,
-# but ARC may not always have one parsed cleanly, so it's optional.
-_CALC_KEY_IRC = "irc"
-
-# TS guess parent calculation (only emitted when the chosen guess was
-# itself a real path-search calculation — orca_neb or xtb_gsm).
-# Geometry-only guesses (heuristics, AutoTST/KinBot wrappers, GCN,
-# user-supplied XYZ) stay as ``calculation_input_geometry`` and never
-# produce a calc node here, per the calculation_dependency contract:
-# parent must be a real calc.
-_CALC_KEY_TS_GUESS = "ts_guess"
-
-# ARC's TSGuess.method strings → TCKDB ``path_search_result.method``
-# enum value. Lookup is case- and whitespace-insensitive at the call
-# site (producer strings are stable identifiers but historically have
-# casing variations like ``orca_neb`` vs ``ORCA_NEB`` and module-name
-# vs class-name forms ``xtb_gsm`` vs ``xTB-GSM``). Geometry-only
-# methods (heuristics, AutoTST, KinBot, GCN, user XYZ) are deliberately
-# absent — they have no path-search log to anchor a parent calc.
-_TS_GUESS_PATH_SEARCH_METHODS: dict[str, str] = {
-    "orca_neb": "neb",
-    "xtb_gsm": "gsm",
-    "xtb-gsm": "gsm",
-}
-
-# Per-method record-field name carrying the path-search log path.
-# ``neb_log`` is populated by ``arc/output.py`` from ``paths['neb']``
-# (set by the scheduler from ``tsg.log_path`` when orca_neb wins) and
-# ``gsm_log`` from ``paths['gsm']`` (xtb_gsm wins). Both fields are
-# read by ``_resolve_ts_guess_path_search`` to gate emission of the
-# ``ts_guess`` parent calc.
-_TS_GUESS_LOG_FIELD_BY_METHOD: dict[str, str] = {
-    "neb": "neb_log",
-    "gsm": "gsm_log",
-}
-
-# Per-method gate for emitting the path-search log as an inline
-# ``output_log`` artifact. Gated by what the backend's ESS-signature
-# validator accepts: NEB logs are real ORCA output files (pass); GSM
-# stringfiles are multi-frame XYZ trajectories (fail signature check —
-# backend supports cfour/gaussian/molpro/nwchem/orca/psi4/qchem/turbomole
-# only). For GSM, the per-frame geometries already ride inside
-# ``path_search_result.points``, so the raw stringfile would be
-# redundant provenance even if the backend accepted it.
-_TS_GUESS_UPLOAD_LOG_AS_ARTIFACT: dict[str, bool] = {
-    "neb": True,
-    "gsm": False,
-}
-
 # Per-method static properties of the path-search algorithm itself.
 # These are intrinsic to the *method*, not the run — both ARC-supported
 # adapters (orca_neb, xtb_gsm) are double-ended path-search methods that
@@ -872,84 +858,6 @@ _KCAL_MOL_TO_KJ_MOL = 4.184
 # rather than a real, physically-flat profile — so we leave relative
 # energies null instead of uploading a fabricated all-zero profile.
 _GSM_STRINGFILE_ENERGY_EPS = 1e-6
-
-
-def _resolve_ts_guess_path_search(method: object) -> str | None:
-    """Return the TCKDB ``path_search_result.method`` enum value for an
-    ARC TSGuess.method string, or ``None`` for geometry-only / unknown
-    methods.
-
-    Conservative: only matches strings explicitly listed in
-    ``_TS_GUESS_PATH_SEARCH_METHODS`` (case- and whitespace-insensitive).
-    Non-string and unknown values return ``None`` — the caller falls
-    back to geometry-only TS provenance (no parent calc emitted).
-    """
-    if not isinstance(method, str):
-        return None
-    return _TS_GUESS_PATH_SEARCH_METHODS.get(method.strip().lower())
-
-
-def _resolve_ts_guess_path_search_for_record(record: Mapping[str, Any]) -> str | None:
-    """Return the TCKDB ``path_search_result.method`` enum for a TS record.
-
-    First tries the chosen guess's primary method (``chosen_ts_method``) — unchanged behaviour.
-    When that is geometry-only (e.g. ``gcn``) but a path-search method (``xtb_gsm`` / ``orca_neb``)
-    was merged into the chosen guess during ARC's equivalent-guess clustering, recover it from the
-    chosen ``ts_guesses`` entry's ``method_sources``. This gates emission of the ``path_search``
-    parent calc off the merged provenance rather than the single primary method — it does NOT
-    change ARC's TS selection (``chosen_ts_method`` is untouched).
-
-    When several path-search methods merged into the chosen guess, prefer the one whose log field
-    (``neb_log`` / ``gsm_log``) is actually populated on the record — the scheduler preserves exactly
-    one path source's log — so this gate and the subsequent log lookup agree. Returns ``None`` for
-    geometry-only / unknown methods.
-    """
-    method = _resolve_ts_guess_path_search(record.get("chosen_ts_method"))
-    if method is not None:
-        return method
-    candidates: list[str] = []
-    for tsg in (record.get("ts_guesses") or []):
-        if isinstance(tsg, Mapping) and tsg.get("chosen"):
-            for source in (tsg.get("method_sources") or []):
-                resolved = _resolve_ts_guess_path_search(source)
-                if resolved is not None and resolved not in candidates:
-                    candidates.append(resolved)
-            break
-    for candidate in candidates:
-        log_field = _TS_GUESS_LOG_FIELD_BY_METHOD.get(candidate)
-        if log_field and record.get(log_field):
-            return candidate
-    return candidates[0] if candidates else None
-
-
-def _resolve_log_field(role: str, record: Mapping[str, Any]) -> str | None:
-    """Resolve the species-record field carrying the output-log path for ``role``.
-
-    Ordinary roles dispatch through ``_LOG_FIELD_BY_CALC_KEY``. The
-    ``ts_guess`` role is method-dispatched: the field name depends on
-    which TS-guess adapter produced the chosen guess (orca_neb →
-    ``neb_log``, xtb_gsm → ``gsm_log``). Returns ``None`` when the role
-    has no log mapping or the TS-guess method is geometry-only.
-    """
-    if role == _CALC_KEY_TS_GUESS:
-        method_enum = _resolve_ts_guess_path_search_for_record(record)
-        if method_enum is None:
-            return None
-        # Some path-search methods (notably GSM) produce log artifacts
-        # the backend's ESS-signature validator rejects. Skip the
-        # artifact upload for those — the geometric data still rides
-        # inside ``path_search_result.points``.
-        if not _TS_GUESS_UPLOAD_LOG_AS_ARTIFACT.get(method_enum, False):
-            return None
-        return _TS_GUESS_LOG_FIELD_BY_METHOD.get(method_enum)
-    return _LOG_FIELD_BY_CALC_KEY.get(role)
-
-
-# Bundle-local calc role for rotor scans. Per-rotor keys are minted as
-# ``f"{_CALC_KEY_SCAN}_rotor_{i}"`` by ``arc/output.py``; the adapter
-# accepts whatever key the species record provides without re-minting,
-# so the source-of-truth for naming stays on the producer side.
-_CALC_KEY_SCAN = "scan"
 
 
 def _warn_primary_opt_placeholder(
@@ -4684,7 +4592,6 @@ class TCKDBAdapter(TCKDBUploaderBase):
 # ----------------------------------------------------------------------
 
 
-_CONTRADICTIONS_KEY = "_tckdb_route_contradictions"
 _W_LEVEL_CONTRADICTED_BY_ROUTE = ArcWarning.LEVEL_CONTRADICTED_BY_ROUTE.value
 
 
@@ -4729,425 +4636,8 @@ def _route_contradiction(
     return arc13.route_contradicts_level(arc13.route_for_job(record, calc_type), level)
 
 
-def _note_route_contradiction(
-    output_doc: Mapping[str, Any], record: Mapping[str, Any], calc_type: str, detail: str,
-) -> None:
-    noted = output_doc.get(_CONTRADICTIONS_KEY)
-    if isinstance(noted, list):
-        entry = (str(record.get("label")), calc_type, detail)
-        if entry not in noted:
-            noted.append(entry)
-
-
 _W_COMPOSITE_GEOMETRY_LEVEL_NOT_STATED = ArcWarning.COMPOSITE_GEOMETRY_LEVEL_NOT_STATED.value
 _W_PRIMARY_OPT_PLACEHOLDER_NO_OPT_JOB = ArcWarning.PRIMARY_OPT_PLACEHOLDER_NO_OPT_JOB.value
-
-
-def _placeholder_origin(kind: str) -> dict[str, Any]:
-    """``tckdb_origin`` marking a primary ``opt`` that stands in for a job ARC did not run as an opt."""
-    reason = (
-        "placeholder: the geometry came from a composite-method job whose internal "
-        "optimisation level ARC does not export; filed at the composite level ARC states"
-        if kind == "composite" else
-        "placeholder: ARC exports no optimisation job for this record; TCKDB requires a "
-        "primary opt, filed at the run's header opt level"
-    )
-    return {
-        "origin_kind": "derived",
-        "origin_detail": f"placeholder_primary_opt_{kind}",
-        "reason": reason,
-        "independent_ess_job": False,
-        "producer": "ARC",
-    }
-
-
-def _route_parameters(
-    record: Mapping[str, Any], calc_type: str, ess_job_key: str,
-) -> list[dict[str, Any]]:
-    """``parameters`` observations for the ESS keyword line(s) of a 1.3 record's job."""
-    if calc_type == _CALC_KEY_IRC:
-        routes = record.get("irc_log_routes")
-        if not arc13.has_levels(record) or not isinstance(routes, list):
-            return []
-        stated = [r.strip() for r in routes if isinstance(r, str) and r.strip()]
-        if not stated:
-            return []
-        if len(set(stated)) == 1 and len(stated) == len(routes):
-            return [_route_observation(stated[0], "irc")]
-        return [
-            _route_observation(r.strip(), "irc", index=i)
-            for i, r in enumerate(routes) if isinstance(r, str) and r.strip()
-        ]
-    if calc_type != ess_job_key or calc_type not in arc13.ROUTE_FIELDS:
-        return []
-    route = arc13.route_for_job(record, calc_type)
-    return [_route_observation(route, calc_type)] if route else []
-
-
-def _route_observation(route: str, section: str, *, index: int | None = None) -> dict[str, Any]:
-    out: dict[str, Any] = {
-        "raw_key": "route", "raw_value": route, "section": section, "value_type": "string",
-    }
-    if index is not None:
-        out["parameter_index"] = index
-    return out
-
-
-def _sp_reuse_origin(
-    output_doc: Mapping[str, Any], record: Mapping[str, Any],
-) -> dict[str, Any] | None:
-    """The ``tckdb_origin`` of a record's sp calculation when its energy is reused, else ``None``.
-
-    A schema-1.3 record states it: with no ``sp_log`` the energy is read from the
-    optimization log, or on a composite run from the composite log
-    (``arc13.sp_energy_source``). Older output has only the header levels
-    (``_sp_is_reused_from_opt``).
-    """
-    if arc13.has_levels(record):
-        source = arc13.sp_energy_source(record)
-        return _reused_origin(source) if source else None
-    return _reused_origin("opt") if _sp_is_reused_from_opt(output_doc) else None
-
-
-def _sp_is_reused_from_opt(output_doc: Mapping[str, Any]) -> bool:
-    """Whether ARC's SP energy is reused from the opt calculation.
-
-    The signal is structural equality between ``sp_level`` and
-    ``opt_level``. Two flavors both count:
-
-    - ``sp_level`` absent / null in output.yml — the common ARC case
-      where the user only declares ``opt_level=`` and ARC reuses the
-      opt energy as the SP energy.
-    - ``sp_level`` explicitly set to a dict structurally equal to
-      ``opt_level`` — same outcome, no separate ESS job.
-
-    A ``sp_level`` that differs from ``opt_level`` (different method,
-    basis, software, etc.) means a real SP job was executed, so we
-    return False and the calculation gets no reused-result marker.
-    """
-    opt_level = output_doc.get("opt_level")
-    if not isinstance(opt_level, Mapping):
-        return False
-    sp_level = output_doc.get("sp_level")
-    if sp_level is None:
-        return True
-    if not isinstance(sp_level, Mapping):
-        return False
-    return dict(sp_level) == dict(opt_level)
-
-
-def _reused_origin(reused_from_calc_type: str) -> dict[str, Any]:
-    """Build the ``tckdb_origin`` payload for a reused-result calculation.
-
-    Lives under ``parameters_json.tckdb_origin`` on the calculation row.
-    The DAG edge between calculations carries the relational link
-    (e.g. ``opt -> sp`` with role ``single_point_on``); this dict
-    carries the qualifier — *this* row's energy is reused, not freshly
-    computed — so downstream consumers can tell aggregate-from-opt SP
-    rows apart from independently executed SP jobs.
-    """
-    # TCKDB has no composite calculation type: a composite job is filed as the
-    # record's ``opt`` calculation (it produced the geometry), so the energy is
-    # reused from that ``opt`` row and ``source_job`` names the ARC job.
-    reused_from = (
-        {"calculation_type": "opt", "source_job": "composite"}
-        if reused_from_calc_type == "composite"
-        else {"calculation_type": reused_from_calc_type}
-    )
-    return {
-        "origin_kind": "reused_result",
-        "reused_from": reused_from,
-        "reason": (
-            f"sp_level equals {reused_from_calc_type}_level; "
-            f"{reused_from_calc_type} electronic energy reused as SP energy"
-            if reused_from_calc_type == "opt" else
-            f"the {reused_from_calc_type} job's electronic energy is the SP energy "
-            "(ARC read it from that job's log)"
-        ),
-        "independent_ess_job": False,
-        "producer": "ARC",
-    }
-
-
-# Per-calc-role mapping to the ``<role>_final_settings`` field name on the
-# species record. Roles not in the map have no current producer-side
-# source of final-settings data (ARC's ``output.yml`` writes only the opt,
-# coarse-opt, freq and sp fields; there is no ``irc_final_settings``); the
-# helper returns ``None`` for them and the adapter omits
-# ``parameters_json.final_settings`` from the calc.
-_FINAL_SETTINGS_FIELD_BY_CALC_ROLE: Mapping[str, str] = {
-    "opt": "opt_final_settings",
-    "opt_coarse": "coarse_opt_final_settings",
-    "freq": "freq_final_settings",
-    "sp": "sp_final_settings",
-}
-
-
-def _final_settings_for_calc(
-    *,
-    species_record: Mapping[str, Any],
-    calc_role: str,
-) -> dict[str, Any] | None:
-    """Return the calc's ``final_settings`` dict from the species record.
-
-    ``final_settings`` carries the final effective scientific/numerical
-    knobs that defined this calculation — distinct from the
-    level of theory (whose identity is its method, basis and typed
-    qualifiers; ESS keywords are calculation parameters, not identity)
-    and from operational/scheduler metadata (server, queue, runtime,
-    job ids — explicitly out of scope).
-
-    Today the producer (``arc/output.py``) populates these honestly
-    from observable run state (e.g. ``opt_final_settings.fine = True``
-    when a coarse stage ran, since that proves the fine opt ran with
-    ``fine=True``). Calls return ``None`` when:
-    * the calc role has no producer-side source today,
-    * the field is missing from the species record (older output.yml),
-    * the field is present but empty / not a mapping.
-    """
-    field = _FINAL_SETTINGS_FIELD_BY_CALC_ROLE.get(calc_role)
-    if field is None:
-        return None
-    raw = species_record.get(field)
-    if not isinstance(raw, Mapping) or not raw:
-        return None
-    return {k: v for k, v in raw.items() if v is not None}
-
-
-def _merge_parameters_json(
-    *,
-    existing: Mapping[str, Any] | None = None,
-    tckdb_origin: Mapping[str, Any] | None = None,
-    final_settings: Mapping[str, Any] | None = None,
-) -> dict[str, Any] | None:
-    """Merge optional calculation metadata into ``parameters_json``.
-
-    ``parameters_json`` is the single calc-level slot TCKDB exposes for
-    free-form qualifier metadata (per-row, opaque to the schema). Today
-    two writers populate it:
-
-    * ``tckdb_origin`` — origin/qualifier markers (see :func:`_reused_origin`,
-      :func:`_screened_conformer_origin`). Identifies non-standard rows
-      so consumers don't mistake them for independently executed jobs.
-    * ``final_settings`` — the final effective scientific/numerical
-      settings of the calculation (e.g. ``{"fine": True}``). Distinct
-      from the level of theory, which since tckdb-schemas 0.158 has no
-      free-text keywords: ESS options are calculation parameters.
-
-    ``existing`` lets callers fold both writers on top of a caller-
-    provided base. Keys collide explicitly: the merge intentionally
-    does NOT silently overwrite a pre-existing ``tckdb_origin`` /
-    ``final_settings`` — that would mask bugs. Callers should pass
-    only one source for each key.
-
-    Returns ``None`` when the merged dict is empty, so the caller can
-    omit the field entirely rather than emit an empty container.
-    """
-    merged: dict[str, Any] = dict(existing) if existing else {}
-    if tckdb_origin:
-        merged["tckdb_origin"] = dict(tckdb_origin)
-    if final_settings:
-        merged["final_settings"] = dict(final_settings)
-    return merged or None
-
-
-def _screened_conformer_origin(job: str = "opt") -> dict[str, Any]:
-    """Build the ``tckdb_origin`` payload for an alt-conformer's opt row.
-
-    TCKDB's ``ConformerInBundle`` requires every conformer to carry a
-    ``primary_calculation`` of type ``opt``. For screened conformers
-    that ARC didn't select, no parsed ESS opt log lands on the species
-    record — we only have a converged geometry plus a relative kJ/mol
-    energy from the conformer screen. This marker makes that explicit
-    on the wire so downstream consumers can tell screened-conformer
-    anchor rows apart from independently executed opt jobs.
-
-    ``origin_kind`` maps to ``derived``: the backend hoists this value
-    into the validated ``CalculationWithResultsPayload.origin_kind`` enum
-    (``{executed, reused_result, imported, derived}``), and a screened
-    conformer's geometry is *derived* from ARC's conformer screen rather
-    than produced by an independently executed ESS opt job. The
-    ARC-specific ``screened_conformer`` distinction is preserved verbatim
-    under ``origin_detail`` (opaque to the backend enum) so downstream
-    consumers can still single these rows out. Emitting
-    ``origin_kind="screened_conformer"`` here previously caused a 422 —
-    it is not an enum member.
-    """
-    return {
-        "origin_kind": "derived",
-        "origin_detail": "screened_conformer",
-        "reason": (
-            "alt conformer geometry anchored to the bundle; ARC did "
-            "not parse an independent opt job for this conformer"
-            if job == "opt" else
-            "alt conformer single-point energy from ARC's conformer screen; "
-            "ARC did not parse an independent sp job for this conformer"
-        ),
-        "independent_ess_job": False,
-        "producer": "ARC",
-    }
-
-
-def _stated_integer(
-    record: Mapping[str, Any],
-    field: str,
-    subject: str,
-    *,
-    minimum: int | None = None,
-) -> int:
-    """Return ARC's own integer ``record[field]``, or refuse the upload.
-
-    Charge and multiplicity are required identity fields with no TCKDB
-    default, and ARC writes both for every species and TS
-    (arc/output.py ``_spc_to_dict``). A record without a usable value is
-    malformed; before adapter 0.6.0 it silently became charge 0 or a
-    singlet, which is a different species identity (a radical deposited as
-    a singlet). Raise ``ValueError`` instead: the per-record build fails
-    and the sweep reports it, like every other unbuildable record.
-    """
-    value = record.get(field)
-    usable = (
-        not isinstance(value, bool)
-        and (isinstance(value, int) or (isinstance(value, float) and value.is_integer()))
-        and (minimum is None or value >= minimum)
-    )
-    if not usable:
-        raise ValueError(
-            f"{subject}: ARC's record states no usable {field} ({value!r}). "
-            f"TCKDB requires {field} and the adapter does not default it; "
-            f"refusing to build this upload."
-        )
-    return int(value)
-
-
-def _resolve_level(
-    output_doc: Mapping[str, Any],
-    job_kind: str,
-    record: Mapping[str, Any] | None = None,
-    *,
-    job_type: str | None = None,
-) -> Mapping[str, Any] | None:
-    """Return the level-of-theory dict for ``job_kind`` ('opt'/'freq'/'sp').
-
-    The opt level is always required by the primary calculation. For
-    freq/sp, ARC users very often run all three at the same level and
-    only declare ``opt_level=`` — ``output.yml`` then writes ``freq_level:
-    null`` / ``sp_level: null``. To avoid silently dropping the freq/sp
-    additional calculations in the common case, fall back to ``opt_level``
-    when the job-specific level is absent. Scans require their own level;
-    ARC can run them at a different method from optimization. ``neb`` is the
-    ORCA NEB path-search level (``neb_level``, exported only when the
-    ``orca_neb`` TS adapter was configured) and never falls back to the opt
-    level either: the NEB runs at ``orca_neb_settings['level']``, not at any of
-    the run's opt/freq/sp levels. A present-but-distinct
-    ``freq_level`` / ``sp_level`` is treated as authoritative.
-
-    The fallback follows ARC's own semantics (kept in adapter 0.6.0 by
-    maintainer decision): ARC itself sets ``freq_level = opt_level`` when a
-    frequency job is requested without one (arc/main.py
-    ``set_levels_of_theory``), and a null ``sp_level`` means no sp job was
-    requested, so ARC parses the species' electronic energy from the
-    optimization log (arc/scheduler.py: ``parse_opt_e_elect`` is called
-    when ``not self.job_types['sp']``); an ``sp_level`` equal to
-    ``opt_level`` likewise reuses the optimization output (``run_sp_job``).
-    output.yml's ``sp_energy_hartree`` is that ``e_elect``.
-
-    Under ARC ``adaptive_levels`` (``output_doc`` marked by
-    ``TCKDBAdapter._with_adaptive_levels``) a job type the adaptive levels name
-    has a per-species level that output.yml does not record. With ``record``
-    (the species or TS) and a ``restart.yml`` holding the adaptive spec and
-    the species, ARC's own choice is replayed exactly
-    (``tckdb_arc.adaptive.RestartInfo.attribute_level``); a job type the
-    species' range does not name runs at the run's regular level, as
-    everywhere else. Otherwise ``None`` is returned (and noted, for the
-    warning) and the caller states no level. ``job_type`` names the ARC job
-    type when a kind has several (``scan`` / ``directed_scan``). A null
-    ``sp_level`` reuses the optimization's energy, so it follows the
-    (attributed) opt level; a null ``freq_level`` beside an adaptive opt has
-    no stated source and yields ``None``.
-    """
-    # Schema 1.3 states the level of each job whose log the record exports
-    # (``levels``), also under ``adaptive_levels``: it is authoritative and
-    # replaces the restart.yml replay. It states no ``software`` (the program is
-    # ``ess_software``). What it leaves unstated falls through to the pre-1.3 rules.
-    if record is not None and arc13.has_levels(record):
-        recorded = arc13.recorded_level(record, job_kind)
-        if recorded is not None:
-            if (recorded.level is None and job_kind == "opt"
-                    and arc13.primary_opt_placeholder(record) == "no_opt_job"):
-                # ARC exports an sp/freq log but no opt job; the primary opt TCKDB
-                # requires is filed as a marked placeholder at the header opt level.
-                header = output_doc.get("opt_level")
-                return header if isinstance(header, Mapping) else None
-            return recorded.level
-        if job_kind == "scan":
-            # ARC exports no per-species scan level: the header ``scan_level`` is the
-            # requested level of the run, ``null`` when rotor scans were not requested
-            # or when an adaptive entry names ``scan`` (the level then depends on the
-            # species).
-            level = output_doc.get("scan_level")
-            if not isinstance(level, Mapping) and _adaptive_kind_named(output_doc, "scan"):
-                _note_adaptive_omission(output_doc, "scan", record)
-            return level if isinstance(level, Mapping) else None
-    if _adaptive_kind_named(output_doc, job_kind) if job_type is None else (
-            job_type in (_adaptive_marker(output_doc) or {}).get("named", ())):
-        types = (job_type,) if job_type else _JOB_TYPES_BY_KIND.get(job_kind, (job_kind,))
-        status = (
-            _adaptive_level_status(output_doc, record, types[0])
-            if len(types) == 1 else UNDETERMINABLE
-        )
-        if isinstance(status, Mapping):
-            return status
-        if status == UNDETERMINABLE:
-            _note_adaptive_omission(output_doc, job_kind, record)
-            return None
-        # RUN_LEVEL: the species' range does not name it; the run level applies.
-    if job_kind in {"opt", "scan", "neb", "gsm"}:
-        level = output_doc.get(f"{job_kind}_level")
-        return level if isinstance(level, Mapping) else None
-    job_level = output_doc.get(f"{job_kind}_level")
-    if isinstance(job_level, Mapping):
-        return job_level
-    if job_kind == "freq" and _adaptive_kind_named(output_doc, "opt"):
-        _note_adaptive_omission(output_doc, job_kind, record)
-        return None
-    return _resolve_level(output_doc, "opt", record)
-
-
-def _opt_result_payload(record: Mapping[str, Any]) -> dict[str, Any] | None:
-    out: dict[str, Any] = {}
-    # opt_converged is emitted by arc/output.py::_spc_to_dict (line 541) and
-    # accepted by TCKDB's OptResultPayload as ``converged: bool | None``.
-    # Without this mapping the calc_opt_result.converged column lands NULL
-    # even for known-converged species. Coerce to bool defensively — ARC
-    # writes True/False but the schema is strict about the type.
-    if record.get("opt_converged") is not None:
-        out["converged"] = bool(record["opt_converged"])
-    if record.get("opt_n_steps") is not None:
-        out["n_steps"] = record["opt_n_steps"]
-    if record.get("opt_final_energy_hartree") is not None:
-        out["final_energy_hartree"] = record["opt_final_energy_hartree"]
-    return out or None
-
-
-def _coarse_opt_result_payload(record: Mapping[str, Any]) -> dict[str, Any] | None:
-    """Like :func:`_opt_result_payload` but reads the ``coarse_opt_*`` fields.
-
-    The coarse opt is treated as ``converged=True`` whenever it ran to
-    completion — output.yml only records ``coarse_opt_log`` after a
-    successful coarse run (see ``_spc_to_dict`` line 555: ``if converged
-    and coarse_path``). A separate ``coarse_opt_converged`` field would
-    be slightly more honest, but ARC doesn't currently emit one and the
-    convention "the coarse log only exists if it converged" holds.
-    """
-    out: dict[str, Any] = {}
-    # The presence of the coarse log indicates a successful coarse stage.
-    out["converged"] = True
-    if record.get("coarse_opt_n_steps") is not None:
-        out["n_steps"] = record["coarse_opt_n_steps"]
-    if record.get("coarse_opt_final_energy_hartree") is not None:
-        out["final_energy_hartree"] = record["coarse_opt_final_energy_hartree"]
-    return out
 
 
 _FREQ_FIELD_SPECS = (
@@ -5156,31 +4646,6 @@ _FREQ_FIELD_SPECS = (
     ("imag_freq_cm1", "imag_freq_cm1", float),
     ("zpe_hartree", "zpe_hartree", float),
 )
-
-
-# ARC's own criterion for a transition state's *major* mode (the
-# reaction coordinate): the unique imaginary mode whose magnitude falls
-# strictly inside this window. Anything outside it is either numerical
-# noise (too soft — a grid/optimisation artifact) or implausibly stiff
-# (an SCF/parse artifact), per ``arc/checks/ts.py::
-# check_imaginary_frequencies`` and ``arc/settings/settings.py``'s
-# ``LOWEST_MAJOR_TS_FREQ`` / ``HIGHEST_MAJOR_TS_FREQ``.
-_TS_MAJOR_MODE_MIN_CM1 = 75.0
-_TS_MAJOR_MODE_MAX_CM1 = 10000.0
-
-
-def _designate_reaction_coordinate_index(
-    imaginary_values: list[float],
-) -> int | None:
-    """1-based position in ``imaginary_values`` of the unique major TS mode.
-
-    The rule (largest-magnitude candidate inside the window, ``None`` on a tie or no
-    candidate) is :func:`tckdb_core.rules.designate_reaction_coordinate_index`; the
-    window is ARC's own, (75, 10000) cm-1, mirroring ``arc/checks/ts.py::
-    check_imaginary_frequencies`` (``_TS_MAJOR_MODE_MIN_CM1`` / ``_TS_MAJOR_MODE_MAX_CM1``).
-    """
-    return _rules.designate_reaction_coordinate_index(
-        imaginary_values, window_cm1=(_TS_MAJOR_MODE_MIN_CM1, _TS_MAJOR_MODE_MAX_CM1))
 
 
 # TCKDB's noise floor for an imaginary mode when no protocol is recorded
@@ -5630,143 +5095,9 @@ def _sp_result_payload(record: Mapping[str, Any]) -> dict[str, Any] | None:
         return None
 
 
-def _spin_diagnostic_payload(record: Mapping[str, Any]) -> dict[str, Any] | None:
-    """Build the TCKDB ``SpinDiagnosticPayload`` dict for a species/TS sp calc.
-
-    Reads the ``sp_spin_diagnostic`` block that ``arc/output.py`` writes into
-    ``output.yml`` for open-shell/unrestricted single points (parsed ``<S**2>``).
-    Emits the block ONLY when a finite ``s_squared`` is present; restricted /
-    closed-shell records carry ``sp_spin_diagnostic=None`` (or omit the key),
-    for which this returns ``None`` and the caller leaves ``spin_diagnostic``
-    unset — never an all-null or fabricated block.
-
-    The ``s_squared`` field is required by the backend schema; the two
-    companion fields (``s_squared_expected`` / ``s_squared_annihilated``) are
-    optional and are only included when present and finite. All values are
-    clamped to ``ge=0`` by construction of the source parser (S(S+1) and
-    ``<S**2>`` are non-negative); a defensively-negative value is dropped.
-    """
-    block = record.get("sp_spin_diagnostic")
-    if not isinstance(block, Mapping):
-        return None
-    s_squared = block.get("s_squared")
-    if s_squared is None:
-        return None
-    try:
-        s_squared = float(s_squared)
-    except (TypeError, ValueError):
-        return None
-    if s_squared < 0:
-        return None
-    payload: dict[str, Any] = {"s_squared": s_squared}
-    for optional in ("s_squared_expected", "s_squared_annihilated"):
-        value = block.get(optional)
-        if value is None:
-            continue
-        try:
-            value = float(value)
-        except (TypeError, ValueError):
-            continue
-        if value < 0:
-            continue
-        payload[optional] = value
-    return payload
-
-
-def _wavefunction_diagnostic_payload(record: Mapping[str, Any]) -> dict[str, Any] | None:
-    """The ``WavefunctionDiagnosticPayload`` for an sp calc from ``sp_t1_diagnostic``, or ``None``.
-
-    Only a finite, non-negative number is sent (TCKDB: ``t1_diagnostic >= 0``);
-    ARC writes ``null`` for every level that is not coupled-cluster or QCISD and
-    when the log prints none, and an all-null block is refused by TCKDB, so none
-    is built then.
-    """
-    t1 = record.get("sp_t1_diagnostic")
-    if isinstance(t1, bool) or not isinstance(t1, (int, float)):
-        return None
-    t1 = float(t1)
-    if not math.isfinite(t1) or t1 < 0:
-        return None
-    return {"t1_diagnostic": t1}
-
-
-# ARC's ``wavefunction_stability.verdict`` (arc/parser/adapters gaussian.py and
-# orca.py, documented at arc/output.py ``_parse_wavefunction_stability``) onto
-# the contract's ``scf_stability.status``. ``'unknown'`` means an analysis ran
-# whose verdict ARC could not read, which is the contract's ``inconclusive``
-# ("clearly attempted but its result could not be parsed"). Any verdict not
-# listed here is not sent: the adapter never guesses a status.
-_ARC_STABILITY_VERDICT_TO_STATUS = {
-    "stable": "stable",
-    "internal_instability": "unstable",
-    "external_instability": "unstable",
-    "unattributed_instability": "unstable",
-    "unknown": "inconclusive",
-}
-_ARC_STABILITY_INSTABILITY_TYPE = {
-    "internal_instability": "internal",
-    "external_instability": "external",
-}
-
-
-def _scf_stability_payload(record: Mapping[str, Any]) -> dict[str, Any] | None:
-    """Return the primary opt's ``scf_stability``, or ``None``.
-
-    ARC runs its wavefunction stability analysis once per species, from the
-    optimization job: at the optimization level, on the geometry that
-    optimization converged to, with the orbitals it wrote
-    (``arc/scheduler.py::run_stability_job``), so that its SCF reproduces the
-    wavefunction under test. ``wavefunction_stability`` describes that
-    wavefunction, the opt's, and the block goes on the opt calculation only.
-    A freq or sp job runs its own SCF, which may land on another solution, so
-    the analysis is not an observation of theirs.
-
-    Nothing is sent when ARC's own record shows the opt sent is not the one
-    tested: ``scf_reference.source == 'derived'`` (ARC adopted the verdict and
-    re-optimized at another reference, ``arc/output.py::_scf_reference_block``)
-    or ``measured_on_ts_guess`` (the verdict was measured on an abandoned TS
-    guess).
-
-    ``stable`` is sent only for ARC's ``'stable'`` verdict, and not when the ORCA
-    reader reports it followed an instability to a stable solution
-    (``followed_to_stable``), which contradicts a stable verdict.
-    ``lowest_eigenvalue`` is ARC's own (the tested wavefunction's). ARC exports
-    no instability count, and ``followed_to_stable`` is not mapped to
-    ``stabilized``: the tested wavefunction stayed unstable and no
-    re-optimization on its solution is recorded.
-    """
-    stability = record.get("wavefunction_stability")
-    scf_reference = record.get("scf_reference")
-    if not isinstance(stability, Mapping) or not isinstance(scf_reference, Mapping):
-        return None
-    status = _ARC_STABILITY_VERDICT_TO_STATUS.get(stability.get("verdict"))
-    if status is None:
-        return None
-    if scf_reference.get("measured_on_ts_guess") is not None:
-        return None
-    if scf_reference.get("source") == "derived":
-        return None
-    if status == "stable" and stability.get("followed_to_stable") is True:
-        return None
-    out: dict[str, Any] = {"status": status}
-    lowest = stability.get("lowest_eigenvalue")
-    if isinstance(lowest, (int, float)) and not isinstance(lowest, bool) and math.isfinite(lowest):
-        out["lowest_eigenvalue"] = float(lowest)
-    instability_type = _ARC_STABILITY_INSTABILITY_TYPE.get(stability.get("verdict"))
-    if instability_type is not None:
-        out["instability_type"] = instability_type
-    return out
-
-
 _APPLIED_CORRECTION_COMPONENT_FIELDS = (
     "component_kind", "key", "multiplicity", "parameter_value", "contribution_value",
 )
-
-# TCKDB's LevelOfTheoryRef primary-key set — used by _level_keys_match
-# for conservative LoT equality. Note the names here are TCKDB's
-# (post-translation), not ARC's (output.yml writes `auxiliary_basis` /
-# `cabs`); _level_keys_match compares projected dicts.
-_TCKDB_LOT_REF_FIELDS = ("method", "basis", "aux_basis", "cabs_basis")
 
 # Field-name translation from ARC's Level (output.yml shape) to TCKDB's
 # LevelOfTheoryRef. ARC's Level.as_dict() emits `auxiliary_basis` / `cabs` /
@@ -5784,22 +5115,6 @@ _ARC_TO_TCKDB_LOT_FIELDS = {
     "solvent": "solvent",
     "solvation_method": "solvent_model",
 }
-
-
-def _canonical_level_args(level: Mapping[str, Any]) -> str | None:
-    """ARC ``args`` of a level as a canonical string (``None`` when it states none).
-
-    Order-independent (``sort_keys``); a missing, ``None`` or empty ``args`` all read
-    as ``None``. Not sent to TCKDB (``LevelOfTheoryRef`` has no ``keywords``): it is
-    only used to tell two jobs apart.
-    """
-    args = level.get("args")
-    if not args:
-        return None
-    try:
-        return json.dumps(args, sort_keys=True, separators=(",", ":"), ensure_ascii=False, default=str)
-    except (TypeError, ValueError):
-        return repr(args)
 
 
 def _same_arc_job_level(a: Mapping[str, Any], b: Mapping[str, Any]) -> bool:
@@ -5880,84 +5195,7 @@ def _scheme_level_of_theory(scheme: Mapping[str, Any]) -> dict[str, Any] | None:
 _FREQ_KEYED_SCHEME_KINDS = frozenset({"bac_petersson", "bac_melius"})
 
 
-def _bac_frequency_level(
-    output_doc: Mapping[str, Any], record: Mapping[str, Any] | None,
-) -> Mapping[str, Any] | None:
-    """ARC's stated frequency level behind a record's BAC (``scheme.frequency_level_of_theory``).
-
-    Arkane keys a Petersson or Melius BAC on ``energy//freq`` and ARC's correction
-    record names the energy half only (``level_of_theory``), so the frequency half
-    is the level of the record's frequency job, and only when ARC states it:
-
-    * an output 1.3 record: ``levels.freq``. A record whose frequencies are the
-      composite job's own (``levels.freq`` null by design, or a ``freq_log`` that is
-      the composite log) names none, so none is sent;
-    * an earlier record: the header ``freq_level``, only when the adapter attributes
-      it to this record's frequency calculation that way (``_resolve_level``: not
-      under ``adaptive_levels``, where the level of a job type the adaptive levels
-      name is per species and not exported). A null header ``freq_level`` (ARC wrote
-      it null because the frequencies share the opt level) states nothing about the
-      BAC, so none is sent: the opt level is not substituted.
-
-    ``None`` means no frequency level is stated; the scheme is then sent without one,
-    as before 0.10.
-    """
-    if record is None:
-        return None
-    if arc13.has_levels(record):
-        recorded = arc13.recorded_level(record, "freq")
-        if recorded is None or recorded.level is None or recorded.job_key == "composite":
-            return None
-        return recorded.level
-    header = output_doc.get("freq_level")
-    if not isinstance(header, Mapping) or not header.get("method"):
-        return None
-    if _adaptive_kind_named(output_doc, "freq") or _adaptive_kind_named(output_doc, "opt"):
-        return None
-    return header
-
-
-_ARKANE_COMPOSITE_KEY_RE = re.compile(
-    r"^\s*CompositeLevelOfTheory\(\s*freq\s*=\s*LevelOfTheory\((?P<freq>[^()]*)\)\s*,"
-    r"\s*energy\s*=\s*LevelOfTheory\((?P<energy>[^()]*)\)\s*\)\s*$",
-    re.DOTALL,
-)
-_ARKANE_KEY_FIELD_RE = re.compile(r"\s*(?P<name>[A-Za-z_]+)\s*=\s*'(?P<value>[^']*)'\s*(?:,|$)")
 _W_BAC_FREQUENCY_LEVEL_CONFLICT = ArcWarning.BAC_FREQUENCY_LEVEL_CONFLICT.value
-
-
-def _arkane_key_half(body: str) -> dict[str, str] | None:
-    """Parse the ``name='value',...`` body of one ``LevelOfTheory(...)`` into a dict, or ``None``."""
-    fields: dict[str, str] = {}
-    pos = 0
-    body = body.strip()
-    while pos < len(body):
-        m = _ARKANE_KEY_FIELD_RE.match(body, pos)
-        if m is None or m.group("name") in fields:
-            return None
-        fields[m.group("name")] = m.group("value")
-        pos = m.end()
-    return fields or None
-
-
-def _arkane_composite_key_halves(matched_arkane_key: Any) -> dict[str, dict[str, str]] | None:
-    """``{"freq": {...}, "energy": {...}}`` for a ``CompositeLevelOfTheory(freq=..., energy=...)`` key.
-
-    ``None`` for any other key (a single ``LevelOfTheory``, no key, an unparseable string).
-    """
-    if not isinstance(matched_arkane_key, str):
-        return None
-    shape = _ARKANE_COMPOSITE_KEY_RE.match(matched_arkane_key)
-    if shape is None:
-        return None
-    freq, energy = _arkane_key_half(shape.group("freq")), _arkane_key_half(shape.group("energy"))
-    if not freq or not energy or not freq.get("method"):
-        return None
-    return {"freq": freq, "energy": energy}
-
-
-def _norm_level_token(value: Any) -> str:
-    return re.sub(r"[^a-z0-9]", "", str(value or "").lower())
 
 
 def _bac_key_frequency_level(
@@ -6005,41 +5243,11 @@ def _bac_key_frequency_level(
     return _arc_level_to_tckdb_lot(key_freq)
 
 
-_ARKANE_KEY_RE = re.compile(r"^\s*LevelOfTheory\((?P<body>.*)\)\s*$", re.DOTALL)
-_ARKANE_KEY_SOFTWARE_RE = re.compile(r"(?:^|,)\s*software\s*=\s*'(?P<name>[A-Za-z0-9_.+-]+)'\s*(?=,|$)")
 _W_ENERGY_CORRECTION_SCHEME_SOFTWARE_CONFLICT = ArcWarning.ENERGY_CORRECTION_SCHEME_SOFTWARE_CONFLICT.value
-
-
-def _arkane_key_software(matched_arkane_key: Any) -> str | None:
-    """The ``software='<name>'`` in Arkane's matched database key, or ``None``.
-
-    ARC records the key as the entry's repr, e.g.
-    ``LevelOfTheory(method='b3lyp2023',basis='def2tzvp',software='gaussian')``
-    (arc/output.py ``matched_arkane_key``). Only a key of that shape with
-    exactly one clean, single-quoted ``software`` token counts; anything
-    else (no key, a key without software, an unparseable string) is
-    ``None``, never a guess.
-    """
-    if not isinstance(matched_arkane_key, str):
-        return None
-    shape = _ARKANE_KEY_RE.match(matched_arkane_key)
-    if shape is None:
-        return None
-    names = [m.group("name") for m in _ARKANE_KEY_SOFTWARE_RE.finditer(shape.group("body"))]
-    if len(names) != 1 or shape.group("body").count("software") != 1:
-        return None
-    return names[0]
 
 
 _W_ATOM_ENERGY_RECORD_NOT_DEPOSITED_AEC_YML = ArcWarning.ATOM_ENERGY_RECORD_NOT_DEPOSITED_AEC_YML.value
 _W_BAC_CORRECTION_OMITTED_COMPONENTS_INCOMPLETE = ArcWarning.BAC_CORRECTION_OMITTED_COMPONENTS_INCOMPLETE.value
-
-
-def _bond_corrections_flag(record: Mapping[str, Any]) -> bool | None:
-    """``thermo.bond_corrections_applied`` (output.yml 1.2) when a bool, else None."""
-    thermo = record.get("thermo")
-    flag = thermo.get("bond_corrections_applied") if isinstance(thermo, Mapping) else None
-    return flag if isinstance(flag, bool) else None
 
 
 _W_BAC_TYPE_NOT_STATED = ArcWarning.BAC_TYPE_NOT_STATED.value
@@ -6068,124 +5276,6 @@ def _warn_bac_type_not_stated(
         warnings.append(_self_check(
             _W_BAC_TYPE_NOT_STATED, message, "thermo",
             {"action": "none_scheme_from_energy_corrections", "bac_type": str(output_doc.get("bac_type"))}))
-
-
-def _note_omitted_bac_on_thermo(
-    thermo_block: dict[str, Any] | None,
-    reasons: list[str],
-    bond_corrections_applied: Any = None,
-) -> None:
-    """Record on the thermo ``note`` that an exported BAC is not deposited.
-
-    Arkane skips bond types missing from its Petersson table and applies the
-    rest, so the thermo enthalpy can include a partial BAC while the deposit
-    holds no applied correction. ``bond_corrections_applied`` is output.yml
-    1.2's ``thermo.bond_corrections_applied``: True asserts Arkane applied it;
-    False means nothing is missing from the deposit, so no note; absent (None)
-    keeps the inference and words the note as what ARC exported. Appended,
-    never overwriting.
-    """
-    if thermo_block is None or not reasons or bond_corrections_applied is False:
-        return
-    if reasons[0] == "no_bond_had_parameter":
-        text = (
-            "ARC exported a Petersson bond additivity correction total for this species, "
-            "but no bond had a parameter in Arkane's table, so no applied correction is "
-            "deposited.")
-        existing = thermo_block.get("note")
-        thermo_block["note"] = f"{existing}; {text}" if existing else text
-        return
-    if bond_corrections_applied is True:
-        subject = "A Petersson bond additivity correction was applied by Arkane to this species"
-    else:
-        subject = "ARC exported a Petersson bond additivity correction total for this species"
-    text = (
-        f"{subject} but it is not deposited as an applied correction because its "
-        f"bond decomposition was incomplete ({reasons[0]})."
-    )
-    existing = thermo_block.get("note")
-    thermo_block["note"] = f"{existing}; {text}" if existing else text
-
-
-def _component_is_usable(component: Any) -> bool:
-    return (
-        isinstance(component, Mapping)
-        and component.get("parameter_value") is not None
-        and component.get("contribution_value") is not None
-    )
-
-
-# kcal/mol. ARC computes a component as ``count * parameter`` and the total from
-# Arkane, so a real record agrees to float round-off; this admits only the
-# rounding of a hand-copied value, and is far below the contribution of any bond
-# a decomposition could be missing.
-_BAC_COMPONENT_SUM_TOLERANCE = 1e-3
-
-
-def _petersson_bac_omission_reason(
-    rec: Mapping[str, Any],
-    components: Any,
-    *,
-    target_kind: str,
-    element_symbols: Any,
-) -> tuple[str, str] | None:
-    """``(reason, detail)`` when a Petersson ``bac_total`` must not be sent.
-
-    TCKDB's ``assert_bac_total_has_required_components`` refuses a
-    ``bac_petersson`` total with no component of kind ``bond`` when it
-    targets a transition state or a species with at least one bond; only a
-    monatomic species has an honest componentless total. It does not check
-    that the components sum to the total, so a partial decomposition (a
-    component missing ``parameter_value``/``contribution_value``) would be
-    stored silently. ARC itself drops the whole list when any bond lacks a
-    parameter. ``None`` means send it (also for every other role or kind:
-    ``bac_melius`` is exempt on TCKDB's side).
-    """
-    scheme = rec.get("scheme")
-    if rec.get("application_role") != "bac_total" or not isinstance(scheme, Mapping):
-        return None
-    if scheme.get("kind") != "bac_petersson":
-        return None
-    items = components if isinstance(components, list) else []
-    applied_bonds = rec.get("components_are_applied_bonds") is True
-    if any(not _component_is_usable(c) for c in items):
-        return ("component_unusable",
-                "a bond component lacks a parameter or contribution value, so the "
-                "decomposition would not sum to the total.")
-    has_bond = any(c.get("component_kind") == "bond" for c in items)
-    if has_bond:
-        if applied_bonds:
-            # Output 1.3 states that the components are the bonds Arkane applied
-            # and that they sum to the total, so a partial BAC (bonds with no
-            # parameter listed as ``skipped_components``) is a complete, exact
-            # decomposition of what was applied. TCKDB does not check the sum,
-            # so verify what ARC promises before sending it.
-            try:
-                contributions = sum(float(c["contribution_value"]) for c in items)
-                total = float(rec["value"])
-            except (TypeError, ValueError, KeyError):
-                contributions = total = math.nan
-            if not math.isclose(contributions, total, rel_tol=1e-6, abs_tol=_BAC_COMPONENT_SUM_TOLERANCE):
-                return ("components_do_not_sum",
-                        f"the bond components sum to {contributions!r} but the total is "
-                        f"{rec.get('value')!r}, although ARC states that they sum to it.")
-        return None
-    monatomic = (
-        target_kind == "species"
-        and isinstance(element_symbols, (list, tuple))
-        and len(element_symbols) == 1
-    )
-    if monatomic:
-        return None
-    if not items:
-        if applied_bonds:
-            return ("no_bond_had_parameter",
-                    "the record lists no bond Arkane applied (every bond of the "
-                    "species is in skipped_components, or none is listed).")
-        return ("no_components",
-                "the record carries no bond components (ARC drops them all when a "
-                "bond has no parameter in Arkane's Petersson table).")
-    return ("no_bond_component", "the record carries no component of kind 'bond'.")
 
 
 def _build_applied_energy_corrections(
@@ -6461,70 +5551,7 @@ _THERMO_ENTHALPY_REFERENCE_KIND = "formation_298k"
 # a stand-in for the energy level (ARC only warns). Enthalpies failing
 # either check are stripped from the block, keeping its entropy and Cp.
 _W_ENTHALPY_ATOM_CORRECTIONS_NOT_APPLIED = ArcWarning.ENTHALPY_ATOM_CORRECTIONS_NOT_APPLIED.value
-_W_ENTHALPY_ATOM_CORRECTIONS_LEVEL_MISMATCH = ArcWarning.ENTHALPY_ATOM_CORRECTIONS_LEVEL_MISMATCH.value
-_W_ENTHALPY_ATOM_CORRECTIONS_LEVEL_UNVERIFIABLE = ArcWarning.ENTHALPY_ATOM_CORRECTIONS_LEVEL_UNVERIFIABLE.value
 _W_ENTHALPY_NOT_FINITE = ArcWarning.ENTHALPY_NOT_FINITE.value
-# Levels compare by effective method (the method with its dispersion
-# folded in) and basis, normalized exactly as ARC matches levels against
-# Arkane's database: case, hyphens and spaces and a trailing refit year are
-# ignored, and ``b3lyp`` + ``gd3bj``, ``b3lyp-d3bj`` and ``b3lyp-d3(bj)`` are
-# one method, while ``wb97xd``/``wb97xd3`` and ``ccsd(t)``/``ccsdt`` stay
-# two. Software, year, method_type and args never matter. Ported, since the
-# adapter must not import ARC, from ARC 1977e53b: arc/statmech/arkane.py
-# ``_normalize_name`` and ``_split_method_year``; arc/main.py
-# ``DISPERSION_SUFFIX_REGEX``, ``_canonical_dispersion`` and
-# ``_normalized_method_and_basis``. A parity test runs against ARC when it
-# has them.
-_METHOD_REFIT_YEAR_RE = re.compile(r"^(.*?)(\d{4})$")
-_DISPERSION_SUFFIX_RE = re.compile(r"g?d[234](\(?bj\)?)?$")
-# ARC's Arkane key match and data/AEC.yml lookup read only the method
-# string and basis, ignoring these level fields, so when either level sets
-# one, a matching ``atom_corrections_level`` cannot show that the applied
-# atom energies carried it (ARC applies plain B3LYP atom energies to
-# B3LYP + GD3BJ, gas-phase ones to SMD).
-_LEVEL_FIELDS_ARC_MATCHING_IGNORES = ("dispersion", "solvation_method")
-
-# Magnitude backstop, and the first check for thermo whose flag is null or
-# absent (pre-1.2 output, species Arkane loaded from its own YAML). Raw
-# absolute energies are about -1e5 kJ/mol per heavy atom, while the largest
-# real |ΔHf| are O(10^3-10^4) kJ/mol, so anything beyond this bound cannot
-# be a formation enthalpy. It misses every species whose raw total energy
-# is below about 7.6 hartree (2e4 kJ/mol): H, H2, He, the Li atom.
-_FORMATION_ENTHALPY_MAX_ABS_KJ_MOL = 2.0e4
-_W_ENTHALPY_NOT_FORMATION_MAGNITUDE = ArcWarning.ENTHALPY_NOT_FORMATION_MAGNITUDE.value
-# Interim checks for a null or absent flag, until every run writes output.yml
-# 1.2's ``atom_corrections_applied`` (ARC PR #1059), which supersedes them.
-#
-# Declaring ``formation_298k`` on output without the 1.2 flags is a
-# deliberate, maintainer-approved interpretation, not a
-# default filled in for a convention ARC left unstated. Arkane's corrected
-# H298 (and the NASA fit and point H/G built from it) is a formation
-# enthalpy by construction: Arkane subtracts the atom energies of the level
-# of theory and adds the elements' experimental formation enthalpies. What
-# pre-1.2 output does not record is whether that correction ran, and at
-# which level. The non-finite check is exact; the magnitude, light-species,
-# header-level and dispersion/solvation checks are heuristics that make an
-# uncorrected (or wrong-level) enthalpy very unlikely to pass, not proof that
-# the correction ran at the right level. A block failing any of them loses
-# its enthalpy content. When ARC writes the 1.2 flags, they decide instead.
-#
-# * The magnitude guard's blind spot. A species whose raw (uncorrected)
-#   total energy is below the bound looks like a formation enthalpy either
-#   way, so its enthalpy cannot be verified without the flag. The raw
-#   magnitude is estimated from the composition as a sum of approximate
-#   atomic total energies (hartree). Only H, He and Li are listed: any
-#   heavier atom alone (Be is about 14.7 hartree) puts the species past
-#   the bound, where the magnitude guard decides.
-# * The header ``arkane_level_of_theory``, which ARC 1.1 writes from the
-#   level it ran Arkane's atom corrections at (the user's setting, else
-#   ``composite_method``, else ``sp_level``; null when none is resolved).
-#   It must be the energy level; a null header cannot be checked.
-# * Dispersion and solvation fields, as for a true flag: ARC's Arkane
-#   matching ignores them, so the plain gas-phase method's atom energies
-#   were applied.
-_LIGHT_ATOM_TOTAL_ENERGY_HARTREE = {"H": 0.50, "He": 2.90, "Li": 7.43}
-_W_ENTHALPY_FORMATION_UNVERIFIABLE_LIGHT_SPECIES = ArcWarning.ENTHALPY_FORMATION_UNVERIFIABLE_LIGHT_SPECIES.value
-_HEADER_CORRECTIONS_LEVEL_SOURCE = "output_header.arkane_level_of_theory"
 
 # TCKDB #529 and the producer contract: ``reference_pressure_bar`` is never
 # defaulted, and "if your source does not say which convention a number
@@ -6569,89 +5596,6 @@ def _thermo_reference_pressure_bar(
     return None, "malformed"
 
 
-def _thermo_energy_level(
-    output_doc: Mapping[str, Any], record: Mapping[str, Any] | None = None,
-) -> Mapping[str, Any] | None:
-    """Return the level a species' energies were computed at.
-
-    ``composite_method`` when set, else the SP level (``opt_level`` when
-    ``sp_level`` is null, as ARC then reuses the opt energy). output.yml
-    records one level per run, so under ARC ``adaptive_levels`` the level is
-    the one ``restart.yml`` attributes to ``record`` (see ``_resolve_level``),
-    or ``None`` when that cannot be worked out.
-    """
-    # Schema 1.3: the record states the level of the job its energy was read from
-    # (the composite job on a composite run, else the sp job, or the opt job when no
-    # sp ran), also under ``adaptive_levels``.
-    if record is not None and arc13.has_levels(record):
-        recorded = arc13.recorded_level(
-            record, "composite" if record.get("composite_log") else "sp")
-        if recorded is not None and recorded.level is not None:
-            return recorded.level
-    composite = output_doc.get("composite_method")
-    if isinstance(composite, Mapping):
-        if _adaptive_kind_named(output_doc, "composite"):
-            status = _adaptive_level_status(output_doc, record, "composite")
-            if isinstance(status, Mapping):
-                return status
-            if status == UNDETERMINABLE:
-                return None
-        return composite
-    return _resolve_level(output_doc, "sp", record)
-
-
-def _normalize_level_name(name: Any) -> str | None:
-    """ARC's ``arkane.py::_normalize_name``: lowercase, hyphens and spaces removed."""
-    if name is None:
-        return None
-    return str(name).replace("-", "").replace(" ", "").lower()
-
-
-def _canonical_dispersion(dispersion: Any) -> str:
-    """ARC's ``main.py::_canonical_dispersion``: ``gd3bj``, ``D3(BJ)`` and
-    ``EmpiricalDispersion=GD3BJ`` all give ``d3bj``; ``''`` for none."""
-    if not dispersion:
-        return ""
-    dispersion = str(dispersion).lower()
-    for character in ("-", " ", "(", ")"):
-        dispersion = dispersion.replace(character, "")
-    dispersion = dispersion.removeprefix("empiricaldispersion=")
-    if dispersion in ("gd2", "gd3", "gd3bj"):
-        dispersion = dispersion[1:]  # Gaussian's spelling.
-    return dispersion
-
-
-def _level_identity(level: Any) -> tuple[str, str | None] | None:
-    """ARC's ``main.py::_normalized_method_and_basis`` on an output.yml level dict.
-
-    Returns the normalized ``(effective method, basis)``, or ``None`` for a
-    level without a method.
-    """
-    if not isinstance(level, Mapping) or not level.get("method"):
-        return None
-    method = _normalize_level_name(level["method"])
-    year_split = _METHOD_REFIT_YEAR_RE.match(method)  # arkane.py::_split_method_year
-    if year_split is not None:
-        method = year_split.group(1)
-    suffix = _DISPERSION_SUFFIX_RE.search(method)
-    if suffix is not None:
-        method = method[:suffix.start()] + _canonical_dispersion(suffix.group())
-    method += _canonical_dispersion(level.get("dispersion"))
-    return method, _normalize_level_name(level.get("basis"))
-
-
-def _species_element_symbols(record: Mapping[str, Any]) -> tuple[str, ...] | None:
-    """A species record's composition: its xyz, else its ``formula``.
-
-    ARC before c8240195 (output.yml 1.0) writes ``xyz: null`` for monoatomic
-    species, which skip opt, while still recording ``formula``.
-    """
-    symbols = _xyz_element_symbols(record.get("xyz"))
-    if symbols is None:
-        symbols = _formula_element_symbols(record.get("formula"))
-    return symbols
-
-
 def _monatomic_sp_result_payload(record: Mapping[str, Any]) -> dict[str, Any] | None:
     """``sp_result`` of a single atom's one job: ``sp_energy_hartree``, else ``opt_final_energy_hartree``.
 
@@ -6676,73 +5620,6 @@ def _monatomic_sp_result_payload(record: Mapping[str, Any]) -> dict[str, Any] | 
     if isinstance(fallback, bool) or not isinstance(fallback, (int, float)) or not math.isfinite(fallback):
         return None
     return {"electronic_energy_hartree": float(fallback)}
-
-
-def _is_composite_atom_record(record: Mapping[str, Any]) -> bool:
-    """Whether the record is a composite-method run (composite log, or a composite level/method stated)."""
-    if record.get("composite_log") or record.get("composite_method"):
-        return True
-    levels = record.get("levels")
-    return isinstance(levels, Mapping) and bool(levels.get("composite"))
-
-
-def _atom_without_sp_energy_error(record: Mapping[str, Any]) -> ValueError:
-    if _is_composite_atom_record(record):
-        return ValueError(
-            f"{record.get('label')!r} is a single atom of a composite run, so its primary "
-            "calculation is its single point, but ARC states no sp_energy_hartree for it "
-            "(opt_final_energy_hartree is parsed from the composite log and may be an "
-            "intermediate SCF energy, so it is not used); the adapter does "
-            "not relabel it as an optimisation, so the species is not built.")
-    return ValueError(
-        f"{record.get('label')!r} is a single atom, so its primary calculation is its "
-        "single point (an atom has no geometry to optimise and TCKDB accepts an sp "
-        "primary for it), but ARC states neither sp_energy_hartree nor "
-        "opt_final_energy_hartree for it; the adapter does "
-        "not relabel it as an optimisation, so the species is not built.")
-
-
-def _light_species_raw_energy_kj_mol(element_symbols: Any) -> float | None:
-    """Estimate a light species' raw total energy magnitude (kJ/mol).
-
-    ``None`` when the composition is unknown or holds any atom heavier than
-    Li, whose raw energy alone passes ``_FORMATION_ENTHALPY_MAX_ABS_KJ_MOL``.
-    """
-    from tckdb_arc._vendor import E_h_kJmol
-
-    if not element_symbols:
-        return None
-    hartree = 0.0
-    for symbol in element_symbols:
-        atom_hartree = _LIGHT_ATOM_TOTAL_ENERGY_HARTREE.get(symbol)
-        if atom_hartree is None:
-            return None
-        hartree += atom_hartree
-    return hartree * E_h_kJmol
-
-
-def _level_field_unverifiable_error(
-    sides: tuple[tuple[str, Any], ...],
-    matched: str,
-) -> tuple[str, str] | None:
-    """Refuse a level that sets a field ARC's atom-energy matching ignores.
-
-    ``sides`` names each level checked; ``matched`` says which level the
-    atom energies were matched to, for the message.
-    """
-    for side, level in sides:
-        if not isinstance(level, Mapping):
-            continue
-        for field in _LEVEL_FIELDS_ARC_MATCHING_IGNORES:
-            if level.get(field):
-                return (
-                    _W_ENTHALPY_ATOM_CORRECTIONS_LEVEL_UNVERIFIABLE,
-                    f"The {side} {_describe_level(level)} sets "
-                    f"{field}={level[field]!r}, which ARC's atom-energy matching "
-                    f"ignores, so {matched} does not show that the "
-                    f"subtracted atom energies carried it.",
-                )
-    return None
 
 
 def _one_electron_hf_substitution(
@@ -6842,100 +5719,6 @@ def _enthalpy_validity_error(
     if applied is True:
         return None
     return _unflagged_enthalpy_error(energy_level, header_corrections_level, element_symbols)
-
-
-def _unflagged_enthalpy_error(
-    energy_level: Mapping[str, Any] | None,
-    header_corrections_level: Any,
-    element_symbols: Any,
-) -> tuple[str, str, dict[str, str]] | None:
-    """The interim checks for a null or absent ``atom_corrections_applied``.
-
-    See ``_LIGHT_ATOM_TOTAL_ENERGY_HARTREE`` for why each exists.
-    """
-    header_key = _level_identity(header_corrections_level)
-    context = {
-        "atom_corrections_applied": "not_recorded",
-        "corrections_level_source": (
-            _HEADER_CORRECTIONS_LEVEL_SOURCE if header_key is not None else "not_recorded"
-        ),
-    }
-    if header_key is not None and header_key != _level_identity(energy_level):
-        return (
-            _W_ENTHALPY_ATOM_CORRECTIONS_LEVEL_MISMATCH,
-            f"ARC ran Arkane's atom corrections at arkane_level_of_theory "
-            f"{_describe_level(header_corrections_level)}, but the energies were "
-            f"computed at {_describe_level(energy_level)}, so the enthalpies mix "
-            f"two levels and are not formation enthalpies.",
-            context,
-        )
-    unverifiable = _level_field_unverifiable_error(
-        (("energy level", energy_level), ("arkane_level_of_theory", header_corrections_level)),
-        matched="the recorded level",
-    )
-    if unverifiable is not None:
-        return (*unverifiable, context)
-    raw_kj_mol = _light_species_raw_energy_kj_mol(element_symbols)
-    if raw_kj_mol is not None and raw_kj_mol < _FORMATION_ENTHALPY_MAX_ABS_KJ_MOL:
-        return (
-            _W_ENTHALPY_FORMATION_UNVERIFIABLE_LIGHT_SPECIES,
-            f"ARC did not record whether Arkane applied atom-energy corrections, "
-            f"and this {_formula(element_symbols)} species' raw total energy "
-            f"(about {raw_kj_mol:.3g} kJ/mol) is within the "
-            f"{_FORMATION_ENTHALPY_MAX_ABS_KJ_MOL:.6g} kJ/mol magnitude bound, so "
-            f"an uncorrected enthalpy would pass as a formation enthalpy.",
-            context,
-        )
-    return None
-
-
-def _has_enthalpy_content(block: Mapping[str, Any]) -> bool:
-    return "h298_kj_mol" in block or "nasa" in block or any(
-        "h_kj_mol" in p or "g_kj_mol" in p for p in block.get("points", ())
-    )
-
-
-def _strip_enthalpy_content(block: dict[str, Any]) -> None:
-    """Remove H298, the NASA fit, and point H/G; keep S298, point S and Cp.
-
-    A point left with only its temperature is dropped (TCKDB requires a
-    property on every point).
-    """
-    block.pop("h298_kj_mol", None)
-    block.pop("nasa", None)
-    points = [
-        {k: v for k, v in p.items() if k not in ("h_kj_mol", "g_kj_mol")}
-        for p in block.pop("points", ())
-    ]
-    points = [p for p in points if set(p) - {"temperature_k"}]
-    if points:
-        block["points"] = points
-
-
-def _enthalpy_magnitude_error(block: Mapping[str, Any]) -> tuple[str, str] | None:
-    """Refuse a block whose enthalpy is too large to be a formation enthalpy.
-
-    Checks ``h298_kj_mol``, every point ``h_kj_mol``, and the NASA fit's
-    H at 298.15 K (the only enthalpy a NASA-only block carries).
-    """
-    enthalpies = [("h298_kj_mol", block.get("h298_kj_mol"))]
-    enthalpies += [
-        (f"points[T={p['temperature_k']}].h_kj_mol", p.get("h_kj_mol"))
-        for p in block.get("points", ())
-    ]
-    if "nasa" in block:
-        enthalpies.append(("nasa H(298.15 K)", _nasa_h298_kj_mol(block["nasa"])))
-    for name, value in enthalpies:
-        if value is not None and abs(value) > _FORMATION_ENTHALPY_MAX_ABS_KJ_MOL:
-            return (
-                _W_ENTHALPY_NOT_FORMATION_MAGNITUDE,
-                f"{name}={value:.6g} kJ/mol exceeds the "
-                f"{_FORMATION_ENTHALPY_MAX_ABS_KJ_MOL:.6g} kJ/mol bound on any "
-                f"formation enthalpy, so it cannot be formation_298k. Arkane "
-                f"most likely ran without atom-energy corrections for this "
-                f"level of theory, leaving raw absolute energies.",
-            )
-    return None
 
 
 def _build_thermo_block(
@@ -7206,214 +5989,6 @@ def _build_thermo_block(
     return block if keep else None
 
 
-def _index_species(output_doc: Mapping[str, Any]) -> dict[str, Mapping[str, Any]]:
-    """Build a label → species record map from ``output_doc['species']``.
-
-    Later occurrences win on collision — that matches the implicit
-    contract of ARC's output.yml (one record per label) but lets the
-    builder fail loudly when a record is genuinely missing rather than
-    silently picking a stale duplicate.
-    """
-    out: dict[str, Mapping[str, Any]] = {}
-    for record in output_doc.get("species") or []:
-        if not isinstance(record, Mapping):
-            continue
-        label = record.get("label") or record.get("original_label")
-        if label:
-            out[str(label)] = record
-    return out
-
-
-def _index_transition_states(
-    output_doc: Mapping[str, Any],
-) -> dict[str, Mapping[str, Any]]:
-    """Build a ts-label → record map from ``output_doc['transition_states']``."""
-    out: dict[str, Mapping[str, Any]] = {}
-    for record in output_doc.get("transition_states") or []:
-        if not isinstance(record, Mapping):
-            continue
-        label = record.get("label") or record.get("original_label")
-        if label:
-            out[str(label)] = record
-    return out
-
-
-def _arc_workflow_tool_release(
-    output_doc: Mapping[str, Any],
-) -> dict[str, Any] | None:
-    """Build the ARC ``WorkflowToolReleaseRef``-shaped dict, or ``None``.
-
-    Single source of truth for the ARC release identity used in the
-    bundle. Returns ``None`` when neither version nor git commit is
-    available (rare — usually at least one is set).
-    """
-    arc_version = output_doc.get("arc_version")
-    arc_git_commit = output_doc.get("arc_git_commit")
-    if not (arc_version or arc_git_commit):
-        return None
-    wt: dict[str, Any] = {"name": "ARC"}
-    if arc_version:
-        wt["version"] = str(arc_version)
-    if arc_git_commit:
-        wt["git_commit"] = str(arc_git_commit)
-    return wt
-
-
-def _arkane_workflow_tool_release(
-    output_doc: Mapping[str, Any],
-) -> dict[str, Any] | None:
-    """Arkane as the ``WorkflowToolReleaseRef`` of a table-derived scheme.
-
-    Contract: ``workflow_tool_release`` is the "workflow tool (e.g.
-    ARC/Arkane) whose data file was the proximate source, when the scheme was
-    looked up from a tool table". Arkane's tables are what ARC looked up, so
-    a scheme's identity should include the Arkane build (a later database
-    revision changing a parameter would otherwise collide with the stored
-    value). Only what ARC recorded: ``arkane_version`` and ``arkane_git_commit``
-    (``git_commit`` is 1-40 characters); ``None`` when neither is usable. This
-    is not a calculation's software (``calculation_software_is_workflow_tool``)
-    and never ARC.
-    """
-    version = output_doc.get("arkane_version")
-    commit = output_doc.get("arkane_git_commit")
-    release: dict[str, Any] = {"name": "Arkane"}
-    if version and str(version).strip():
-        release["version"] = str(version).strip()
-    if commit and 1 <= len(str(commit).strip()) <= 40:
-        release["git_commit"] = str(commit).strip()
-    return release if len(release) > 1 else None
-
-
-def _sha256_or_none(value: Any) -> str | None:
-    text = value.strip().lower() if isinstance(value, str) else ""
-    return text if re.fullmatch(r"[0-9a-f]{64}", text) else None
-
-
-# ``EnergyCorrectionSchemeRef.data_revision`` is at most 200 characters (0.62).
-_DATA_REVISION_MAX_CHARS = 200
-
-
-def _rmg_database_data_revision(output_doc: Mapping[str, Any]) -> str | None:
-    """The revision of the RMG-database tables Arkane loaded, as a ``data_revision``, or ``None``.
-
-    Output 1.3's header ``rmg_database`` identifies the ``quantum_corrections/
-    data.py`` Arkane actually loaded (it need not be the file under ARC's
-    ``RMG_DB_PATH``): its SHA-256, and the git ``HEAD`` of its checkout
-    (``path_kind: git``) or the conda ``rmgdatabase`` package version
-    (``path_kind: package``). tckdb-schemas 0.62's ``data_revision`` is "the
-    revision of the *data* that holds the parameter tables, for example the
-    RMG-database commit that holds Arkane's atom-energy and BAC tables" and joins
-    the scheme's identity, so two Arkane builds that read one revision are one
-    scheme. It is the git commit when the path is a git checkout, else the
-    package version, else the ``data.py`` digest as a plain hex string (that is
-    the exact table; TCKDB reads a 7-64 hex value as a git commit and lower-cases
-    it, and keeps anything else as written). Never filled from anything else:
-    ``None`` (the scheme then keeps its pre-0.62 identity, which includes the
-    Arkane build) when the document is not 1.3, the block is absent, or it states
-    no usable commit, version or digest.
-
-    Not stated by ARC, so not checked here: whether the checkout is dirty or the
-    tables were overridden (Arkane ``atomEnergies``/BAC overrides). The contract
-    asks for a revision "only when the tables really came from that repository
-    revision"; ARC's own ``data/AEC.yml`` override is handled separately
-    (``_arc_aec_yml_digest``).
-    """
-    if not _is_output_schema_1_3_or_later(output_doc):
-        return None
-    identity = output_doc.get("rmg_database")
-    if not isinstance(identity, Mapping):
-        return None
-    kind = identity.get("path_kind")
-    commit = identity.get("git_commit")
-    commit = commit.strip() if isinstance(commit, str) else ""
-    version = identity.get("version")
-    version = version.strip() if isinstance(version, str) else ""
-    digest = _sha256_or_none(identity.get("quantum_corrections_sha256"))
-    if kind == "git" and 1 <= len(commit) <= _DATA_REVISION_MAX_CHARS:
-        return commit.lower() if re.fullmatch(r"[0-9a-fA-F]{7,64}", commit) else commit
-    if kind == "package" and 1 <= len(version) <= _DATA_REVISION_MAX_CHARS:
-        return version
-    return digest
-
-
-def _arc_aec_yml_digest(output_doc: Mapping[str, Any]) -> str | None:
-    """Output 1.3's ``arc_aec_yml_sha256`` when it is a SHA-256, else ``None``."""
-    if not _is_output_schema_1_3_or_later(output_doc):
-        return None
-    return _sha256_or_none(output_doc.get("arc_aec_yml_sha256"))
-
-
-# The scheme kinds whose parameters Arkane reads from the RMG-database tables.
-_RMG_DATABASE_SCHEME_KINDS = ("atom_energy", "bac_petersson", "bac_melius")
-
-
-def _scheme_data_revisions(output_doc: Mapping[str, Any]) -> dict[str, str]:
-    """``scheme.data_revision`` per scheme kind from an output 1.3 header.
-
-    Every record ARC exports (``atom_energy``, ``bac_petersson``, ``bac_melius``) is
-    computed by Arkane's own correction functions from the RMG-database
-    ``quantum_corrections/data.py`` it loaded, so the scheme's data revision is that
-    table's (``_rmg_database_data_revision``). A revised table is then a new scheme
-    identity, and an unrelated RMG-Py (Arkane) commit no longer
-    splits one: the Arkane build stays on ``scheme.workflow_tool_release`` as
-    provenance only (tckdb-schemas 0.62: "send the RMG-database commit here, keep
-    stamping the tool release").
-
-    The header's ``arc_aec_yml_sha256`` (ARC's own ``data/AEC.yml``, rendered
-    as Arkane's ``atomEnergies``) is deliberately not a revision: ARC writes
-    no ``atom_energy`` record for energies that came from that file (the record
-    is keyed on a ``data.py`` entry), so no exported scheme has it as its source.
-
-    Empty when the document states no database identity.
-    """
-    revision = _rmg_database_data_revision(output_doc)
-    if revision is None:
-        return {}
-    return {kind: revision for kind in _RMG_DATABASE_SCHEME_KINDS}
-
-
-def _arc_analysis_software_release(
-    output_doc: Mapping[str, Any],
-) -> dict[str, Any] | None:
-    """Build the Arkane ``SoftwareReleaseRef``-shaped dict, or ``None``.
-
-    ARC runs Arkane for the thermo, statmech and kinetics it reports, so
-    Arkane is the post-processing software of those products (their
-    ``software_release`` / ``analysis_software_release``), never a
-    calculation's ``software_release``, which TCKDB refuses for a
-    workflow tool (``calculation_software_is_workflow_tool``). output.yml
-    records ``arkane_version`` (e.g. ``4.0.0``) and ``arkane_git_commit``
-    (the RMG-Py commit Arkane ran from). The version goes to ``version``;
-    the commit stays in ``revision``, where earlier adapters put it. Each
-    is sent only when ARC recorded it; ``None`` when neither is.
-    """
-    arkane_version = output_doc.get("arkane_version")
-    arkane_git_commit = output_doc.get("arkane_git_commit")
-    if not (arkane_version or arkane_git_commit):
-        return None
-    release: dict[str, Any] = {"name": "Arkane"}
-    if arkane_version:
-        release["version"] = str(arkane_version)
-    if arkane_git_commit:
-        release["revision"] = str(arkane_git_commit)
-    return release
-
-
-# StatmechCalculationRole values that ARC's three-stage opt/freq/sp
-# workflow can declare. Order is fixed (opt → freq → sp) so the
-# emitted source_calculations list is byte-stable across runs of the
-# same content. ``opt_coarse`` is intentionally excluded — it's an
-# intermediate optimization stage, not a statmech input (the schema's
-# StatmechCalculationRole enum has no ``opt_coarse`` value, and the
-# task spec is explicit that opt_coarse is not a statmech source).
-_STATMECH_CALC_ROLES: tuple[tuple[str, str], ...] = (
-    (_CALC_KEY_OPT, "opt"),
-    (_CALC_KEY_FREQ, "freq"),
-    (_CALC_KEY_SP, "sp"),
-    (_ROLE_COMPOSITE, _ROLE_COMPOSITE),
-)
-
-
 _W_FREQ_SCALE_FACTOR_FITTED_FOR_OTHER_LEVEL = ArcWarning.FREQ_SCALE_FACTOR_FITTED_FOR_OTHER_LEVEL.value
 
 
@@ -7548,15 +6123,6 @@ def _build_freq_scale_factor_ref(
             ref["workflow_tool_release"] = dict(workflow_tool_release)
 
     return ref
-
-
-def _opt_level_software(output_doc: Mapping[str, Any]) -> str | None:
-    opt_level = output_doc.get("opt_level")
-    if isinstance(opt_level, Mapping):
-        sw = opt_level.get("software")
-        if sw:
-            return str(sw)
-    return None
 
 
 # TCKDB ``RigidRotorKind`` enum values (live as of this writing — see
@@ -7967,94 +6533,6 @@ def _stated_arkane_treatment(
     return None
 
 
-def _classify_statmech_treatment(
-    torsions: Any,
-    *,
-    emitted_torsions: list[dict[str, Any]] | None = None,
-) -> str | None:
-    """Map ARC's torsion list to a TCKDB ``StatmechTreatmentKind`` value.
-
-    ``emitted_torsions`` is the list :func:`_build_slim_torsions` actually
-    produced for this record. Pass it whenever the payload will carry
-    torsions: a rotor-aware treatment is *defined* by the rotors it treats,
-    so TCKDB rejects one that lists none, and the builder drops rotors whose
-    ARC ``treatment`` has no TCKDB equivalent. Classifying from ARC's raw
-    input alone would therefore claim ``rrho_1d`` over an empty list.
-
-    Rules:
-
-    * ``None`` torsions input (no statmech subdict on the species
-      record) → ``None``: ARC didn't emit a statmech evaluation, so the
-      treatment is genuinely unknown. Don't fabricate one.
-    * Empty list (statmech ran, no successful rotors) → ``"rrho"``.
-    * Rotors present but none survived into the payload → ``None``.
-      ``"rrho"`` would assert that the species was treated as a rigid
-      rotor harmonic oscillator, and ARC's own record says otherwise --
-      it treated rotors this adapter could not express. Omitting the
-      field says "we are not naming a treatment", which is the only
-      claim the evidence supports.
-    * ≥1 1D rotor (each entry's ``atom_indices`` is a flat 4-int list)
-      and no ND → ``"rrho_1d"``.
-    * ≥1 ND rotor (entry's ``atom_indices`` is a list of 4-int lists)
-      and no 1D → ``"rrho_nd"``.
-    * Mix of 1D and ND → ``"rrho_1d_nd"``.
-    * Anything we can't classify confidently → ``None`` (omitted).
-
-    The ``rrho_ad``/``rrao`` enum values are reserved for treatments
-    ARC doesn't currently produce; we never emit them.
-    """
-    if torsions is None:
-        return None
-    if not isinstance(torsions, list):
-        return None
-    if not torsions:
-        return "rrho"
-    if emitted_torsions is not None:
-        if not emitted_torsions:
-            return None
-        # Classify from the emitted entries' ``dimension``, which the builder
-        # sets only when it resolved real coordinate quartets. An entry
-        # without one was emitted as a summary from unusable atom_indices;
-        # its dimensionality is unknown, so no treatment can be named.
-        dimensions = [t.get("dimension") for t in emitted_torsions]
-        if any(not isinstance(d, int) or d < 1 for d in dimensions):
-            return None
-        has_1d = any(d == 1 for d in dimensions)
-        has_nd = any(d > 1 for d in dimensions)
-        if has_1d and has_nd:
-            return "rrho_1d_nd"
-        if has_nd:
-            return "rrho_nd"
-        return "rrho_1d"
-    has_1d = False
-    has_nd = False
-    for t in torsions:
-        if not isinstance(t, Mapping):
-            return None
-        atom_indices = t.get("atom_indices")
-        if (
-            isinstance(atom_indices, list)
-            and len(atom_indices) == 4
-            and all(isinstance(x, int) for x in atom_indices)
-        ):
-            has_1d = True
-        elif (
-            isinstance(atom_indices, list)
-            and atom_indices
-            and all(isinstance(x, list) for x in atom_indices)
-        ):
-            has_nd = True
-        else:
-            return None
-    if has_1d and has_nd:
-        return "rrho_1d_nd"
-    if has_nd:
-        return "rrho_nd"
-    if has_1d:
-        return "rrho_1d"
-    return None
-
-
 def _build_slim_torsions(
     torsions: Any,
     *,
@@ -8283,110 +6761,9 @@ def _build_rejected_torsions(
     return out
 
 
-def _coerce_torsion_coordinates(
-    atom_indices: Any,
-) -> list[dict[str, int]] | None:
-    """Validate and project ARC's atom_indices into TCKDB coordinate dicts.
-
-    Returns the coordinate list when ``atom_indices`` is well-formed:
-
-      * Flat list of 4 distinct positive ints → one coordinate.
-      * List of N flat-4-int lists (each distinct, 4 atoms each) → N
-        coordinates with ``coordinate_index`` running 1..N.
-
-    Returns ``None`` when the input is missing, malformed, contains
-    non-positive integers, or has duplicate atoms within a quartet —
-    callers fall back to a coordinate-less torsion summary so a single
-    bad rotor never blocks the whole upload. The 4-distinct-atoms check
-    mirrors the server-side ``StatmechTorsionCoordinateIn`` validator;
-    failing here gives a clearer producer-side message than letting the
-    server 422.
-    """
-    if atom_indices is None:
-        return None
-    if not isinstance(atom_indices, list) or not atom_indices:
-        return None
-    # 1D shape: a flat list of exactly 4 ints.
-    if all(isinstance(x, int) for x in atom_indices):
-        if len(atom_indices) != 4:
-            return None
-        if not all(x >= 1 for x in atom_indices):
-            return None
-        if len(set(atom_indices)) != 4:
-            return None
-        a1, a2, a3, a4 = atom_indices
-        return [{
-            "coordinate_index": 1,
-            "atom1_index": a1, "atom2_index": a2,
-            "atom3_index": a3, "atom4_index": a4,
-        }]
-    # ND shape: a list of 4-int sub-lists.
-    if all(isinstance(x, list) for x in atom_indices):
-        coords: list[dict[str, int]] = []
-        for i, quartet in enumerate(atom_indices, start=1):
-            if not all(isinstance(x, int) for x in quartet):
-                return None
-            if len(quartet) != 4:
-                return None
-            if not all(x >= 1 for x in quartet):
-                return None
-            if len(set(quartet)) != 4:
-                return None
-            a1, a2, a3, a4 = quartet
-            coords.append({
-                "coordinate_index": i,
-                "atom1_index": a1, "atom2_index": a2,
-                "atom3_index": a3, "atom4_index": a4,
-            })
-        return coords or None
-    return None
-
-
-#: Marks a record whose energies the adapter withheld (see ``_withhold_unreliable_composite_energies``).
-_ENERGY_WITHHELD_KEY = "_tckdb_energy_withheld"
 _W_G4_LOADER_SHIFTED_LABEL_GAUSSIAN16_A03 = ArcWarning.G4_LOADER_SHIFTED_LABEL_GAUSSIAN16_A03.value
 #: Marks a ``thermo`` record whose E0-derived content is withheld (``_build_thermo_block`` strips it).
 _THERMO_ENTHALPY_WITHHELD_KEY = "_tckdb_thermo_enthalpy_withheld"
-_GAUSSIAN16_A03_BANNER = re.compile(r"gaussian\s*16\b.*\brevision\s*a\.?03\b", re.IGNORECASE | re.DOTALL)
-_G4_FAMILY_METHOD_KEYS = frozenset({"g4", "g4mp2"})
-
-
-def _g4_loader_energy_unreliable(
-    output_doc: Mapping[str, Any], record: Mapping[str, Any],
-) -> tuple[str, str] | None:
-    """``(method, banner)`` when the record's energy is one Arkane's loader mis-reads, else ``None``.
-
-    Stopgap for the G4 / G4MP2 energy of a Gaussian 16 Revision A.03 composite run: ARC reads
-    the energy from the number after the ``G4(0 K)`` / ``G4MP2(0 K)`` label (Arkane's
-    ``load_energy``, and ARC's parser alike), but on that revision the summary table is shifted
-    by one label, so the number there is the 298 K value and ARC's ``sp_energy_hartree`` is
-    wrong by 9-11 kJ/mol. The true E0 is the archive ``\\G4=`` / ``\\G4MP2=`` value, which
-    ARC does not export (ARC_TCKDB_EXPORT_BRIEF.md, Bug 8).
-
-    The record must be a composite run (``composite_log``) whose composite method (the record's
-    ``levels.composite``, else the header ``composite_method``) is G4 or G4MP2 and whose
-    composite program banner (``ess_versions.composite``) is Gaussian 16 Revision A.03. Nothing
-    is inferred: a missing banner or method is "not this case".
-    """
-    if not record.get("composite_log"):
-        return None
-    versions = record.get("ess_versions")
-    banner = versions.get("composite") if isinstance(versions, Mapping) else None
-    if not isinstance(banner, str) or _GAUSSIAN16_A03_BANNER.search(banner) is None:
-        return None
-    level = None
-    levels = arc13.levels_of(record)
-    if levels is not None and isinstance(levels.get("composite"), Mapping):
-        level = levels["composite"]
-    if level is None or not level.get("method"):
-        header = output_doc.get("composite_method")
-        level = header if isinstance(header, Mapping) else None
-    if level is None or not isinstance(level.get("method"), str):
-        return None
-    key = method_identity_key(level["method"])
-    if key not in _G4_FAMILY_METHOD_KEYS:
-        return None
-    return key, banner
 
 
 def _withhold_unreliable_composite_energies(
@@ -8508,423 +6885,8 @@ def _withhold_reaction_kinetics(
     return {**reaction, "kinetics": None}
 
 
-def _with_composite_role(
-    record: Mapping[str, Any], calc_keys_by_role: Mapping[str, str],
-) -> dict[str, str]:
-    """``calc_keys_by_role`` plus the ``composite`` role for a schema-1.3 composite run.
-
-    On a composite run (``composite_log`` stated) the composite job is what
-    produced the record's geometry, so the ``opt`` calculation, filed at the
-    composite level with the composite program, is the composite-method
-    calculation; thermo and statmech link it under the ``composite`` role as well
-    as ``opt``. Unchanged for any other record.
-    """
-    out = dict(calc_keys_by_role)
-    if record.get(_ENERGY_WITHHELD_KEY):
-        return out      # the composite job is the energy source, and that energy is withheld
-    if (arc13.software_job_key(record, "opt") == "composite"
-            and arc13.is_composite_run(record) and out.get(_CALC_KEY_OPT)):
-        out[_ROLE_COMPOSITE] = out[_CALC_KEY_OPT]
-    return out
-
-
-def _build_statmech_source_calculations(
-    *,
-    calc_keys_by_role: Mapping[str, str],
-) -> list[dict[str, Any]]:
-    """Compose statmech ``source_calculations`` from the bundle's emitted calcs.
-
-    Walks ``_STATMECH_CALC_ROLES`` in order (opt → freq → sp) and emits
-    one entry per role whose key is present in the caller-supplied
-    ``calc_keys_by_role`` map. ``opt_coarse`` is excluded by design —
-    it's not a ``StatmechCalculationRole`` enum value.
-
-    The role keys (``"opt"`` / ``"freq"`` / ``"sp"``) are the
-    ``StatmechCalculationRole`` enum strings. Values are the bundle-local
-    calculation keys the server should resolve. Both computed-species
-    and computed-reaction call this with their own scoped values; this
-    helper is mode-agnostic.
-    """
-    return [
-        {"calculation_key": calc_keys_by_role[role], "role": role}
-        for _, role in _STATMECH_CALC_ROLES
-        if role in calc_keys_by_role and calc_keys_by_role[role]
-    ]
-
-
-def _ts_unmapped_smiles_handle(
-    *,
-    ts_record: Mapping[str, Any],
-    reaction_record: Mapping[str, Any],
-    species_index: Mapping[str, Mapping[str, Any]],
-) -> str | None:
-    """Derive a deterministic textual handle for the TS, or ``None``.
-
-    Resolution order, lifted directly from the spec:
-
-    1. ``ts_record['smiles']`` when ARC already attached a textual TS
-       identifier (rare in production — TS records usually have SMILES
-       null because there's no Lewis structure).
-    2. A canonical reaction-SMILES handle ``"<r1>.<r2>>><p1>.<p2>"``
-       built from the reactant/product species' SMILES looked up
-       through ``species_index``. ``.`` joins species; ``>>`` separates
-       reactant and product sides — the standard interchange format
-       and unambiguous from ARC's data. This is *not* a claim that the
-       TS itself is a single molecule; it's the same data the field
-       intends to carry — a traceability handle.
-    3. ``None`` when any reactant or product lacks a SMILES, or when
-       the reaction has no reactant/product labels. The producer
-       refuses to emit a misleading half-handle; TCKDB stores NULL.
-
-    Determinism: the helper is a pure function of the input mappings.
-    No paths, timestamps, or run identifiers leak in. Idempotency keys
-    will move only if the upstream species SMILES change.
-    """
-    direct = ts_record.get("smiles")
-    if direct:
-        text = str(direct).strip()
-        if text:
-            return text
-
-    def _smiles_for_labels(labels: list[str] | None) -> list[str] | None:
-        out: list[str] = []
-        for label in labels or []:
-            record = species_index.get(label)
-            if not isinstance(record, Mapping):
-                return None
-            smiles = record.get("smiles")
-            if not smiles:
-                return None
-            out.append(str(smiles).strip())
-        return out or None
-
-    reactant_smiles = _smiles_for_labels(reaction_record.get("reactant_labels"))
-    if reactant_smiles is None:
-        return None
-    product_smiles = _smiles_for_labels(reaction_record.get("product_labels"))
-    if product_smiles is None:
-        return None
-
-    return f"{'.'.join(reactant_smiles)}>>{'.'.join(product_smiles)}"
-
-
-# Roles defined by TCKDB's ``KineticsCalculationRole`` enum; mirrored
-# here so the adapter stays loud about unknown roles instead of
-# bouncing through a 422 at upload time.
-_KINETICS_ROLE_REACTANT_ENERGY = "reactant_energy"
-_KINETICS_ROLE_PRODUCT_ENERGY = "product_energy"
-_KINETICS_ROLE_TS_ENERGY = "ts_energy"
-_KINETICS_ROLE_TS_FREQ = "freq"
-_KINETICS_ROLE_TS_IRC = "irc"
-
-
-def _coerce_optional_float(value: object) -> float | None:
-    """Return value as float when possible, otherwise None."""
-    if value is None:
-        return None
-    try:
-        return float(value)  # type: ignore[arg-type]
-    except (TypeError, ValueError):
-        return None
-
-
-# Preferred lookup order for extracting a canonical tunneling-model
-# label out of a structured value. Mappings are checked first by key,
-# then arbitrary objects by attribute. Keep the two lists aligned;
-# ``class_name`` is the attribute analogue of the ``class`` mapping
-# key (which would be a builtin shadow on attribute access).
-_TUNNELING_MODEL_KEYS = ("method", "model", "type", "name", "class")
-_TUNNELING_MODEL_ATTRS = ("method", "model", "type", "name", "class_name")
-
-
-def _stringify_tunneling_model(value: object) -> str | None:
-    """Return a concise, stable tunneling-model label for TCKDB.
-
-    Tunneling metadata reaches the adapter from output.yml as a free-form
-    value (string today, possibly a structured object tomorrow). TCKDB
-    stores ``tunneling_model`` as a free-form ``str | None``, so the
-    adapter's job is to turn whatever ARC supplies into a stable,
-    human-meaningful label without ever crashing payload construction
-    on a malformed entry.
-    """
-    if not value:
-        return None
-    if isinstance(value, str):
-        stripped = value.strip()
-        return stripped or None
-    if isinstance(value, Mapping):
-        for key in _TUNNELING_MODEL_KEYS:
-            candidate = value.get(key)
-            if isinstance(candidate, str) and candidate.strip():
-                return candidate.strip()
-    else:
-        for attr in _TUNNELING_MODEL_ATTRS:
-            candidate = getattr(value, attr, None)
-            if isinstance(candidate, str) and candidate.strip():
-                return candidate.strip()
-    try:
-        encoded = json.dumps(value, sort_keys=True, separators=(",", ":"))
-    except (TypeError, ValueError):
-        encoded = str(value).strip()
-    return encoded or None
-
-
 # ``BundleKineticsIn.t0_k``: 0 < t0_k <= 10000 K (tckdb-schemas 0.63).
 _MAX_ARRHENIUS_T0_K = 10000.0
-
-
-#: The source-scoped key prefix of the determination a fit of ARC's Arkane kinetics run is one
-#: representation of (``KineticsDeterminationDeclaration.key``); see ``_kinetics_declarations``.
-_KINETICS_DETERMINATION_KEY = "arkane_kinetics"
-
-#: Substrings of a level's free-form ``args`` (an object, a string or null) that say a solvent was
-#: requested: ``scrf`` (Gaussian), ``cpcm`` and ``smd`` (ORCA, Gaussian), ``pcm``, ``cosmo``, and
-#: ``solvent`` and ``solvation`` (not the bare ``solv``, which matches Psi4's ``solver_maxiter``). The text is lowercased first. A false positive only withholds
-#: ``phase``, the safe direction.
-_SOLVATION_ARGS_TOKENS = ("scrf", "cpcm", "smd", "pcm", "cosmo", "solvent", "solvation")
-
-
-def _level_states_solvation(level: Any) -> bool:
-    """Whether an output.yml level dict states solvation.
-
-    By ``solvent``, ``solvation_method`` or ``solvation_scheme_level``, or by a ``args`` whose
-    text (dicts and lists stringified, lowercased) contains one of ``_SOLVATION_ARGS_TOKENS``.
-    """
-    if not isinstance(level, Mapping):
-        return False
-    if any(level.get(k) for k in ("solvent", "solvation_method", "solvation_scheme_level")):
-        return True
-    args = level.get("args")
-    if args:
-        text = json.dumps(args, default=str).lower()
-        return any(token in text for token in _SOLVATION_ARGS_TOKENS)
-    return False
-
-
-def _any_level_states_solvation(node: Any) -> bool:
-    """``_level_states_solvation`` for a mapping or any level dict nested in a list or mapping."""
-    if isinstance(node, Mapping):
-        return _level_states_solvation(node) or any(
-            _any_level_states_solvation(v) for v in node.values())
-    if isinstance(node, (list, tuple)):
-        return any(_any_level_states_solvation(v) for v in node)
-    return False
-
-
-def _participant_levels_state_solvent(calculations: Iterable[Mapping[str, Any]]) -> bool:
-    """Whether any built calculation's level of theory states a ``solvent`` or ``solvent_model``."""
-    for calc in calculations:
-        level = calc.get("level_of_theory") if isinstance(calc, Mapping) else None
-        if isinstance(level, Mapping) and (level.get("solvent") or level.get("solvent_model")):
-            return True
-    return False
-
-
-def _header_levels(output_doc: Mapping[str, Any] | None) -> dict[str, Any]:
-    """output.yml's header-level dicts (``*_level`` keys and ``composite_method``), verbatim."""
-    if not isinstance(output_doc, Mapping):
-        return {}
-    return {k: v for k, v in output_doc.items()
-            if isinstance(v, Mapping) and (k == "composite_method" or str(k).endswith("_level"))}
-
-
-def _source_levels_state_solvation(
-    output_doc: Mapping[str, Any] | None, source_records: Iterable[tuple[Any, Any]],
-) -> bool:
-    """Whether output.yml states solvation for the header levels or any participant's own ``levels``.
-
-    Read from the source, not from the calculations the adapter built: a calculation skipped
-    for a missing program still had the level ARC stated for it. Read: the header levels, every
-    level dict inside ``adaptive_levels`` (a list of ``{atom_range, levels: {job types: level}}``,
-    which also covers pre-1.3 documents with no record ``levels``) and each participant's
-    ``levels``. A level states solvation as ``_level_states_solvation`` defines it.
-    """
-    if any(_level_states_solvation(v) for v in _header_levels(output_doc).values()):
-        return True
-    if isinstance(output_doc, Mapping) and _any_level_states_solvation(output_doc.get("adaptive_levels")):
-        return True
-    for _, record in source_records:
-        levels = arc13.levels_of(record)
-        if levels is not None and any(_level_states_solvation(v) for v in levels.values()):
-            return True
-    return False
-
-
-def _kinetics_determination_key(
-    *, project: Any, ts_label: Any, kinetics_record: Mapping[str, Any],
-    kinetics_block: Mapping[str, Any], output_doc: Mapping[str, Any] | None = None,
-    source_records: Iterable[tuple[Any, Any]] = (),
-) -> str:
-    """``arkane_kinetics:<project>:<ts_label>:<digest>``, scoped to the computation.
-
-    TCKDB identifies a determination by reaction entry, direction, target, source and key, and
-    fits of one determination are not independent support for each other, so two runs (a rerun
-    under the same project name and ARC release) must not share a key, and neither may two
-    different fits of the same energies. The digest (12 hex of SHA-256) covers output.yml
-    values only, not the adapter's own projections of them, so a later change to the adapter's
-    mapping, or its bundle-local calculation keys, does not give one ARC run a new key: the fit (``tunneling``, ``A``, ``A_units``,
-    ``n``, ``Ea``, ``Ea_units``, ``T0_k``, ``Tmin_k``, ``Tmax_k``, ``n_data_points``, whichever
-    the record states), the header-level dicts, and each participant's label, ``levels`` object and stated energies
-    (``sp_energy_hartree``, ``opt_final_energy_hartree``). It is deterministic for one bundle.
-    A key over 128 characters is replaced by the prefix and a digest of all its parts.
-    """
-    fit = {k: kinetics_record.get(k) for k in _KINETICS_FIT_KEYS if kinetics_record.get(k) is not None}
-    participants = [
-        {"label": str(label),
-         "levels": arc13.levels_of(record),
-         "sp_energy_hartree": record.get("sp_energy_hartree"),
-         "opt_final_energy_hartree": record.get("opt_final_energy_hartree")}
-        for label, record in source_records if isinstance(record, Mapping)]
-    digest = hashlib.sha256(json.dumps(
-        {"fit": fit, "participants": participants,
-         "header_levels": _header_levels(output_doc)},
-        sort_keys=True, default=str).encode()).hexdigest()[:12]
-    parts = [str(project).strip() if isinstance(project, str) and project.strip() else None,
-             str(ts_label) if ts_label else None]
-    key = ":".join([_KINETICS_DETERMINATION_KEY, *(p for p in parts if p), digest])
-    if len(key) > 128:
-        key = f"{_KINETICS_DETERMINATION_KEY}:" + hashlib.sha256(key.encode()).hexdigest()[:16]
-    return key
-
-
-#: The kinetics record's fitted content, digested into the determination key.
-_KINETICS_FIT_KEYS = ("tunneling", "A", "A_units", "n", "Ea", "Ea_units", "T0_k", "Tmin_k", "Tmax_k",
-                      "n_data_points")
-
-
-def _kinetics_declarations(
-    kinetics_record: Mapping[str, Any],
-    *,
-    project: Any,
-    has_workflow_tool: bool,
-    ts_label: Any = None,
-    kinetics_block: Mapping[str, Any] | None = None,
-    calculations: Mapping[str, Mapping[str, Any]] | None = None,
-    output_doc: Mapping[str, Any] | None = None,
-    source_records: Iterable[tuple[Any, Any]] = (),
-) -> dict[str, Any]:
-    """The ``direction``, ``determination`` and ``applicability`` of a fit ARC's Arkane run produced.
-
-    Only a fit whose ``tunneling`` ARC stamped is declared: output.yml states that key only for
-    parameters fitted by the Arkane kinetics run (null for user-supplied, restored or
-    non-Arkane kinetics). A fit without the stamp declares none.
-
-    None of what is declared is a field of output.yml. The stamp is the only output.yml fact
-    used, as the gate. What is sent is the adapter's interpretation of ARC's documented
-    provenance, accepted for this producer: ARC's kinetics run is Arkane's
-    ``compute_high_p_rate_coefficient`` job on a reaction written as ``reactants -> products``
-    (``arc/statmech/arkane.py``), and Arkane's statistical mechanics is gas-phase.
-
-    * ``applicability``: observable ``rate_coefficient``, coefficient basis
-      ``elementary_coefficient`` (output.yml's ``T0_k`` row writes ``k = A (T/T0)**n
-      exp(-Ea/RT)``), ``pressure_dependence: high_pressure_limit`` (the job computes the
-      high-pressure-limit rate coefficient), and ``phase: gas`` only when no level states
-      solvation: neither a built calculation's (``solvent``, ``solvent_model``) nor, read from
-      output.yml, a header level's or a participant's own ``levels`` entry (``solvent``,
-      ``solvation_method``, ``solvation_scheme_level``), so a calculation skipped for a missing
-      program still withholds it (a solvated level says nothing of the phase here). Its ``claim_origin`` is ``depositor_interpretation``, which marks the
-      pressure dependence and the phase as interpretation;
-    * ``direction: forward``: the fit is of the reaction as written, never a reverse fit;
-    * ``determination``: one complete determination of the whole reaction, keyed within the
-      bundle's ``workflow_tool_release`` (TCKDB refuses a determination without a literature or
-      workflow tool, so with no release none is sent); the key is scoped to the computation
-      (``_kinetics_determination_key``).
-
-    ``direction`` and ``determination`` have no origin field in the schema, so the caller marks
-    the interpretation, determination included, on the block's ``note`` and with
-    ``kinetics_declarations_interpreted``
-    (``_note_kinetics_declarations_interpreted``).
-
-    Not sent, because ARC states none of it: the reaction order, the method kind, the barrier
-    basis, the zero-point, rotor, conformer and path treatments (no ``protocol``).
-    """
-    tunneling = kinetics_record.get("tunneling")
-    if not isinstance(tunneling, str) or not tunneling.strip():
-        return {}
-    applicability: dict[str, Any] = {
-        "version": 1,
-        "observable": "rate_coefficient",
-        "coefficient_basis": "elementary_coefficient",
-        "claim_origin": "depositor_interpretation",
-    }
-    out: dict[str, Any] = {"applicability": applicability}
-    out["direction"] = "forward"
-    applicability["pressure_dependence"] = "high_pressure_limit"
-    calcs = calculations or {}
-    records = list(source_records)
-    if not (_participant_levels_state_solvent(calcs.values())
-            or _source_levels_state_solvation(output_doc, records)):
-        applicability["phase"] = "gas"
-    if has_workflow_tool:
-        out["determination"] = {
-            "key": _kinetics_determination_key(
-                project=project, ts_label=ts_label, kinetics_record=kinetics_record,
-                kinetics_block=kinetics_block or {}, output_doc=output_doc,
-                source_records=records),
-            "target_kind": "whole_reaction", "representation_role": "complete"}
-    return out
-
-
-_PRESSURE_DEPENDENCE_WORDS = {"high_pressure_limit": "high-pressure limit"}
-
-
-def _kinetics_interpretation_sentence(declarations: Mapping[str, Any]) -> str | None:
-    """The sentence naming what ``_kinetics_declarations`` sent as the adapter's interpretation.
-
-    ``None`` when no direction was declared. Names the direction, the pressure dependence, the
-    phase when sent and the determination when sent. The note and the warning both use it.
-    """
-    direction = declarations.get("direction")
-    if direction is None:
-        return None
-    applicability = declarations.get("applicability") or {}
-    pressure = applicability.get("pressure_dependence")
-    facts = [f"direction ({direction})",
-             f"pressure dependence ({_PRESSURE_DEPENDENCE_WORDS.get(pressure, pressure)})"]
-    if applicability.get("phase") is not None:
-        facts.append(f"phase ({applicability['phase']})")
-    if declarations.get("determination") is not None:
-        facts.append("the determination (one complete determination of the whole reaction)")
-    sentence = (
-        f"{', '.join(facts[:-1])} and {facts[-1]} are the adapter's interpretation of ARC's "
-        "Arkane high-pressure-limit kinetics run; output.yml states none of them.")
-    return sentence[0].upper() + sentence[1:]
-
-
-def _note_kinetics_declarations_interpreted(
-    kinetics_block: dict[str, Any],
-    declarations: Mapping[str, Any],
-    *,
-    warnings: list[dict[str, Any]] | None,
-    field: str,
-) -> None:
-    """Mark the declared direction, pressure dependence, phase and determination as interpretation.
-
-    ``KineticsDirection`` and ``KineticsDeterminationDeclaration`` carry no origin field, so
-    when ``_kinetics_declarations`` sent a direction this appends
-    ``_kinetics_interpretation_sentence`` to the block's ``note`` (never altering what is already
-    there; ``BundleKineticsIn.note`` has no length limit) and reports
-    ``kinetics_declarations_interpreted`` on ``field`` with the same sentence. Nothing is done
-    for a block that declared nothing.
-    """
-    sentence = _kinetics_interpretation_sentence(declarations)
-    if sentence is None:
-        return
-    existing = kinetics_block.get("note")
-    kinetics_block["note"] = f"{existing}\n{sentence}" if existing else sentence
-    if warnings is not None:
-        applicability = declarations.get("applicability") or {}
-        context: dict[str, Any] = {
-            "action": "kinetics_declarations_sent_as_interpretation",
-            "direction": declarations["direction"],
-            "pressure_dependence": applicability.get("pressure_dependence")}
-        if applicability.get("phase") is not None:
-            context["phase"] = applicability["phase"]
-        key = (declarations.get("determination") or {}).get("key")
-        if key:
-            context["determination_key"] = key
-        warnings.append(_self_check(
-            ArcWarning.KINETICS_DECLARATIONS_INTERPRETED.value, sentence, field, context))
 
 
 def _build_kinetics_block(
@@ -9261,61 +7223,6 @@ def _build_kinetics_block(
     return block
 
 
-def _calculation_multiplicities(
-    species_blocks: Sequence[Mapping[str, Any]], ts_block: Mapping[str, Any] | None,
-) -> dict[str, int]:
-    """``{calculation key: multiplicity of the participant that owns it}`` for a reaction bundle."""
-    out: dict[str, int] = {}
-    for block in species_blocks:
-        multiplicity = (block.get("species_entry") or {}).get("multiplicity")
-        if multiplicity is None:
-            continue
-        for calc in [block["conformers"][0]["calculation"], *block.get("calculations", ())]:
-            if calc.get("key"):
-                out[calc["key"]] = multiplicity
-    if ts_block is not None and ts_block.get("multiplicity") is not None:
-        for calc in ts_block.get("calculations") or ():
-            if calc.get("key"):
-                out[calc["key"]] = ts_block["multiplicity"]
-    return out
-
-
-def _participant_electron_count(record: Mapping[str, Any] | None) -> int | None:
-    """A participant's electrons from its own record: its composition and its stated ``charge``.
-
-    Atomic numbers (the vendored element table) of the atoms ``_species_element_symbols`` reads
-    from the xyz, else the formula, minus the stated net charge. ``None`` when the composition or
-    the charge is not stated; no producer flag is trusted.
-    """
-    if not isinstance(record, Mapping):
-        return None
-    return _composition.electron_count(_species_element_symbols(record), record.get("charge"))
-
-
-def _calculation_electron_counts(
-    species_blocks: Sequence[Mapping[str, Any]],
-    ts_block: Mapping[str, Any] | None,
-    *,
-    key_by_label: Mapping[str, str],
-    species_index: Mapping[str, Mapping[str, Any]],
-    ts_record: Mapping[str, Any] | None,
-) -> dict[str, int | None]:
-    """``{calculation key: electrons of the participant that owns it}``; a participant with none known maps to ``None``."""
-    labels_by_key = {key: label for label, key in key_by_label.items()}
-    out: dict[str, int | None] = {}
-    for block in species_blocks:
-        count = _participant_electron_count(species_index.get(labels_by_key.get(block.get("key"))))
-        for calc in [block["conformers"][0]["calculation"], *block.get("calculations", ())]:
-            if calc.get("key"):
-                out[calc["key"]] = count
-    if ts_block is not None:
-        count = _participant_electron_count(ts_record)
-        for calc in ts_block.get("calculations") or ():
-            if calc.get("key"):
-                out[calc["key"]] = count
-    return out
-
-
 def _kinetics_energy_level(
     *,
     output_doc: Mapping[str, Any],
@@ -9401,119 +7308,7 @@ def _kinetics_energy_level(
     return assessment.level
 
 
-def _build_kinetics_source_calculations(
-    *,
-    reactant_keys: list[str],
-    product_keys: list[str],
-    actor_calc_keys: Mapping[str, Mapping[str, str]],
-    ts_calc_keys: Mapping[str, str],
-) -> list[dict[str, Any]]:
-    """Compose the kinetics ``source_calculations`` list explicitly.
-
-    Producer policy: declare exactly the links we have evidence for.
-
-    - Each reactant/product contributes its sp calc (if present) under
-      ``reactant_energy``/``product_energy``.
-    - The TS contributes ts_sp under ``ts_energy``.
-    - The TS contributes ts_freq under ``freq`` (kinetics ``freq`` role
-      is the *TS* frequency in v0, not reactant freq).
-    - The TS contributes ts_irc under ``irc`` only when ARC produced
-      and persisted an IRC calc.
-
-    Anything missing is omitted — the spec is explicit that a missing
-    source link is preferable to a fabricated one.
-    """
-    links: list[dict[str, Any]] = []
-    # A species may fill several slots (H + H, or one species on both
-    # sides); its sp is linked once per role because the schema refuses a
-    # repeated (calculation_key, role) pair. Reactant and product roles
-    # differ, so a species on both sides keeps both links.
-    seen_links: set[tuple[str, str]] = set()
-    for role, keys in (
-        (_KINETICS_ROLE_REACTANT_ENERGY, reactant_keys),
-        (_KINETICS_ROLE_PRODUCT_ENERGY, product_keys),
-    ):
-        for actor_key in keys:
-            sp_key = actor_calc_keys.get(actor_key, {}).get(_CALC_KEY_SP)
-            if sp_key and (sp_key, role) not in seen_links:
-                seen_links.add((sp_key, role))
-                links.append({"calculation_key": sp_key, "role": role})
-    ts_sp = ts_calc_keys.get(_CALC_KEY_SP)
-    if ts_sp:
-        links.append({"calculation_key": ts_sp, "role": _KINETICS_ROLE_TS_ENERGY})
-    ts_freq = ts_calc_keys.get(_CALC_KEY_FREQ)
-    if ts_freq:
-        links.append({"calculation_key": ts_freq, "role": _KINETICS_ROLE_TS_FREQ})
-    ts_irc = ts_calc_keys.get(_CALC_KEY_IRC)
-    if ts_irc:
-        links.append({"calculation_key": ts_irc, "role": _KINETICS_ROLE_TS_IRC})
-    return links
-
-
-# IRC direction labels mirror TCKDB's ``IRCDirection`` enum. They are
-# ESS path-direction labels only — the producer does not infer
-# reactant/product side from them.
-_IRC_DIRECTION_FORWARD = "forward"
-_IRC_DIRECTION_REVERSE = "reverse"
 _IRC_DIRECTION_BOTH = "both"
-
-
-def _detect_irc_direction(log_path: str) -> str | None:
-    """Detect IRC direction (forward/reverse) from a log filename.
-
-    ARC writes per-direction IRC logs whose filenames carry an explicit
-    direction infix. The two patterns seen in production runs:
-
-    - ``..._irc_f.log`` / ``..._irc_r.log``   (compact runtime convention)
-    - ``..._forward.log`` / ``..._reverse.log`` (long-form / test fixtures)
-
-    Returns ``None`` if the filename matches neither — caller still
-    emits the trajectory but omits the per-point direction. ``None``
-    is also the right answer when ARC has consolidated forward+reverse
-    into a single log; current ARC adapters don't produce that shape,
-    but the caller treats it correctly anyway.
-    """
-    name = Path(str(log_path)).name.lower()
-    if "irc_f" in name or "forward" in name:
-        return _IRC_DIRECTION_FORWARD
-    if "irc_r" in name or "reverse" in name:
-        return _IRC_DIRECTION_REVERSE
-    return None
-
-
-def _conformer_observed_lists(
-    species_record: Mapping[str, Any],
-) -> tuple[list[Any], list[Any]] | None:
-    """``(conformer_ess_software, conformer_ess_version)`` when ARC states both, index-aligned with ``conformers``.
-
-    Output.yml 1.3 at ARC #1059 ebc88ec8 emits them with ``conformers``; the earlier 1.3 draft had
-    neither (the fallback is the header ``conformer_opt_level``'s program). A pair that is not aligned
-    with ``conformers`` is not used.
-    """
-    conformers = species_record.get("conformers")
-    software = species_record.get("conformer_ess_software")
-    version = species_record.get("conformer_ess_version")
-    if (isinstance(conformers, (list, tuple)) and isinstance(software, list)
-            and isinstance(version, list)
-            and len(software) == len(version) == len(conformers)):
-        return software, version
-    return None
-
-
-def _conformer_observed_provenance(
-    species_record: Mapping[str, Any], index: int,
-) -> tuple[str | None, str | None]:
-    """``(program, banner)`` of conformer ``index``'s optimization log, each ``None`` when not stated.
-
-    The banner is only meaningful with its program: it is dropped when the program is ``None``.
-    """
-    lists = _conformer_observed_lists(species_record)
-    if lists is None:
-        return None, None
-    program, banner = lists[0][index], lists[1][index]
-    program = program.strip() if isinstance(program, str) and program.strip() else None
-    banner = banner.strip() if program and isinstance(banner, str) and banner.strip() else None
-    return program, banner
 
 
 def _stated_conformer_level(
@@ -9730,217 +7525,8 @@ def _warn_ts_guess_level_not_stated(
             {"action": "path_search_calculation_omitted", "method": method}))
 
 
-# ARC ``adaptive_levels`` and the other levels output.yml does not record (see
-# ``tckdb_arc.adaptive``). ``TCKDBAdapter._with_adaptive_levels`` marks a copy of
-# the output document with the project's ``restart.yml`` state
-# (``_RESTART_KEY``) and, for an adaptive run, the job types the adaptive levels
-# name (``_ADAPTIVE_LEVELS_KEY``). output.yml records one level per run, so for
-# a named job type it states a level no particular species need have run at:
-# ``_resolve_level`` replays ARC's own per-species choice from ``restart.yml``
-# where that is possible, and otherwise states nothing.
-_ADAPTIVE_LEVELS_KEY = "_tckdb_adaptive_levels"
-_RESTART_KEY = "_tckdb_restart_levels"
-
-# The ARC job types (``arc/scheduler.py`` ``run_job``) behind each level kind the
-# adapter states; adaptive levels key on these exact strings.
-_JOB_TYPES_BY_KIND: Mapping[str, tuple[str, ...]] = {
-    "opt": ("opt",),
-    "freq": ("freq",),
-    "sp": ("sp",),
-    "composite": ("composite",),
-    "irc": ("irc",),
-    "scan": ("scan", "directed_scan"),
-    "conf_opt": ("conf_opt",),
-}
-
 _W_ADAPTIVE_LEVEL_NOT_ATTRIBUTABLE: Mapping[str, str] = ADAPTIVE_LEVEL_NOT_ATTRIBUTABLE
 _W_ENTHALPY_ADAPTIVE_LEVELS_UNVERIFIABLE = ArcWarning.ENTHALPY_ADAPTIVE_LEVELS_UNVERIFIABLE.value
-
-
-def _header_adaptive_job_types(output_doc: Mapping[str, Any]) -> set[str]:
-    """The job types the schema-1.3 header ``adaptive_levels`` entries name (``"opt freq"`` is two)."""
-    entries = output_doc.get("adaptive_levels")
-    types: set[str] = set()
-    if not isinstance(entries, list):
-        return types
-    for entry in entries:
-        levels = entry.get("levels") if isinstance(entry, Mapping) else None
-        if isinstance(levels, Mapping):
-            for key in levels:
-                types.update(str(key).split())
-    return types
-
-
-def _adaptive_marker(output_doc: Mapping[str, Any]) -> Mapping[str, Any] | None:
-    marker = output_doc.get(_ADAPTIVE_LEVELS_KEY)
-    return marker if isinstance(marker, Mapping) else None
-
-
-def _restart_levels(output_doc: Mapping[str, Any]) -> RestartInfo | None:
-    info = output_doc.get(_RESTART_KEY)
-    return info if isinstance(info, RestartInfo) else None
-
-
-def _adaptive_kind_named(output_doc: Mapping[str, Any], kind: str) -> bool:
-    """Whether the run's adaptive levels name any job type behind ``kind``."""
-    marker = _adaptive_marker(output_doc)
-    return marker is not None and any(
-        t in marker["named"] for t in _JOB_TYPES_BY_KIND.get(kind, (kind,)))
-
-
-def _n_heavy_from_record(record: Mapping[str, Any] | None) -> int | None:
-    """ARC's fallback heavy-atom count: the non-``H`` atoms of the geometry."""
-    symbols = _species_element_symbols(record) if isinstance(record, Mapping) else None
-    return None if symbols is None else sum(1 for symbol in symbols if symbol != "H")
-
-
-def _adaptive_level_status(
-    output_doc: Mapping[str, Any], record: Mapping[str, Any] | None, job_type: str,
-) -> Mapping[str, Any] | str:
-    """The level ARC ran ``job_type`` at for ``record``, from ``restart.yml``.
-
-    A level dict (same shape as output.yml levels), ``RUN_LEVEL`` (the
-    species' adaptive range does not name the job type), or ``UNDETERMINABLE``
-    (no ``restart.yml`` adaptive spec or species entry, or no heavy-atom
-    count).
-    """
-    restart = _restart_levels(output_doc)
-    if restart is None or record is None:
-        return UNDETERMINABLE
-    return restart.attribute_level(
-        record.get("label"), job_type, _n_heavy_from_record(record))
-
-
-def _note_adaptive_omission(
-    output_doc: Mapping[str, Any], kind: str, record: Mapping[str, Any] | None,
-) -> None:
-    marker = _adaptive_marker(output_doc)
-    label = record.get("label") if isinstance(record, Mapping) else None
-    if marker is not None and isinstance(label, str):
-        marker["omitted"].setdefault(kind, set()).add(label)
-
-
-def _energy_level_unattributable(
-    output_doc: Mapping[str, Any], energy_level: Mapping[str, Any] | None,
-) -> bool:
-    """Whether an adaptive run left the species' energy level (sp, or composite) unknown."""
-    return _adaptive_marker(output_doc) is not None and energy_level is None
-
-
-def _irc_level(
-    output_doc: Mapping[str, Any], ts_record: Mapping[str, Any],
-) -> tuple[Mapping[str, Any] | None, bool]:
-    """``(exact IRC level or None, IRC level unattributable)`` for a TS.
-
-    Exact when the adaptive levels name ``irc`` and ``restart.yml`` gives the
-    TS's level, else when ``restart.yml`` records ``irc_level``. ``(None,
-    False)`` means the level is the unreadable settings default (assumed to be
-    ``opt_level``); ``(None, True)`` means the adaptive levels name ``irc``
-    and the TS's level cannot be worked out.
-    """
-    if arc13.has_levels(ts_record):
-        # Schema 1.3: ``levels.irc`` (or the one level every ``irc_log_levels``
-        # entry shares) is the level the IRC jobs ran at, also under adaptive
-        # levels; the header ``irc_level`` is the requested level of the run
-        # and stands in only when the record states none. The program is
-        # ``ess_software.irc`` (no level here states one). Nothing stated is
-        # never assumed to be the opt level.
-        stated, level = arc13.irc_recorded_level(ts_record)
-        if not stated:
-            header = output_doc.get("irc_level")
-            level = header if isinstance(header, Mapping) and header.get("method") else None
-            stated = level is not None
-        if not stated or level is None:
-            if _adaptive_kind_named(output_doc, "irc"):
-                _note_adaptive_omission(output_doc, "irc", ts_record)
-            return None, True
-        return _with_observed_irc_program(level, ts_record), False
-    if _adaptive_kind_named(output_doc, "irc"):
-        status = _adaptive_level_status(output_doc, ts_record, "irc")
-        if isinstance(status, Mapping):
-            return _with_irc_program(status), False
-        if status == UNDETERMINABLE:
-            _note_adaptive_omission(output_doc, "irc", ts_record)
-            return None, True
-    restart = _restart_levels(output_doc)
-    if restart is not None and restart.irc_level is not None:
-        return _with_irc_program(restart.irc_level), False
-    return None, False
-
-
-# ARC's ``Level.deduce_software(job_type='irc')`` (arc/level.py:413-418, called
-# by ``Scheduler.deduce_job_adapter``, arc/scheduler.py:1255) sets the software
-# to Gaussian for an IRC whatever software the level dict names or DLPNO/other
-# methods would pick: that is why a level's own ``software`` cannot be taken for
-# an IRC (there is also no ``ess_software.irc``). It is not unconditional: UMA
-# levels return early with ``ase`` (arc/level.py:386-388), and torchani / xtb /
-# gfn methods are assigned afterwards (arc/level.py:421-426). Those give no
-# stated program, so the IRC is not filed for them.
-_IRC_NOT_GAUSSIAN_METHODS = ("uma", "uma-s-1", "uma-s-1p1", "uma-s-1p2", "uma-m-1p1")
-
-
-def _with_observed_irc_program(
-    level: Mapping[str, Any], ts_record: Mapping[str, Any],
-) -> Mapping[str, Any]:
-    """``level`` with the program ARC observed on the IRC logs (``ess_software.irc``), else none."""
-    out = {k: v for k, v in level.items() if k != "software"}
-    ess_software = ts_record.get("ess_software")
-    observed = ess_software.get("irc") if isinstance(ess_software, Mapping) else None
-    if observed:
-        out["software"] = str(observed)
-    return out
-
-
-def _with_irc_program(level: Mapping[str, Any]) -> Mapping[str, Any]:
-    """``level`` with ARC's IRC program: ``gaussian``, or none where ARC's rule gives another."""
-    method = str(level.get("method") or "").lower()
-    out = {k: v for k, v in level.items() if k != "software"}
-    if not (method in _IRC_NOT_GAUSSIAN_METHODS
-            or any(part in method for part in ("torchani", "xtb", "gfn"))):
-        out["software"] = "gaussian"
-    return out
-
-
-def _conformer_screen_level(
-    output_doc: Mapping[str, Any], species_record: Mapping[str, Any],
-) -> Mapping[str, Any] | None:
-    """The level ARC's conformer screen ran at for a species, or ``None``.
-
-    ``conformer_opt_level`` from ``restart.yml``, only when ``conf_opt`` ran
-    (``job_types``) and the level names its program; not when the adaptive
-    levels name ``conf_opt`` for the species' range or the range cannot be
-    worked out.
-    """
-    restart = _restart_levels(output_doc)
-    if (restart is None or restart.conformer_opt_level is None
-            or restart.job_types.get("conf_opt") is not True
-            or not restart.conformer_opt_level.get("software")):
-        return None
-    if _adaptive_kind_named(output_doc, "conf_opt"):
-        status = _adaptive_level_status(output_doc, species_record, "conf_opt")
-        if status != RUN_LEVEL:
-            return None
-    return restart.conformer_opt_level
-
-
-_SCAN_ROTOR_KEY_RE = re.compile(r"^scan_rotor_(\d+)$")
-
-
-def _scan_job_type(
-    output_doc: Mapping[str, Any], record: Mapping[str, Any], scan_key: Any,
-) -> str | None:
-    """``'scan'`` (ESS) or ``'directed_scan'`` for an exported rotor scan.
-
-    output.yml does not say which kind ran; ``restart.yml`` records each
-    rotor's ``directed_scan_type`` (``arc/species/species.py``), and the export
-    key is ``scan_rotor_<rotor index>`` (``arc/output.py``). ``None`` when that
-    cannot be looked up: the level then cannot tell the two apart.
-    """
-    restart = _restart_levels(output_doc)
-    match = _SCAN_ROTOR_KEY_RE.match(scan_key) if isinstance(scan_key, str) else None
-    if restart is None or match is None or not isinstance(record, Mapping):
-        return None
-    return restart.scan_job_type(record.get("label"), int(match.group(1)))
 
 
 def _warn_adaptive_omissions(
@@ -10364,27 +7950,6 @@ def _with_stated_participants(
     raise ValueError(message)
 
 
-def _participant_slots(labels: Sequence[Any]) -> list[tuple[str, int]]:
-    """``(label, occurrence)`` of each participant slot, in the order of ``labels``.
-
-    TCKDB numbers a side's participants by their position in ``reactant_keys``
-    / ``product_keys``, which the adapter builds from the reaction record's
-    ``reactant_labels`` / ``product_labels``. ARC numbers the participants of
-    ``irc_participant_mapping`` in the order of ``atom_map_reactant_labels`` /
-    ``atom_map_product_labels`` (``r_species`` order), and ``reactant_labels``
-    is sorted instead, so the two orders differ and ARC's ``position`` is not
-    TCKDB's ``participant_index``. The label and its occurrence (the 1-based
-    count of that label up to the slot, as ARC states it) identify the same
-    participant in both.
-    """
-    seen: dict[str, int] = {}
-    slots: list[tuple[str, int]] = []
-    for label in labels:
-        seen[str(label)] = seen.get(str(label), 0) + 1
-        slots.append((str(label), seen[str(label)]))
-    return slots
-
-
 def _irc_participant_mappings(
     ts_record: Mapping[str, Any],
     *,
@@ -10579,32 +8144,6 @@ def _warn_ts_atom_map_not_sent(
 
 
 _TS_ROUTE_TS_GEOMETRY_KEY = "ts_geom"
-
-
-def _ts_route_atom_map_slots(
-    reaction_record: Mapping[str, Any], species_index: Mapping[str, Mapping[str, Any]],
-) -> list[dict[str, Any]]:
-    """The participant slots of a standalone TS upload, with the key and geometry each would carry.
-
-    Keys (``reactant_1``) and geometry keys (``reactant_1_geom``) are unique per slot, as the route
-    requires, even when one species fills several slots. A slot whose species has no usable geometry
-    has ``geometry: None``.
-    """
-    slots: list[dict[str, Any]] = []
-    for side, labels_key in (("reactant", "reactant_labels"), ("product", "product_labels")):
-        for position, label in enumerate(reaction_record.get(labels_key) or [], start=1):
-            record = species_index.get(label) or {}
-            key = f"{side}_{position}"
-            text = _normalize_xyz_text(record.get("xyz"), label) if record.get("xyz") else None
-            geometry = _geometry_payload(
-                record, text, record.get("xyz_isotopes"), key=f"{key}_geom") if text else None
-            slots.append({"side": side, "index": position, "species_key": key,
-                          "label": label, "geometry": geometry})
-    return slots
-
-
-def _is_plain_int(value: Any) -> bool:
-    return isinstance(value, int) and not isinstance(value, bool)
 
 
 def _tckdb_reaction_atom_map(
@@ -11032,257 +8571,6 @@ def _build_irc_result_payload(
     return payload
 
 
-def _level_keys_match(a: Mapping[str, Any] | None, b: Mapping[str, Any] | None) -> bool:
-    """Conservative level-of-theory equality check.
-
-    Compares the fields TCKDB treats as primary keys for
-    ``LevelOfTheoryRef`` (method/basis/aux_basis/cabs_basis). A difference
-    in software is intentionally not enough to declare inequality,
-    since ARC frequently leaves it null on one side
-    (the opt level) and populated on the other (the sp level) without
-    that meaning the *energies* are at different levels.
-
-    The one exception is ``dispersion`` and ``solvation_method``: a
-    difference there (present on one side only, or different) *is* a
-    mismatch, so an SMD single point is never taken as the reference of a
-    gas-phase IRC (its only use is the IRC reference energy).
-    """
-    if a is None or b is None:
-        return False
-    for field in ("dispersion", "solvation_method"):
-        av, bv = a.get(field), b.get(field)
-        if (av is None) != (bv is None):
-            return False
-        if av is not None and str(av).strip().lower() != str(bv).strip().lower():
-            return False
-    for field in _TCKDB_LOT_REF_FIELDS:
-        av = a.get(field)
-        bv = b.get(field)
-        if av is None and bv is None:
-            continue
-        if av is None or bv is None:
-            return False
-        if str(av).strip().lower() != str(bv).strip().lower():
-            return False
-    return True
-
-
-def _parse_xtb_turbomole_energy_file(path: str | Path) -> float | None:
-    """Parse the Turbomole-format ``energy`` file written by ``xtb --grad``.
-
-    Provenance is xTB; ``Turbomole`` here names only the on-disk text
-    format xTB emits when invoked with ``--grad`` (the same shape
-    Turbomole's gradient driver writes — xTB borrows the layout to
-    plug into Turbomole-compatible tooling like ``tm2orca.py``).
-
-    File shape (one cycle per line, terminated by ``$end``)::
-
-        $energy      SCF              SCFKIN            SCFPOT
-             1     -28.12345678901   0.0   0.0
-        $end
-
-    The relevant value is on the line before ``$end``, second
-    whitespace-separated field. Mirrors ``tm2orca.py``'s parse
-    convention so the two stay in lockstep. Returns ``None`` for
-    missing/malformed files (the caller treats that as
-    "no energy known for this node").
-    """
-    try:
-        with open(path) as fh:
-            lines = fh.readlines()
-        return float(lines[-2].strip().split()[1])
-    except (OSError, ValueError, IndexError):
-        return None
-
-
-def _parse_xtb_turbomole_gradient_file(
-    path: str | Path,
-) -> tuple[float | None, float | None]:
-    """Parse the Turbomole-format ``gradient`` file written by ``xtb --grad``
-    → ``(max_grad, rms_grad)`` in Hartree/Bohr. Returns ``(None, None)``
-    for missing/malformed input.
-
-    Provenance is xTB; ``Turbomole`` names only the on-disk text
-    format xTB emits with ``--grad``.
-
-    File shape::
-
-        $grad   cycle = 1  SCF energy = ...
-           x  y  z  symbol      ← N coord lines
-           ...
-           gx  gy  gz           ← N gradient-component lines (D-exponent)
-           ...
-        $end
-
-    ``max_grad`` is the largest absolute gradient component; ``rms_grad``
-    is ``sqrt(mean(g_i^2))`` over all ``3N`` components. Both are
-    derived from the *gradient* (``dE/dx``), not the force — schema
-    distinguishes the two and the source data is unambiguously the
-    gradient (xTB writes its output in Turbomole's gradient layout
-    when called with ``--grad``).
-    """
-    try:
-        with open(path) as fh:
-            lines = fh.readlines()
-        natoms = int((len(lines) - 3) / 2)
-        if natoms < 1:
-            return None, None
-        grad_lines = lines[2 + natoms : 2 + 2 * natoms]
-        components: list[float] = []
-        for line in grad_lines:
-            parts = line.strip().replace("D", "E").split()
-            if len(parts) < 3:
-                continue
-            components.extend(float(p) for p in parts[:3])
-        if not components:
-            return None, None
-        import math
-        max_g = max(abs(c) for c in components)
-        rms_g = math.sqrt(sum(c * c for c in components) / len(components))
-        return max_g, rms_g
-    except (OSError, ValueError, IndexError):
-        return None, None
-
-
-# Matches xTB's final total-energy print. xTB emits it twice near the end
-# of a ``--grad`` run, in two visually different frames but with the same
-# value::
-#
-#     :: total energy              -9.441927748544 Eh    ::
-#     ...
-#     | TOTAL ENERGY               -9.441927748544 Eh   |
-#
-# We accept either (case-insensitive) and take the *last* match so a
-# partially written/streamed file still yields the converged value. The
-# unit is always Hartree (``Eh``); we assert the ``Eh`` tag is present so a
-# stray ``total energy`` line in some other unit can't be misread.
-_XTBOUT_TOTAL_ENERGY_RE = re.compile(
-    r"total\s+energy\s+(-?\d+\.\d+(?:[eEdD][+-]?\d+)?)\s*Eh",
-    re.IGNORECASE,
-)
-
-
-def _parse_xtb_xtbout_energy(path: str | Path) -> float | None:
-    """Parse the total electronic energy (Hartree) from an xTB stdout
-    (``.xtbout``) file.
-
-    This is the load-bearing per-node energy source for xTB-GSM runs: the
-    patched ``ograd`` wrapper copies ``<node>.xtbout`` into
-    ``gsm_node_outputs/`` unconditionally, whereas the cleaner Turbomole
-    ``.energy`` file depends on a ``tm2orca.py`` rename that frequently
-    does not land, so ``.xtbout`` is often the only surviving record of
-    the node's energy. The GSM stringfile itself carries no usable
-    per-node energy (ARC's molecularGSM build writes ``0.000000`` for
-    every node), so this is the sole absolute-energy source.
-
-    Returns ``None`` for a missing/garbled file (no ``total energy ... Eh``
-    line) — the caller treats that as "no energy known for this node".
-    """
-    try:
-        # xTB banners carry non-ASCII glyphs (e.g. ``Eh/α``), so decode
-        # explicitly as UTF-8 with replacement rather than relying on the
-        # locale encoding — on a non-UTF-8 locale a bare ``open()`` would
-        # raise ``UnicodeDecodeError`` and, uncaught, abort the whole
-        # bundle build. ``ValueError`` (the ``UnicodeDecodeError`` base) is
-        # also caught defensively, mirroring the sibling ``.energy`` parser.
-        with open(path, encoding="utf-8", errors="replace") as fh:
-            text = fh.read()
-    except (OSError, ValueError):
-        return None
-    matches = _XTBOUT_TOTAL_ENERGY_RE.findall(text)
-    if not matches:
-        return None
-    try:
-        # xTB writes fixed-decimal Hartrees; the ``D`` FORTRAN exponent
-        # marker is tolerated defensively for atypical builds.
-        return float(matches[-1].replace("D", "E").replace("d", "e"))
-    except ValueError:
-        return None
-
-
-def _read_gsm_node_outputs(
-    outputs_dir: str | Path,
-) -> dict[int, dict[str, float]]:
-    """Scan a ``gsm_node_outputs/`` directory for preserved per-node data
-    written by ``xtb --grad`` (in Turbomole's on-disk format).
-
-    The patched ``ograd`` wrapper writes files named like::
-
-        gsm_node_outputs/
-          0000.01.energy        ← xTB-generated, Turbomole-format (optional)
-          0000.01.gradient      ← xTB-generated, Turbomole-format (optional)
-          0000.01.xtbout        ← xTB stdout (always preserved)
-          0000.02.xtbout
-          ...
-
-    where the ``0000`` prefix is GSM's iteration-round id and the
-    ``.NN`` suffix is the per-round node label (1-based). This helper
-    returns ``{label_int: {electronic_energy_hartree[, max_gradient,
-    rms_gradient]}}`` for every label whose energy could be recovered.
-
-    Two on-disk sources are consulted, in priority order:
-
-    1. The Turbomole-format ``.energy`` / ``.gradient`` pair (cleaner,
-       carries gradient metrics) — *preferred* when present.
-    2. The xTB stdout ``.xtbout`` (energy only) — the *reliable
-       fallback*. ``ograd`` copies ``.xtbout`` unconditionally, but the
-       ``.energy``/``.gradient`` copies depend on a ``tm2orca.py`` rename
-       that frequently does not land, so on most real runs ``.xtbout`` is
-       the only surviving per-node record. Without this fallback the
-       energies exist on disk but never reach the TCKDB payload.
-
-    Nodes whose energy cannot be recovered from either source are omitted;
-    the caller decides whether to leave the corresponding point's metadata
-    null.
-
-    The ESS provenance for the resulting calculation remains xTB /
-    xTB-GSM; ``Turbomole`` names only the on-disk text shape the
-    ``.energy``/``.gradient`` files use.
-    """
-    outputs_dir = Path(outputs_dir)
-    if not outputs_dir.is_dir():
-        return {}
-
-    def _label_of(path: Path) -> int | None:
-        # Filename is ``<round>.<NN>.<ext>`` — pull the trailing ``NN``
-        # integer (the per-round node label). ``Path.stem`` drops only the
-        # final extension, so ``0000.01.xtbout`` -> stem ``0000.01``.
-        try:
-            return int(path.stem.split(".")[-1])
-        except (ValueError, IndexError):
-            return None
-
-    by_label: dict[int, dict[str, float]] = {}
-    # Source 1 (preferred): Turbomole-format .energy/.gradient pair.
-    for energy_file in sorted(outputs_dir.glob("*.energy")):
-        label_int = _label_of(energy_file)
-        if label_int is None:
-            continue
-        e_h = _parse_xtb_turbomole_energy_file(energy_file)
-        if e_h is None:
-            continue
-        node_data: dict[str, float] = {"electronic_energy_hartree": e_h}
-        gradient_file = energy_file.with_suffix(".gradient")
-        if gradient_file.is_file():
-            max_g, rms_g = _parse_xtb_turbomole_gradient_file(gradient_file)
-            if max_g is not None:
-                node_data["max_gradient"] = max_g
-            if rms_g is not None:
-                node_data["rms_gradient"] = rms_g
-        by_label[label_int] = node_data
-    # Source 2 (fallback): xTB stdout .xtbout — energy only, and only for
-    # labels not already recovered from a cleaner .energy file above.
-    for xtb_file in sorted(outputs_dir.glob("*.xtbout")):
-        label_int = _label_of(xtb_file)
-        if label_int is None or label_int in by_label:
-            continue
-        e_h = _parse_xtb_xtbout_energy(xtb_file)
-        if e_h is None:
-            continue
-        by_label[label_int] = {"electronic_energy_hartree": e_h}
-    return by_label
-
-
 _NEB_TS_GUESS_NOTE = (
     "TS guess: the saddle point ORCA's NEB-TS optimized from the climbing image; "
     "not a path image. It is this calculation's final output geometry."
@@ -11601,143 +8889,7 @@ def _build_path_search_result_payload(
     return payload
 
 
-def _resolve_irc_zero_energy_reference(
-    *,
-    output_doc: Mapping[str, Any],
-    ts_record: Mapping[str, Any],
-    irc_level: Mapping[str, Any] | None = None,
-) -> float | None:
-    """Pick the TS reference electronic energy for an IRC path.
-
-    The reference must live at the IRC calculation's level, or the relative
-    energies it produces would mix two levels of theory. That level is
-    ``irc_level`` when known exactly (restart.yml), else the assumed
-    ``opt_level`` (see the IRC calculation construction site).
-
-    Resolution order, conservative by design:
-
-    1. ``ts_sp_result.electronic_energy_hartree`` *only if* the project
-       SP level matches the IRC level (LoT keys equal).
-    2. ``ts_record['opt_final_energy_hartree']`` -- the TS opt's converged
-       SCF, at the opt level -- *only if* that matches the IRC level (always,
-       when the IRC level is the assumed opt level).
-    3. ``None`` -- never fabricate a reference. Downstream consumers
-       interpret a null ``zero_energy_reference_hartree`` as "relative
-       energies unavailable" and skip the ``relative_energy_kj_mol``
-       per-point field accordingly.
-    """
-    opt_level = _resolve_level(output_doc, "opt", ts_record)
-    ref_level = irc_level if irc_level is not None else opt_level
-    sp_level = output_doc.get("sp_level")
-    sp_level = (
-        _resolve_level(output_doc, "sp", ts_record)
-        if isinstance(sp_level, Mapping) or arc13.has_levels(ts_record) else None
-    )
-    sp_energy = ts_record.get("sp_energy_hartree")
-    if sp_energy is None:
-        sp_energy = ts_record.get("electronic_energy_hartree")
-    if sp_energy is not None and _level_keys_match(ref_level, sp_level):
-        try:
-            return float(sp_energy)
-        except (TypeError, ValueError):
-            pass
-    opt_energy = ts_record.get("opt_final_energy_hartree")
-    if opt_energy is not None and (
-            irc_level is None or _level_keys_match(ref_level, opt_level)):
-        try:
-            return float(opt_energy)
-        except (TypeError, ValueError):
-            pass
-    return None
-
-
-def _normalize_xyz_text(xyz: str | None, label: str | None) -> str | None:
-    """Convert an ARC atom-only xyz string into TCKDB's standard XYZ format.
-
-    Input shape (what ``xyz_to_str`` emits):
-        ``"C 0.0 0.0 0.0\\nH 1.0 0.0 0.0"``
-    Output shape (what TCKDB ``GeometryPayload.xyz_text`` expects):
-        ``"<n_atoms>\\n<comment>\\n<atom lines>"``
-
-    If the input already has a valid integer atom-count header, it's
-    returned untouched. Returns ``None`` for null/empty input — the
-    format-translation boundary between ARC's internal convention and
-    the TCKDB schema, with no requirement that input be present.
-    """
-    if not xyz:
-        return None
-    text = str(xyz).strip()
-    if not text:
-        return None
-    lines = text.splitlines()
-    try:
-        int(lines[0].strip())
-        return text
-    except (ValueError, IndexError):
-        pass
-    return f"{len(lines)}\n{label or ''}\n{text}"
-
-
-def _require_xyz_text(record: Mapping[str, Any]) -> str:
-    """Pull and normalize the species record's reference xyz, raising if absent.
-
-    Wraps :func:`_normalize_xyz_text` for the conformer-level geometry
-    case where missing xyz is a fatal error (the bundle requires a
-    ``ConformerInBundle.geometry``). For optional per-calc input
-    geometries, call ``_normalize_xyz_text`` directly so a missing xyz
-    just yields ``None`` and the caller omits the field.
-    """
-    xyz = record.get("xyz")
-    if not xyz:
-        raise ValueError(
-            f"output.yml record for label={record.get('label')!r} has no xyz; "
-            "cannot build geometry payload."
-        )
-    text = _normalize_xyz_text(xyz, record.get("label"))
-    if text is None:
-        raise ValueError(
-            f"output.yml record for label={record.get('label')!r} has empty xyz."
-        )
-    _assert_isotopes_reconcile(record)
-    return text
-
-
 _W_GEOMETRY_ISOTOPES_NOT_STATED = ArcWarning.GEOMETRY_ISOTOPES_NOT_STATED.value
-
-
-def _isotopic_substitutions(record: Mapping[str, Any]) -> dict[int, int] | None:
-    """The record's final geometry's isotope substitutions as ARC states them (1.3), else ``None``."""
-    if "xyz_isotopes" not in record:
-        return None
-    text = _normalize_xyz_text(record.get("xyz"), record.get("label"))
-    return arc13.geometry_isotope_substitutions(text, record.get("xyz_isotopes"))
-
-
-def _assert_isotopes_reconcile(record: Mapping[str, Any]) -> None:
-    """Refuse a species whose stated geometry isotopes contradict its SMILES (output.yml 1.3).
-
-    TCKDB's ``species_geometry_isotope_mismatch`` refuses a geometry whose isotope
-    substitutions differ from those the species entry's SMILES declares (``[2H]``).
-    ARC states the geometry's isotope list (``xyz_isotopes``); the adapter sends it
-    as stated, and it never rewrites the SMILES to fit nor drops a stated
-    substitution to get past the check. When the two disagree, or the SMILES
-    declares a substitution the geometry's isotopes cannot confirm, no request is
-    built. The rule is :func:`tckdb_core.isotopes.isotope_reconciliation_error`;
-    reading ``xyz_isotopes`` and ``smiles`` from the record is the ARC part.
-    """
-    if "xyz_isotopes" not in record:
-        return
-    text = _normalize_xyz_text(record.get("xyz"), record.get("label"))
-    error = _isotopes.isotope_reconciliation_error(
-        record.get("label"),
-        declared=arc13.smiles_isotope_multiset(record.get("smiles")),
-        substitutions=arc13.geometry_isotope_substitutions(text, record.get("xyz_isotopes")),
-        xyz_text=text,
-        producer_name="ARC",
-        isotopes_field="xyz_isotopes",
-    )
-    if error is not None:
-        raise error
 
 
 _W_CALCULATION_INPUT_GEOMETRY_NOT_DECLARED = ArcWarning.CALCULATION_INPUT_GEOMETRY_NOT_DECLARED.value
@@ -11891,35 +9043,6 @@ def _withhold_unlabelled_point_geometries(
                 warnings.append(_self_check(
                     _W_GEOMETRY_ISOTOPES_NOT_STATED, message, f"{where}.{field}",
                     {"action": "geometry_omitted"}))
-
-
-def _geometry_payload(
-    record: Mapping[str, Any], xyz_text: str, isotopes: Any, *, key: str | None = None,
-) -> dict[str, Any] | None:
-    """``{xyz_text[, key][, isotopes]}`` for a geometry of ``record`` whose ARC isotope list is ``isotopes``.
-
-    TCKDB's ``isotopes`` maps a 1-based atom index to a mass number for the
-    substituted atoms only (an unlisted atom is at its most abundant isotope), so
-    an all-standard list sends none. Nothing is sent for a record without
-    output.yml 1.3's ``xyz_isotopes``. For an isotopically substituted record the
-    geometry must state the same substitutions as the record's own geometry (the
-    species identity carries them); one that states none, or others, is
-    ``None``: the caller leaves that geometry out rather than deposit it as an
-    unsubstituted one. The rule is :func:`tckdb_core.isotopes.geometry_payload`.
-    """
-    record_subs = _isotopic_substitutions(record) if "xyz_isotopes" in record else None
-    return _isotopes.geometry_payload(
-        xyz_text, isotopes,
-        isotopes_stated="xyz_isotopes" in record,
-        record_xyz_text=_normalize_xyz_text(record.get("xyz"), record.get("label")),
-        record_substitutions=record_subs,
-        key=key,
-    )
-
-
-def _conformer_isotopes(record: Mapping[str, Any], index: int) -> Any:
-    lists = record.get("conformers_isotopes")
-    return lists[index] if isinstance(lists, list) and index < len(lists) else None
 
 
 def _warn_isotopes_not_stated(

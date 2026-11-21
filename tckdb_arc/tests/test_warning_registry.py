@@ -11,6 +11,7 @@ import pytest
 
 from tckdb_arc import adapter as adapter_module
 from tckdb_arc import warning_codes
+from _adapter_sources import adapter_source_text, adapter_source_tree
 from tckdb_arc.warning_codes import ADAPTIVE_LEVEL_NOT_ATTRIBUTABLE, ArcWarning
 from tckdb_core.adapter_warnings import WarningSink
 from tckdb_core.warning_codes import CoreWarning
@@ -41,7 +42,7 @@ def test_every_w_constant_in_the_adapter_is_a_registered_code():
 
 def test_every_registered_code_is_emitted_somewhere_in_the_adapter():
     """No dead entries: each code's registry member (or its ``_W_`` alias) is used by the adapter source."""
-    source = ADAPTER_SOURCE.read_text()
+    source = adapter_source_text()
     aliases = {value: name for name, value in vars(adapter_module).items()
                if name.startswith("_W_") and isinstance(value, str)}
     for member in ArcWarning:
@@ -54,17 +55,17 @@ def test_every_registered_code_is_emitted_somewhere_in_the_adapter():
 
 def test_no_adapter_site_builds_a_self_check_dict_by_hand():
     """Every warning dict goes through ``_self_check`` (``AdapterWarning``); none is a hand-built literal."""
-    tree = ast.parse(ADAPTER_SOURCE.read_text())
+    tree = adapter_source_tree()
     literal_keys = {"code", "message", "field", "context"}
     for node in ast.walk(tree):
         if isinstance(node, ast.Dict):
             keys = {k.value for k in node.keys if isinstance(k, ast.Constant)}
             assert not literal_keys <= keys, f"hand-built warning dict at line {node.lineno}"
-    assert '"source": "tckdb_arc_self_check"' not in ADAPTER_SOURCE.read_text()
+    assert '"source": "tckdb_arc_self_check"' not in adapter_source_text()
 
 
 def test_every_self_check_call_names_a_registered_code():
-    tree = ast.parse(ADAPTER_SOURCE.read_text())
+    tree = adapter_source_tree()
     calls = [n for n in ast.walk(tree) if isinstance(n, ast.Call)
              and isinstance(n.func, ast.Name) and n.func.id == "_self_check"]
     assert len(calls) >= 40
