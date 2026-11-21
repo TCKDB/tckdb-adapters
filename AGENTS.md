@@ -117,6 +117,14 @@ a parity test (`tckdb_core.testing.backend_import`). Build thermo blocks in the 
 Done when the package's suite passes, every item in the checklist at the end of
 `docs/writing_an_adapter.md` holds, and the full suite passes once.
 
+## Runtime strings are ASCII
+
+A string a package raises, logs, appends to `warnings` or passes as `message=` stays ASCII: it
+can reach a sidecar, a log or a TCKDB column. Write `--`, `...` and `->`. `python
+tools/check_runtime_ascii.py` checks the four packages and `--audit` fails on a source file
+that is neither scanned nor declared in its `UNSCANNED_BY_DESIGN`; CI runs both. A new package
+goes into its `DEFAULT_TARGETS`.
+
 ## Warning codes
 
 Every code is a member of the package's `CodedEnum` registry (`tckdb_arc/warning_codes.py`
