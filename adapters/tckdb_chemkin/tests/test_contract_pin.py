@@ -50,6 +50,19 @@ def installed_line(name: str) -> tuple[int, int]:
     return int(major), int(minor)
 
 
+def what_to_read(name: str, line: tuple[int, int]) -> str:
+    """Where the changes since a release line are written down, for the distribution ``name``.
+
+    ``tckdb-schemas`` ships its contract changelog (``python -m tckdb_schemas.contract --since``);
+    ``tckdb-client`` ships none, but its metadata links its changelog, which is what this names.
+    """
+    if name == "tckdb-schemas":
+        return f"`python -m tckdb_schemas.contract --since {line[0]}.{line[1]}.0`"
+    links = [value.split(",", 1)[1].strip() for value in metadata.metadata(name).get_all("Project-URL") or []
+             if value.lower().startswith("changelog,")]
+    return f"the {name} changelog at {links[0]}" if links else f"the {name} changelog in the TCKDB repository (clients/python/CHANGELOG.md)"
+
+
 def test_the_package_states_a_tckdb_bound_on_one_minor_line():
     assert stated_lines(PYPROJECT.read_text(encoding="utf-8")), "no tckdb-client or tckdb-schemas bound"
 
@@ -58,9 +71,16 @@ def test_every_stated_bound_is_the_installed_line():
     for name, line in stated_lines(PYPROJECT.read_text(encoding="utf-8")).items():
         assert installed_line(name) == line, (
             f"tests ran against {name} {metadata.version(name)}, but pyproject.toml bounds it to "
-            f"{line[0]}.{line[1]}.x. Read `python -m tckdb_schemas.contract --since {line[0]}.{line[1]}.0` "
+            f"{line[0]}.{line[1]}.x. Read {what_to_read(name, line)} "
             "before moving the pin, then move it with `python tools/tckdb_drift.py --bump`."
         )
+
+
+def test_each_distribution_is_pointed_at_its_own_changelog():
+    assert what_to_read("tckdb-schemas", (0, 177)) == "`python -m tckdb_schemas.contract --since 0.177.0`"
+    client = what_to_read("tckdb-client", (0, 210))
+    assert "tckdb_schemas.contract" not in client and "tckdb-client changelog" in client  # never the schemas command
+    assert "CHANGELOG.md" in client
 
 
 def test_the_checks_fail_on_a_loose_bound_or_a_wrong_line():
