@@ -16,6 +16,7 @@ from pathlib import Path
 import pytest
 from tckdb_schemas.enthalpy_reference import enthalpy_reference_error
 
+from _adapter_sources import adapter_source_text
 from test_thermo_enthalpy_declaration import _corpus_payloads, _thermo_blocks
 
 PACKAGE_ROOTS = [Path(__file__).resolve().parents[1] / "tckdb_arc",
@@ -84,5 +85,5 @@ def test_thermo_is_built_without_any_client_thermo_builder_and_declares_its_own_
 
 @pytest.mark.parametrize("name", ["enthalpy_reference_kind", "reference_pressure_bar"])
 def test_the_declaration_fields_are_set_by_the_adapters_own_mapping(name):
-    source = (PACKAGE_ROOTS[0] / "adapter.py").read_text(encoding="utf-8")
+    source = adapter_source_text()
     assert f'"{name}"' in source

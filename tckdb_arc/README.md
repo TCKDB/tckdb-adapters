@@ -133,10 +133,9 @@ them under "Exceptions to rules 1 and 3".
 
 ## Module layout
 
-The adapter's code is in `tckdb_arc/`. `adapter.py` holds the `TCKDBAdapter` class and the
-builders of the species, reaction and transition-state payloads. Its helpers live in sibling
-modules, each importing only the ones listed before it, and `tckdb_arc.adapter` still exports every
-name that moved.
+The adapter's code is in `tckdb_arc/`. `adapter.py` holds the `TCKDBAdapter` class, the tables only
+the class reads, and the re-exports. The rest is in sibling modules, each importing only the ones
+listed before it, and `tckdb_arc.adapter` still exports every name that moved.
 
 - `self_check.py` renders the sidecar warning dict of one of the adapter's own findings.
 - `geometry.py` normalises xyz text, checks isotope lists and builds the geometry block.
@@ -148,9 +147,40 @@ name that moved.
 - `statmech.py` classifies rotor and mode treatments and lists the calculations a statmech block cites.
 - `kinetics.py` holds the kinetics determination key, the stated interpretation of an Arkane-stamped fit, tunneling labels and electron counts.
 - `reactions.py` holds reaction participant slots, the transition-state atom-map slots and the transition-state SMILES handle.
-- `adaptive.py`, `arc13.py`, `evidence.py`, `constraints.py`, `orca_neb.py`, `config.py`, `sweep.py`, `cli.py` and `warning_codes.py` are the modules that were already separate.
+- `core_aliases.py` binds the core's unit maps, reaction-flattening tables and rule helpers under the adapter's names, and wraps the unit, NASA and thermo-point builders so they log through the package logger.
+- `level_payloads.py` turns ARC's level into a TCKDB level reference and builds the energy-level declaration and the levels a conformer states.
+- `calculation_payloads.py` builds the frequency, single-point and monatomic result payloads, serialises constraints, and anchors Hessian and point geometries.
+- `thermo_payloads.py` builds the applied energy corrections and the thermo block, and withholds energies a G4 loader shifted.
+- `statmech_payloads.py` builds the statmech block, its torsions and rejected torsions, the frequency scale factor reference and the scan entries.
+- `kinetics_payloads.py` builds the kinetics block and declares the level of its source energies.
+- `path_payloads.py` builds the IRC and path-search result payloads.
+- `ts_evidence_payloads.py` builds the IRC, energy-ordering and imaginary-mode evidence of a transition state.
+- `reaction_payloads.py` builds the stated participants of a reaction and its atom map.
+- `finding_warnings.py` holds the `_warn_*` functions that log a finding and return its sidecar warning.
 
-A name that tests patch on `tckdb_arc.adapter` stays in `adapter.py` together with every function that looks it up, because a function in another module would look it up in its own globals.
+The modules that were already separate:
+
+- `adaptive.py` reads `restart.yml` and `input.yml` for the adaptive-level and IRC-level markers `output.yml` lacks.
+- `arc13.py` reads what `output.yml` schema 1.3 states about levels, programs, routes and isotopes.
+- `evidence.py` reads ARC's parser evidence and the older TCKDB evidence sidecars.
+- `orca_neb.py` reads the converged band of an ORCA NEB run from its log.
+- `config.py` parses the `tckdb` block of `input.yml`.
+- `sweep.py` and `cli.py` run the upload sweep over a project's `output.yml`, from ARC and from the command line.
+- `warning_codes.py` is the registry of the warning codes the adapter emits.
+- `idempotency.py` binds the core's idempotency-key inputs to the `arc` namespace.
+- `constraints.py`, `level_rules.py` and `payload_writer.py` are compatibility modules that forward their old public names to `tckdb_core`.
+- `_compat.py` builds the deprecation forwarding those three modules use.
+- `_logging.py` owns the package logger.
+- `_vendor.py` holds `read_yaml_file`, ported from ARC, and re-exports the core's xyz helpers and constants.
+- `_arc_optional.py` is the guarded, lazy import boundary for ARC's ESS parsers.
+
+The adapter module and the modules split out of it log through the one `tckdb_arc` logger object in
+`_logging.py`; `adaptive.py` and `orca_neb.py` use their own child loggers (`tckdb_arc.adaptive`,
+`tckdb_arc.orca_neb`). Tests that capture log records patch the methods of that logger
+(`mock.patch.object(tckdb_arc._logging.logger, "warning")`); replacing the name `tckdb_arc.adapter.logger`
+redirects only the `TCKDBAdapter` class and the upload pipeline it calls.
+A test that patches another name on a module of the adapter patches it on the module whose code looks
+it up; `tests/test_adapter_module_surface.py` lists those names and checks the list against the tests.
 
 ## Tests
 

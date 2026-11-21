@@ -10178,7 +10178,6 @@ class TestSingleHartreeToKjMolConstant(unittest.TestCase):
         # Hartree->kJ/mol constant. This catches a reintroduced duplicate
         # regardless of scope or binding.
         import ast
-        import inspect
         import tckdb_arc.adapter as adapter_module
         from tckdb_arc._vendor import E_h_kJmol
 

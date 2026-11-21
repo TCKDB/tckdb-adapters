@@ -1,7 +1,7 @@
 """Statmech helpers of the ARC adapter.
 
 Classifies the treatment of a rotor or mode, coerces the coordinates of a torsion, and lists the
-calculations a statmech block cites. The statmech block itself is built in ``adapter.py``.
+calculations a statmech block cites. The statmech block itself is built in ``statmech_payloads.py``.
 """
 
 from collections.abc import Mapping

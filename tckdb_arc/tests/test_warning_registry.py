@@ -9,6 +9,7 @@ from unittest import mock
 
 import pytest
 
+from tckdb_arc import _logging
 from tckdb_arc import adapter as adapter_module
 from tckdb_arc import warning_codes
 from _adapter_sources import adapter_source_text, adapter_source_tree
@@ -17,7 +18,6 @@ from tckdb_core.adapter_warnings import WarningSink
 from tckdb_core.warning_codes import CoreWarning
 
 REPO = Path(__file__).resolve().parents[2]
-ADAPTER_SOURCE = Path(adapter_module.__file__)
 
 
 def test_the_registry_is_well_formed():
@@ -150,9 +150,10 @@ def test_the_ts_reaction_coordinate_refusal_carries_the_previous_warning_dict():
     assert str(exc).startswith("[ts_reaction_coordinate_not_designated] label='TS0'")
 
 
-def test_moved_names_log_through_the_adapter_module_logger():
-    """``mock.patch("tckdb_arc.adapter.logger")`` intercepts the records of functions that moved to the core."""
-    with mock.patch("tckdb_arc.adapter.logger") as log:
+def test_the_core_wrappers_log_through_the_package_logger():
+    """Patching the package logger's methods intercepts the records of functions that moved to the core."""
+    with mock.patch.object(_logging.logger, "warning") as warning, \
+            mock.patch.object(_logging.logger, "debug") as debug:
         assert adapter_module._build_nasa_block(None, None) is None  # not mappings: silent
         assert adapter_module._build_nasa_block(
             {"coeffs": [1.0], "tmin_k": 1, "tmax_k": 2}, {"coeffs": [1.0] * 7}) is None
@@ -160,5 +161,5 @@ def test_moved_names_log_through_the_adapter_module_logger():
         assert adapter_module.arc_to_tckdb_a_units("furlongs") is None
         assert adapter_module.arc_to_tckdb_ea_units("furlongs") is None
         adapter_module._serialize_calc_constraints([{"constraint_kind": "bond", "atoms": [1, 2]}])
-    assert log.warning.call_count == 3  # short coeffs, dropped point, constraint without index_base
-    assert log.debug.call_count == 2
+    assert warning.call_count == 3  # short coeffs, dropped point, constraint without index_base
+    assert debug.call_count == 2

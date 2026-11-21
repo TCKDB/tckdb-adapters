@@ -2,7 +2,7 @@
 
 The checks that decide whether an enthalpy can be declared a formation enthalpy, the
 applied-energy-correction helpers (atom and bond corrections, Arkane keys) and the checks on
-composite-method energies. The thermo block itself is built in ``adapter.py``.
+composite-method energies. The thermo block itself is built in ``thermo_payloads.py``.
 """
 
 import math

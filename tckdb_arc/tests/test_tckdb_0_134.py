@@ -20,6 +20,7 @@ from tckdb_schemas.fragments.calculation import HessianPayload
 from tckdb_schemas.workflows.computed_reaction_upload import BundleKineticsIn
 
 from tckdb_arc import adapter as adapter_module
+from tckdb_arc import kinetics_payloads
 from tckdb_arc.adapter import (
     TCKDBAdapter,
     _enforce_geometry_anchoring,
@@ -211,7 +212,8 @@ def test_kinetics_declaration_is_withheld_when_the_energy_level_is_unattributabl
     # The rule's refusals (different levels, spin treatments, an unstated participant) are
     # pinned in tckdb_core/tests/test_geometry_anchoring_rules.py; here ARC's adaptive-level
     # run, whose energy level it cannot attribute to a record, reaches the same outcome.
-    with mock.patch.object(adapter_module, "_thermo_energy_level", return_value=None):
+    with mock.patch.object(adapter_module, "_thermo_energy_level", return_value=None), \
+            mock.patch.object(kinetics_payloads, "_thermo_energy_level", return_value=None):
         block, _ = _kinetics_block()
     assert "energy_level_of_theory" not in block
 

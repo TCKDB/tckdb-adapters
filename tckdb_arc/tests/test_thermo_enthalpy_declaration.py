@@ -19,7 +19,7 @@ from _contract import contract_validate
 import pytest
 import yaml
 
-from tckdb_arc import adapter as adapter_module
+from tckdb_arc import thermo_payloads
 from tckdb_arc.adapter import TCKDBAdapter, _build_thermo_block
 from tckdb_arc.config import TCKDBConfig
 from tckdb_schemas.enthalpy_reference import enthalpy_reference_error
@@ -314,7 +314,7 @@ def test_shared_rule_accepts_every_thermo_block_in_the_corpus(tmp_path):
 def refused_declaration(monkeypatch):
     # A near-miss of the one legal value: the real shared rule refuses it
     # (enthalpy_reference_kind_unrecognized) while the schema still parses.
-    monkeypatch.setattr(adapter_module, "_THERMO_ENTHALPY_REFERENCE_KIND", "Formation_298K")
+    monkeypatch.setattr(thermo_payloads, "_THERMO_ENTHALPY_REFERENCE_KIND", "Formation_298K")
 
 
 def test_refused_species_thermo_is_omitted_and_surfaced(tmp_path, refused_declaration):
