@@ -22,7 +22,7 @@ TCKDB publishes its upload contract in two packages, and this repository depends
 TCKDB decides what it accepts. An adapter conforms to the contract and sends only what its
 source states.
 
-The documentation is also published as a [website](https://calvinp0.github.io/tckdb-adapters/).
+The documentation website is at <https://calvinp0.github.io/tckdb-adapters/>.
 
 ## Packages
 

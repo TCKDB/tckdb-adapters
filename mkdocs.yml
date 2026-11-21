@@ -1,14 +1,17 @@
 # Documentation site. Build and check with: mkdocs build --strict
-# This file is the one place that names the site address and the repository, so moving
-# the repository means editing site_url and repo_url here and nothing else.
+# Moving the repository means editing site_url and repo_url here and the URLs in README.md
+# (the badges and the docs link). The branch name that links to source files point at lives
+# in tools/mkdocs_hooks.py.
 site_name: tckdb-adapters
 site_description: Producer adapters that turn a tool's output into TCKDB upload payloads.
 site_url: https://calvinp0.github.io/tckdb-adapters/
 repo_url: https://github.com/calvinp0/tckdb-adapters
+edit_uri: ""
 docs_dir: docs
 
 theme:
   name: material
+  font: false
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
@@ -48,7 +51,15 @@ markdown_extensions:
   - pymdownx.superfences
 
 validation:
+  # Make `mkdocs build --strict` fail on everything that is wrong, not only on a missing link
+  # target: a page left out of nav, an absolute link, a link the build cannot resolve, a
+  # missing anchor.
+  nav:
+    omitted_files: warn
+    absolute_links: warn
   links:
+    absolute_links: warn
+    unrecognized_links: warn
     anchors: warn
 
 nav:

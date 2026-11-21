@@ -15,7 +15,9 @@ python -m pytest
 
 Python 3.11 or newer. ARC is optional; the tests that need it skip without it.
 
-To build or preview the documentation site, which is read from `docs/` and `mkdocs.yml`:
+The documentation site is built from `docs/`, `mkdocs.yml`, the READMEs, the changelogs and
+this file. Install its requirements in a separate virtualenv, never in the environment you
+run the tests in, then build or preview it:
 
 ```bash
 pip install -r requirements-docs.txt
