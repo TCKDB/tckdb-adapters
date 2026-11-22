@@ -12,7 +12,18 @@ of a log echo veto a field the deck states. A value comes only from a token the 
 stated with two values is left out and listed, and a compound deck, a deck of the wrong shape and a
 Gaussian route with a `!` comment are not read. Every mapped token is one TCKDB's own parsers read.
 `tckdb_core.testing.backend_import.backend_deck_qualifier_parsers` loads those parsers for the
-comparison test. Nothing else calls the module, so no payload, idempotency key or sidecar changes.
+comparison test.
+
+New `level_rules.levels_agree(a, b, *, ignore=("spin_treatment",))`: two levels agree when every
+field outside the four typed qualifiers is equal and each qualifier is equal or stated on one side
+only. `rules.energy_level_declaration` and the stated-level checks of
+`rules.kinetics_energy_level_assessment` use it, so a calculation level that carries qualifiers is
+still declared against a requested level that states none. The comparison of the links with one
+another stays strict, as TCKDB resolves each link to a row. `KineticsLevelAssessment` has a new
+field, `qualifier_differing_calculations`: the keys of links that match the others' level (or the
+one-electron Hartree-Fock exemption's) except for a qualifier stated on some of them only; such a
+record declares nothing, as before. With no qualifier on any level the result is unchanged, and the
+core builds no payload of its own, so no payload, idempotency key or sidecar changes.
 
 ## 0.5.21
 

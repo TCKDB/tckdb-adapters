@@ -16,7 +16,7 @@ from typing import Any
 from tckdb_schemas.stationary_point import TAU_PROTOCOL_NOT_RECORDED_CM1
 
 from tckdb_core._logging import resolve_log
-from tckdb_core.level_rules import method_identity_key
+from tckdb_core.level_rules import levels_agree, method_identity_key
 from tckdb_core.method_families import ONE_ELECTRON_EXEMPT_FAMILIES, method_family
 
 # ---------------------------------------------------------------------------
@@ -48,8 +48,10 @@ def energy_level_declaration(
     The declaration is therefore the energy calculation's own ``level_of_theory``
     as sent, ``spin_treatment`` included, and only when the producer's stated energy level
     (``stated``, already converted to the ``LevelOfTheoryRef`` shape) is that calculation's
-    level apart from ``spin_treatment``. Nothing is declared when ``stated`` is ``None``
-    (the energy level is not stated, e.g. adaptive runs it cannot attribute), when no sp
+    level apart from ``spin_treatment``. A typed qualifier (``pno_truncation`` and the others) that the
+    calculation's level states and ``stated`` does not is not a difference
+    (:func:`tckdb_core.level_rules.levels_agree`); two different stated values are. Nothing is declared
+    when ``stated`` is ``None`` (the energy level is not stated, e.g. adaptive runs it cannot attribute), when no sp
     (or, without one, no opt) is linked (``role_order`` names the roles tried, first
     match wins), or when ``stated`` is another level than the linked calculation's (a
     composite method, which is not sent as a calculation, or an ``sp_level`` whose sp
@@ -66,7 +68,7 @@ def energy_level_declaration(
     level = calc.get("level_of_theory") if isinstance(calc, Mapping) else None
     if not isinstance(level, Mapping):
         return None
-    if {k: v for k, v in level.items() if k != "spin_treatment"} != stated:
+    if not levels_agree(level, stated):
         resolve_log(log).info(
             "TCKDB energy level not declared: %s's energy level %s is not the "
             "level of the linked %s calculation.", producer_name, energy_level_description, role)
@@ -197,11 +199,16 @@ class KineticsLevelAssessment:
     ``one_electron_hf_calculations`` is non-empty only when a level was declared and the
     one-electron Hartree-Fock exemption was used: the keys of the links that differ from the declared
     level in ``method`` alone (see :func:`kinetics_energy_level_assessment`).
+    ``qualifier_differing_calculations`` is non-empty only when nothing was declared and every other
+    condition held: the keys of the links that are the others' level, or the one-electron
+    Hartree-Fock exemption's, except that a typed level qualifier is stated on one of them and not on
+    the level they are held against.
     """
 
     level: dict[str, Any] | None
     mixed_spin_calculations: tuple[str, ...] = ()
     one_electron_hf_calculations: tuple[str, ...] = ()
+    qualifier_differing_calculations: tuple[str, ...] = ()
 
 
 def _spin_of(level: Mapping[str, Any]) -> str | None:
@@ -259,7 +266,10 @@ def kinetics_energy_level_assessment(
     A level is declared only when, besides, the producer states the energy level of every
     participant behind the links (``stated_levels``, each already in the ``LevelOfTheoryRef``
     shape, one per participant the links name) and that level is the linked calculations' apart
-    from ``spin_treatment``. ``multiplicities`` maps a calculation key to its participant's
+    from ``spin_treatment``. A stated level is a requested one, so a typed qualifier the links state and it
+    does not is no difference (:func:`tckdb_core.level_rules.levels_agree`); the links are compared with each
+    other strictly, because TCKDB compares them by resolved row. Links that match apart from a qualifier stated
+    on some of them only decline the declaration, reported in ``qualifier_differing_calculations``. ``multiplicities`` maps a calculation key to its participant's
     multiplicity; a link with none stated cannot be classified, so nothing is declared. The
     spin treatment is never taken from a default, and ``<S**2>`` only from the calculation's own
     ``spin_diagnostic``: an unrestricted singlet without one counts as open-shell, as it does in TCKDB.
@@ -310,13 +320,26 @@ def kinetics_energy_level_assessment(
     def _exempt(count: int | None, level: Mapping[str, Any]) -> bool:
         return exempt_allowed and _is_one_electron_hf(count, level)
 
+    def _same(a: Mapping[str, Any], b: Mapping[str, Any], *, tolerant: bool, ignore: tuple[str, ...] = ()) -> bool:
+        """``a`` is ``b`` apart from ``spin_treatment`` and ``ignore``; ``tolerant`` lets a qualifier be one-sided."""
+        if tolerant:
+            return levels_agree(a, b, ignore=("spin_treatment", *ignore))
+        return ({k: v for k, v in a.items() if k not in ("spin_treatment", *ignore)}
+                == {k: v for k, v in b.items() if k not in ("spin_treatment", *ignore)})
+
     substituted: list[str] = []
+    qualifier_differing: list[str] = []
     for key, _, level in entries:
-        if _bare(level) != bare:
+        # Two levels that both come from jobs are one row on the server only when every field they state
+        # is equal, so a qualifier stated on one link and not on another is a difference here.
+        if not _same(level, reference, tolerant=False):
             # The exemption: method is the only identity field that differs.
-            if not (_exempt(electron_counts.get(key), level)
-                    and {k: v for k, v in _bare(level).items() if k != "method"}
-                    == {k: v for k, v in bare.items() if k != "method"}):
+            count = electron_counts.get(key)
+            if not (_exempt(count, level) and _same(level, reference, tolerant=False, ignore=("method",))):
+                if (_same(level, reference, tolerant=True)
+                        or (_exempt(count, level) and _same(level, reference, tolerant=True, ignore=("method",)))):
+                    qualifier_differing.append(key)
+                    continue
                 return KineticsLevelAssessment(None)
             substituted.append(key)
         # A user-declared composite scheme hashes by its definition on the server, which keeps the
@@ -329,12 +352,11 @@ def kinetics_energy_level_assessment(
     for index, stated in enumerate(stated_levels):
         if not isinstance(stated, Mapping):
             return KineticsLevelAssessment(None)
-        if _bare(stated) == bare:
+        # A stated level is a requested one and carries no qualifier of its own.
+        if _same(stated, bare, tolerant=True):
             continue
         count = stated_counts[index] if index < len(stated_counts) else None
-        if not (_exempt(count, stated)
-                and {k: v for k, v in _bare(stated).items() if k != "method"}
-                == {k: v for k, v in bare.items() if k != "method"}):
+        if not (_exempt(count, stated) and _same(stated, bare, tolerant=True, ignore=("method",))):
             return KineticsLevelAssessment(None)
 
     open_shell: dict[str, list[str]] = {}
@@ -360,6 +382,8 @@ def kinetics_energy_level_assessment(
     if len(open_shell) > 1:
         mixed = sorted({k for keys in open_shell.values() for k in keys})
         return KineticsLevelAssessment(None, tuple(mixed))
+    if qualifier_differing:
+        return KineticsLevelAssessment(None, qualifier_differing_calculations=tuple(qualifier_differing))
     declared = dict(bare)
     if open_shell:
         declared["spin_treatment"] = next(iter(open_shell))

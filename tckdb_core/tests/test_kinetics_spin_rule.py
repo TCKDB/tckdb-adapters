@@ -127,6 +127,39 @@ def test_a_link_without_a_calculation_or_level_declares_nothing():
     assert _assess(_r3_04(ts_sp=None)).level is None
 
 
+PNO = {"pno_truncation": "normal"}
+
+
+def test_links_that_share_a_qualifier_declare_it_and_the_stated_levels_need_not_state_it():
+    levels = {k: {**v, **PNO} for k, v in _r3_04().items() if k != "ts_freq"}
+    assessment = _assess({**levels, "ts_freq": B3})
+    assert assessment.level == {**U, **PNO}
+    assert assessment.qualifier_differing_calculations == ()
+
+
+def test_a_stated_level_with_a_different_qualifier_declares_nothing():
+    levels = {k: {**v, **PNO} for k, v in _r3_04().items()}
+    stated = [{**B3, "pno_truncation": "tight"}] + [B3] * 4
+    assert _assess(levels, stated=stated).level is None
+
+
+def test_links_that_differ_in_a_qualifier_are_two_rows_and_declare_nothing():
+    assessment = _assess(_r3_04(r1_sp={**U, **PNO}))
+    assert assessment.level is None
+    assert assessment.qualifier_differing_calculations == ("r1_sp",)
+
+
+def test_links_that_state_different_values_are_not_blamed_on_a_one_sided_qualifier():
+    assessment = _assess(_r3_04(r0_sp={**U, **PNO}, r1_sp={**U, "pno_truncation": "tight"}))
+    assert assessment.level is None
+    assert assessment.qualifier_differing_calculations == ()
+
+
+def test_a_qualifier_difference_is_not_blamed_when_the_stated_level_is_another_level():
+    stated = [{"method": "ccsd(t)", "basis": "def2tzvp"}] + [B3] * 4
+    assert _assess(_r3_04(r1_sp={**U, **PNO}), stated=stated) == rules.KineticsLevelAssessment(None)
+
+
 def test_the_returned_level_is_a_copy():
     levels = _r3_04()
     declared = _assess(levels).level

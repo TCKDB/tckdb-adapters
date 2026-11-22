@@ -185,3 +185,49 @@ def test_keys_match_the_backend_over_a_corpus():
         for dispersion in _DISPERSIONS:
             assert level_identity_keys(method, dispersion) == dispersion_names.level_identity_keys(
                 method, dispersion), (method, dispersion)
+
+
+# ---- levels_agree: a qualifier stated on one side only is not a difference
+
+from tckdb_core.level_rules import LEVEL_QUALIFIERS, levels_agree  # noqa: E402
+
+_BASE = {"method": "dlpno-ccsd(t)", "basis": "def2-tzvp"}
+
+
+def test_the_qualifier_fields_are_the_four_typed_ones():
+    from tckdb_core.deck_qualifiers import QUALIFIER_FIELDS
+
+    assert set(LEVEL_QUALIFIERS) == set(QUALIFIER_FIELDS) and len(LEVEL_QUALIFIERS) == 4
+
+
+@pytest.mark.parametrize("field,value", [("pno_truncation", "tight"), ("ri_approximation", "rijk"),
+                                         ("relativistic_hamiltonian", "dkh2"), ("core_treatment", "window")])
+def test_a_qualifier_stated_on_one_side_only_agrees(field, value):
+    stated = {**_BASE, field: value}
+    assert levels_agree(stated, _BASE) and levels_agree(_BASE, stated)
+    assert levels_agree({**_BASE, field: None}, stated)
+    assert levels_agree(stated, {**_BASE, field: value})
+
+
+@pytest.mark.parametrize("field,one,other", [("pno_truncation", "tight", "normal"), ("ri_approximation", "rijk", "rijcosx"),
+                                             ("relativistic_hamiltonian", "dkh2", "zora"),
+                                             ("core_treatment", "window", "frozen_core")])
+def test_two_different_stated_values_are_two_levels(field, one, other):
+    assert not levels_agree({**_BASE, field: one}, {**_BASE, field: other})
+
+
+def test_another_field_must_be_equal_whatever_the_qualifiers():
+    assert not levels_agree({**_BASE, "pno_truncation": "tight"}, {**_BASE, "basis": "def2-qzvp"})
+    assert not levels_agree(_BASE, {**_BASE, "dispersion": "d3bj"})
+
+
+def test_spin_treatment_is_ignored_by_default_and_ignore_widens_it():
+    assert levels_agree({**_BASE, "spin_treatment": "restricted"}, _BASE)
+    assert not levels_agree({**_BASE, "spin_treatment": "restricted"}, _BASE, ignore=())
+    assert levels_agree({**_BASE, "method": "hf"}, _BASE, ignore=("spin_treatment", "method"))
+
+
+def test_an_agreeing_pair_can_still_be_two_rows_on_the_server():
+    """Why a link-versus-link comparison stays strict: the hash takes every field a level states."""
+    stated = {**_BASE, "pno_truncation": "tight"}
+    assert levels_agree(stated, _BASE) and level_hash(stated) != level_hash(_BASE)

@@ -214,3 +214,31 @@ def level_hash(ref: Mapping[str, Any]) -> str:
 def same_level(a: Mapping[str, Any], b: Mapping[str, Any]) -> bool:
     """Whether the server resolves the two level dicts to one level of theory."""
     return level_hash(a) == level_hash(b)
+
+
+#: The four typed qualifiers of a level of theory, each identity only when stated.
+LEVEL_QUALIFIERS = (*METHOD_QUALIFIERS, "core_treatment")
+
+
+def levels_agree(
+    a: Mapping[str, Any],
+    b: Mapping[str, Any],
+    *,
+    ignore: tuple[str, ...] = ("spin_treatment",),
+) -> bool:
+    """Whether two level dicts are one level when a typed qualifier stated on one side only is not a difference.
+
+    The fields outside :data:`LEVEL_QUALIFIERS` and ``ignore`` must be equal. Each qualifier agrees when either
+    side does not state it (a missing key or ``None``) or both state the same value; two different stated values
+    are two levels. Use it to compare a level a job ran at (which carries the qualifiers its deck states) with a
+    level a producer only requested; two levels that both come from jobs are compared strictly, because TCKDB
+    resolves a level to a row by every field it states.
+    """
+    skip = {*ignore, *LEVEL_QUALIFIERS}
+    if {k: v for k, v in a.items() if k not in skip} != {k: v for k, v in b.items() if k not in skip}:
+        return False
+    for name in LEVEL_QUALIFIERS:
+        left, right = _enum_value(a.get(name)), _enum_value(b.get(name))
+        if left is not None and right is not None and left != right:
+            return False
+    return True
