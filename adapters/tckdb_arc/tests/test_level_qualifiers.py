@@ -3,8 +3,8 @@
 A calculation's ``level_of_theory`` states ``pno_truncation``, ``ri_approximation``, ``relativistic_hamiltonian``
 or ``core_treatment`` when, and only when, the input deck ARC recorded for that calculation's job
 (output.yml 1.3: ``ess_input_options``, ``irc_log_input_options``, ``conformer_input_options``,
-``conformer_energy_input_options``) carries the token. A level no job stands behind states none, and nothing
-is copied onto it. ``adapters/tckdb_arc/tests/_input_options.py`` holds the deck strings and where they come from.
+``conformer_energy_input_options``) carries the token. A calculation ARC records no deck for, or a level that
+is no job's, states none, and nothing is copied onto it. ``adapters/tckdb_arc/tests/_input_options.py`` holds the deck strings and where they come from.
 """
 
 import copy
@@ -19,7 +19,7 @@ from _input_options import (
     ORCA_SP_NORMALPNO, ORCA_SP_TIGHTPNO, ORCA_SP_TIGHTPNO_RIJCOSX, overlay_decks, without_decks)
 from _backend_level_rules import calculations_by_key, energy_level_verdict
 from test_arc_schema_1_3_levels import (
-    LVL, SP_LVL, _adapter, _calcs, _codes, _doc13, _project, _record, _sample,
+    CONF_LEVEL, LVL, SP_LVL, _adapter, _calcs, _codes, _doc13, _project, _record, _sample,
     _species_payload, _ts_calcs)
 from test_kinetics_one_electron_hf_adapter import DLPNO, _doc as _h_atom_doc
 from tckdb_arc.adapter import _arc_level_to_tckdb_lot
@@ -183,7 +183,8 @@ def test_a_composite_run_reads_the_composite_jobs_deck_for_its_calculations(tmp_
 def test_a_placeholder_opt_for_a_job_ARC_did_not_run_reads_no_deck(tmp_path):
     doc = _sample("species_thermo")               # CH3NH2: only a Molpro sp is exported, so no opt job
     record = _record(doc, "CH3NH2")
-    overlay_decks(record, opt=None, freq=None, sp=GAUSSIAN_OPT_DKH2)
+    # Even with a deck under the opt slot (ARC records none when no opt job ran), the placeholder reads none.
+    overlay_decks(record, opt=GAUSSIAN_OPT_DKH2, freq=None, sp=GAUSSIAN_OPT_DKH2)
     payload, warnings = _build_species(tmp_path, doc, "CH3NH2")
     calcs = _calcs(payload)
     assert calcs["opt"]["parameters_json"]["tckdb_origin"]["origin_detail"].endswith("no_opt_job")
@@ -207,7 +208,7 @@ def test_levels_no_job_stands_behind_state_none(tmp_path):
     calcs = _calcs(payload)
     assert calcs["freq"]["level_of_theory"] == {**LVL, "relativistic_hamiltonian": "dkh2"}
     fsf = payload["statmech"]["freq_scale_factor"]
-    assert fsf["level_of_theory"] == LVL                               # a fitted level: no job behind it
+    assert fsf["level_of_theory"] == LVL                               # a fitted level, no job's
     assert "freq_scale_factor_fitted_for_other_level" not in _codes(warnings)
 
 
@@ -424,15 +425,21 @@ def test_the_energy_level_is_still_declared_when_the_sp_deck_states_no_qualifier
 
 # ---------------------------------------------------------------- kinetics
 
-def _h_doc(h_deck):
+def _h_doc(h_deck, others=ORCA_SP_NORMALPNO):
     doc = _h_atom_doc()
     for record in (*doc["species"], *doc["transition_states"]):
-        deck = h_deck if record["label"] == "H" else ORCA_SP_TIGHTPNO
+        deck = h_deck if record["label"] == "H" else others
         overlay_decks(record, opt=GAUSSIAN_OPT, freq=GAUSSIAN_FREQ, sp=deck)
+        record["sp_route"] = None                      # the log echo is silent: the decks are the only source
     return doc
 
 
-def test_the_h_atom_without_the_pno_the_others_state_declares_nothing_and_says_why(tmp_path):
+def test_the_realistic_h_atom_hf_deck_has_no_pno_keyword_beside_participants_with_normalpno(tmp_path):
+    """What ARC writes: ``normalpno`` is added only for a DLPNO method, so the H atom's HF deck has none.
+
+    TCKDB's one-electron exemption does not tolerate a qualifier stated on one link only, so nothing is
+    declared and the adapter says why.
+    """
     payload, warnings = _build_reaction(tmp_path, _h_doc(ORCA_SP_HF_NO_PNO))
     (block,) = payload["kinetics"]
     assert "energy_level_of_theory" not in block
@@ -443,8 +450,13 @@ def test_the_h_atom_without_the_pno_the_others_state_declares_nothing_and_says_w
     contract_validate(ComputedReactionUploadRequest, payload)
 
 
-def test_the_h_atom_with_the_same_pno_declares_the_level_with_it(tmp_path):
-    payload, warnings = _build_reaction(tmp_path, _h_doc(ORCA_SP_HF_TIGHTPNO))
+def test_hypothetical_h_atom_hf_deck_with_the_same_pno_as_the_others_declares_the_level_with_it(tmp_path):
+    """Hypothetical: ARC never writes a PNO keyword into an HF deck unless the user's args carry one.
+
+    It pins the arithmetic of the equal-qualifier case: every link states ``tightpno``, so the
+    one-electron exemption applies and the declared level carries it.
+    """
+    payload, warnings = _build_reaction(tmp_path, _h_doc(ORCA_SP_HF_TIGHTPNO, others=ORCA_SP_TIGHTPNO))
     (block,) = payload["kinetics"]
     assert block["energy_level_of_theory"] == {**DLPNO, "spin_treatment": "unrestricted", "pno_truncation": "tight"}
     assert len(_finding(warnings, "one_electron_hf_substitution")) == 1
@@ -488,3 +500,93 @@ def test_the_four_deck_keys_are_the_only_source(tmp_path):
     record["sp_route"] = "uhf dlpno-ccsd(t)-f12 cc-pvtz-f12 aug-cc-pvtz/c cc-pvtz-f12-cabs tightpno"
     calcs = _calcs(_build_species(tmp_path, doc, record["label"])[0])
     assert calcs["sp"]["level_of_theory"] == SP_LVL
+
+
+# ---------------------------------------------------------------- IRC decks align with the IRC logs
+
+def test_an_irc_deck_list_shorter_than_the_logs_states_none(tmp_path):
+    doc = _irc_doc([GAUSSIAN_IRC_FORWARD_DKH2])
+    assert len(doc["transition_states"][0]["irc_logs"]) == 2
+    payload, warnings = _build_reaction(tmp_path, doc)
+    assert not _qualifiers(_ts_calcs(payload)["ts_irc"]["level_of_theory"])
+    assert not {"level_qualifiers_conflicting", "level_qualifiers_deck_not_read"} & set(_codes(warnings))
+
+
+def test_an_irc_deck_list_longer_than_the_logs_is_cut_at_the_logs(tmp_path):
+    doc = _irc_doc([GAUSSIAN_IRC_FORWARD_DKH2, GAUSSIAN_IRC_REVERSE_DKH2, GAUSSIAN_IRC_REVERSE])
+    payload, _ = _build_reaction(tmp_path, doc)
+    assert _qualifiers(_ts_calcs(payload)["ts_irc"]["level_of_theory"]) == {"relativistic_hamiltonian": "dkh2"}
+
+
+def test_the_irc_note_says_the_decks_disagree_and_no_qualifier_is_stated_for_the_irc_level(tmp_path):
+    _, warnings = _build_reaction(tmp_path, _irc_doc([GAUSSIAN_IRC_FORWARD_DKH2, GAUSSIAN_IRC_REVERSE]))
+    (finding,) = _finding(warnings, "level_qualifiers_conflicting")
+    detail = finding["context"]["detail"]
+    assert "IRC decks disagree on relativistic_hamiltonian" in detail
+    assert "no qualifier is stated for the IRC level" in detail
+    assert "left out of the level of theory of the irc calculation" in finding["message"]
+
+
+# ---------------------------------------------------------------- reasons
+
+def test_a_numeric_threshold_is_reported_as_an_override_not_as_two_values(tmp_path):
+    deck = ORCA_SP_TIGHTPNO_RIJCOSX + "\n%mdci\nTCutPNOSingles 1e-9\nend"
+    doc, label = _doc_with_decks(opt=GAUSSIAN_OPT, freq=GAUSSIAN_FREQ, sp=deck)
+    payload, warnings = _build_species(tmp_path, doc, label)
+    assert _qualifiers(_calcs(payload)["sp"]["level_of_theory"]) == {"ri_approximation": "rijcosx"}
+    (finding,) = _finding(warnings, "level_qualifiers_conflicting")
+    assert finding["context"]["detail"] == "pno_truncation: a numeric threshold overrides the preset"
+    assert "two values" not in finding["message"]
+
+
+def test_nocosx_against_rijcosx_states_nothing_and_a_bare_ri_beside_a_value_is_a_conflict(tmp_path):
+    for deck in (ORCA_SP_TIGHTPNO_RIJCOSX.replace("rijcosx", "rijcosx nocosx"),
+                 ORCA_SP_TIGHTPNO_RIJCOSX.replace("rijcosx", "ri rijcosx")):
+        doc, label = _doc_with_decks(opt=GAUSSIAN_OPT, freq=GAUSSIAN_FREQ, sp=deck)
+        payload, warnings = _build_species(tmp_path, doc, label)
+        assert _qualifiers(_calcs(payload)["sp"]["level_of_theory"]) == {"pno_truncation": "tight"}
+        (finding,) = _finding(warnings, "level_qualifiers_conflicting")
+        assert "ri_approximation" in finding["context"]["detail"]
+
+
+def test_dkh2_beside_a_non_second_order_is_not_sent(tmp_path):
+    deck = ORCA_SP_TIGHTPNO.replace("tightpno", "tightpno dkh2") + "\n%rel\nOrder 3\nend"
+    doc, label = _doc_with_decks(opt=GAUSSIAN_OPT, freq=GAUSSIAN_FREQ, sp=deck)
+    assert _qualifiers(_calcs(_build_species(tmp_path, doc, label)[0])["sp"]["level_of_theory"]) == {
+        "pno_truncation": "tight"}
+
+
+# ---------------------------------------------------------------- findings of one calculation stay its own
+
+CONFLICTING_DECK = GAUSSIAN_OPT.replace("integral=(grid=ultrafine, Acc2E=12)", "integral=(dkh2, dkh0)")
+
+
+def test_an_alternative_conformers_finding_is_not_folded_into_the_primary_opts(tmp_path):
+    doc = _project(tmp_path)
+    record = _record(doc, "nC3H7")
+    overlay_decks(record, opt=CONFLICTING_DECK, freq=GAUSSIAN_FREQ, sp=GAUSSIAN_SP,
+                  conformers=[CONFLICTING_DECK, CONFLICTING_DECK, None])
+    payload, warnings = _build_species(tmp_path, doc, "nC3H7")
+    assert [c["key"] for c in payload["conformers"]] == ["c0", "alt0"]
+    findings = _finding(warnings, "level_qualifiers_conflicting")
+    assert len(findings) == 2
+    assert sorted(f["context"].get("calculation", "") for f in findings)[0] == ""
+    assert any(f["context"].get("calculation", "").startswith("screened conformer") for f in findings)
+    assert len({f["message"] for f in findings}) == 2
+
+
+def test_a_finding_is_not_reported_for_a_conformer_that_is_not_kept(tmp_path):
+    doc = _project(tmp_path)
+    record = _record(doc, "iC3H7_d")
+    record["conformers"] = [record["xyz"].replace("0.0129", "0.0229")]
+    record["conformer_energies"] = [-100.0]
+    record["conformer_levels"] = [dict(CONF_LEVEL)]
+    record["conformer_energy_kind"] = "electronic_kj_mol"
+    record["conformer_energy_level"] = dict(CONF_LEVEL)
+    record["conformers_isotopes"] = [None]                       # the conformer is dropped: no isotope list
+    doc["conformer_opt_level"] = {**CONF_LEVEL, "software": "gaussian"}
+    overlay_decks(record, opt=GAUSSIAN_OPT, freq=GAUSSIAN_FREQ, sp=GAUSSIAN_SP, conformers=[CONFLICTING_DECK])
+    payload, warnings = _build_species(tmp_path, doc, "iC3H7_d")
+    assert [c["key"] for c in payload["conformers"]] == ["c0"]
+    assert "geometry_isotopes_not_stated" in _codes(warnings)
+    assert not _finding(warnings, "level_qualifiers_conflicting")

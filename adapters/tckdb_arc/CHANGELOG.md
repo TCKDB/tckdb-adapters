@@ -54,7 +54,7 @@ levels have a new identity and a re-upload is a new deposit. Requires `tckdb-ada
   opt and single point. They are parsed as the program of the calculation (ORCA and Gaussian only) by
   `tckdb_core.deck_qualifiers`, and the log echo (`*_route`, `*_blocks`) can only veto a field the deck
   states. A missing key is the same as null: no qualifier.
-- A level with no job behind it states none and nothing is copied onto it: the coarse stage of an
+- A calculation ARC records no deck for states none and nothing is copied onto it: the coarse stage of an
   optimization, rotor scans, path searches, a frequency scale factor's and a correction scheme's levels
   and the header levels. ARC's level `args` are not read.
 - A declared `energy_level_of_theory` is the linked calculation's level as sent, qualifiers included; the
@@ -62,8 +62,9 @@ levels have a new identity and a re-upload is a new deposit. Requires `tckdb-ada
   kinetics block whose links differ only in a qualifier (a one-electron Hartree-Fock atom whose deck has
   no PNO keyword beside DLPNO participants whose decks do) declares no energy level, where it declared
   one before, and reports `kinetics_energy_level_qualifiers_differ`.
-- New warning codes: `level_qualifiers_conflicting` (a field left out because the deck states two values,
-  the log echo states another or the decks of an IRC pair disagree), `level_qualifiers_deck_not_read`
+- New warning codes: `level_qualifiers_conflicting` (a field left out because the deck states two values or
+  a negation contradicts it, the log echo states another, a numeric `TCut*` threshold overrides the PNO
+  preset, or the decks of an IRC pair disagree), `level_qualifiers_deck_not_read`
   (a deck whose shape does not match the program, that holds several jobs or is a Gaussian route with a
   `!` comment) and `kinetics_energy_level_qualifiers_differ`.
 

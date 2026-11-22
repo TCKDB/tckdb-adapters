@@ -12,8 +12,9 @@ What is read, and what is not:
   is read like any other token.
 * Matching is case-insensitive and the lower-case enum value is returned.
 * A field stated with two different values anywhere in the deck is left out and listed in ``conflicting``; the
-  other fields are kept. An explicit negation (``NoRI``, Gaussian ``NoDKH`` / ``NonRelativistic``) is recognised
-  only so that it can contradict a stated value; it is never returned as ``none``.
+  other fields are kept. An explicit negation (``NoRI``, ``NoCOSX`` against ``RIJCOSX``, Gaussian ``NoDKH`` /
+  ``NonRelativistic``) and a value this module does not state (bare ``RI``, which TCKDB reads as ``rij``) are
+  recognised only so that they can contradict a stated value; they are never returned.
 * A deck whose first line does not have the program's shape is not read (``not_read="deck_shape_mismatch"``), nor
   is an ORCA deck with ``$new_job`` or a Gaussian deck with ``--Link1--`` (``"compound_deck"``: the text holds
   several jobs and the caller cannot tell which one it is reading), nor a Gaussian route with a ``!`` comment
@@ -34,15 +35,17 @@ ORCA (``!`` keyword lines and ``%`` blocks):
 * ``FrozenCore`` / ``NoFrozenCore`` -> ``core_treatment`` frozen_core / all_electron; ``%method FrozenCore``
   with ``FC_EWIN`` / ``FC_ELECTRONS`` / ``FC_NONE`` -> window / frozen_core / all_electron.
 
-``DKH`` states ``dkh2`` only when every ``Order`` of the ``%rel`` block is 2 or none is given; otherwise the
-field is not read. A ``TCut*`` key in ``%mdci`` (``TCutPNO``, ``TCutPairs``, ``TCutMKN``, ``TCutDO``) overrides
-the PNO preset, so a stated ``pno_truncation`` is left out and listed in ``conflicting``. Not read: bare ``RI``
-(TCKDB maps it to ``rij``, which this module does not state), ``NoCOSX``, ``DKH1``, ``DLU-X2C`` and numeric PNO
-thresholds. Recognised only as a negation: ``NoRI``.
+``DKH`` and ``DKH2`` state ``dkh2`` only when every ``Order`` of the ``%rel`` block is 2 or none is given;
+otherwise the field is not read. Any key beginning with ``TCut`` (``TCutPNO``, ``TCutPairs``, ``TCutDOij``,
+``TCutPNOSingles``, ...) in ``%mdci`` or ``%mp2`` is a numeric threshold that overrides the PNO preset, so a stated
+``pno_truncation`` is left out and listed in ``overridden``. ``RIJCOSX`` with ``NoCOSX`` (which turns the
+chain of spheres off) and any two different ``ri_approximation`` tokens, bare ``RI`` included, leave the field out
+and list it in ``conflicting``. Not read: ``DKH1``, ``DLU-X2C`` and numeric PNO thresholds. Recognised only as a
+negation: ``NoRI``.
 
 Gaussian (the first line of the text, the route):
 
-* ``Int`` / ``Integral`` with the option ``DKH``, ``DKH2`` or ``DouglasKrollHess`` -> ``relativistic_hamiltonian``
+* The route is split on a space outside parentheses only, as TCKDB splits it, and ``Int`` / ``Integral`` with the option ``DKH``, ``DKH2`` or ``DouglasKrollHess`` -> ``relativistic_hamiltonian``
   dkh2; with ``DKH0``, ``DKHSO`` or ``RESC`` -> dkh0 / dkhso / resc. The forms are ``int=x``, ``int=(a,b)`` and
   ``int(a,b)``; options are split on commas and spaces and an option holding ``=`` (``grid=ultrafine``,
   ``Acc2E=12``) is ignored.
@@ -70,15 +73,24 @@ ROUTE_COMMENT = "route_comment"
 
 #: A recognised negation. It contradicts a stated value of its field and is never sent.
 _NONE = "none"
+#: Values recognised only to contradict another value of their field: a negation, and ORCA's bare ``RI`` (TCKDB
+#: reads it as ``rij``, which is not stated here).
+_RIJ = "rij"
+_NOT_STATED = frozenset({_NONE, _RIJ})
 
 
 @dataclass(frozen=True)
 class DeckQualifiers:
-    """What a deck states: ``values`` to send, ``conflicting`` fields left out, and why a deck was ``not_read``."""
+    """What a deck states: ``values`` to send, the fields left out and why, and why a deck was ``not_read``.
+
+    ``conflicting`` fields are stated with two values (or contradicted by a negation or the log echo);
+    ``overridden`` fields are a PNO preset a numeric threshold overrides.
+    """
 
     values: Mapping[str, str] = field(default_factory=dict)
     conflicting: tuple[str, ...] = ()
     not_read: str | None = None
+    overridden: tuple[str, ...] = ()
 
 
 def qualifiers_from_deck(program: str | None, text: str | None) -> DeckQualifiers:
@@ -99,38 +111,40 @@ def agree_with_echo(deck: DeckQualifiers, echo: DeckQualifiers) -> DeckQualifier
     stays, and a field only the echo states is not added. An echo that states two values for a field contradicts
     it.
     """
+    overridden = [name for name in deck.values if name in echo.overridden]
     vetoed = [
         name for name, value in deck.values.items()
-        if name in echo.conflicting or (name in echo.values and echo.values[name] != value)
+        if name not in overridden and (name in echo.conflicting or (name in echo.values and echo.values[name] != value))
     ]
-    if not vetoed:
+    if not vetoed and not overridden:
         return deck
     return DeckQualifiers(
-        values={k: v for k, v in deck.values.items() if k not in vetoed},
+        values={k: v for k, v in deck.values.items() if k not in vetoed and k not in overridden},
         conflicting=tuple(dict.fromkeys((*deck.conflicting, *vetoed))),
         not_read=deck.not_read,
+        overridden=tuple(dict.fromkeys((*deck.overridden, *overridden))),
     )
 
 
-def _resolve(found: Iterable[tuple[str, str]], forced_conflicts: Iterable[str] = ()) -> DeckQualifiers:
-    """One value per field; a field with two values (a negation counts as one) is left out and listed."""
+def _resolve(found: Iterable[tuple[str, str]], overriding: Iterable[str] = ()) -> DeckQualifiers:
+    """One value per field; a field with two values (a negation counts as one) is left out and listed.
+
+    A field in ``overriding`` that the deck states (and does not state twice) is left out and listed as
+    overridden.
+    """
     stated: dict[str, set[str]] = {}
     for name, value in found:
         stated.setdefault(name, set()).add(value)
-    conflicting = [
-        name for name in QUALIFIER_FIELDS
-        if len(stated.get(name, ())) > 1 or (name in stated and name in forced_conflicts)
-    ]
+    conflicting = [name for name in QUALIFIER_FIELDS if len(stated.get(name, ())) > 1]
+    overridden = [name for name in QUALIFIER_FIELDS if name in overriding and name in stated and name not in conflicting]
     values: dict[str, str] = {}
     for name in QUALIFIER_FIELDS:
-        if name in conflicting:
-            continue
         only = stated.get(name, set())
-        if len(only) == 1:
+        if name not in conflicting and name not in overridden and len(only) == 1:
             (value,) = only
-            if value != _NONE:
+            if value not in _NOT_STATED:
                 values[name] = value
-    return DeckQualifiers(values=values, conflicting=tuple(conflicting))
+    return DeckQualifiers(values=values, conflicting=tuple(conflicting), overridden=tuple(overridden))
 
 
 # ------------------------------------------------------------------------------------------------ ORCA
@@ -143,6 +157,7 @@ _ORCA_KEYWORDS = {
     "rijk": ("ri_approximation", "rijk"),
     "rijonx": ("ri_approximation", "rijonx"),
     "nori": ("ri_approximation", _NONE),
+    "ri": ("ri_approximation", _RIJ),
     "dkh": ("relativistic_hamiltonian", "dkh2"),
     "dkh2": ("relativistic_hamiltonian", "dkh2"),
     "zora": ("relativistic_hamiltonian", "zora"),
@@ -153,7 +168,8 @@ _ORCA_KEYWORDS = {
 }
 _ORCA_REL_METHODS = {"dkh": "dkh2", "zora": "zora", "iora": "iora", "x2c": "x2c"}
 _ORCA_CORE_VALUES = {"fc_none": "all_electron", "fc_ewin": "window", "fc_electrons": "frozen_core"}
-_ORCA_TCUT_KEYS = ("tcutpno", "tcutpairs", "tcutmkn", "tcutdo")
+#: Blocks whose ``TCut*`` keys are numeric truncation thresholds.
+_ORCA_TCUT_BLOCKS = ("mdci", "mp2")
 _NEW_JOB = re.compile(r"^\$new_job\s*$", re.IGNORECASE)
 _BLOCK_START = re.compile(r"^%(\w+)\s*(.*?)$")
 #: Sub-sections of a block that open their own ``end``-terminated block.
@@ -242,14 +258,17 @@ def _read_orca(lines: list[str]) -> DeckQualifiers:
         return DeckQualifiers(not_read=COMPOUND_DECK)
     lines = _orca_drop_coordinates(lines)
     found: list[tuple[str, str]] = []
-    forced: list[str] = []
+    overriding: list[str] = []
     dkh_written = False
+    no_cosx = False
     for keyword_line in orca_keyword_lines(lines):
         for token in keyword_line.split():
-            entry = _ORCA_KEYWORDS.get(token.lower())
+            lowered = token.lower()
+            entry = _ORCA_KEYWORDS.get(lowered)
             if entry is not None:
                 found.append(entry)
-                dkh_written = dkh_written or token.lower() == "dkh"
+                dkh_written = dkh_written or lowered in ("dkh", "dkh2")
+            no_cosx = no_cosx or lowered == "nocosx"
     orders: list[str] = []
     for name, content, single_line in _orca_blocks(lines):
         pairs = _orca_pairs(content, single_line)
@@ -262,11 +281,13 @@ def _read_orca(lines: list[str]) -> DeckQualifiers:
                     dkh_written = dkh_written or value == "dkh"
         elif name == "method":
             found += [("core_treatment", _ORCA_CORE_VALUES[v]) for k, v in pairs if k == "frozencore" and v in _ORCA_CORE_VALUES]
-        elif name == "mdci" and any(key in _ORCA_TCUT_KEYS for key, _ in pairs):
-            forced.append("pno_truncation")
+        elif name in _ORCA_TCUT_BLOCKS and any(key.startswith("tcut") for key, _ in pairs):
+            overriding.append("pno_truncation")
     if dkh_written and any(order != "2" for order in orders):
         found = [entry for entry in found if entry != ("relativistic_hamiltonian", "dkh2")]
-    return _resolve(found, forced)
+    if no_cosx and ("ri_approximation", "rijcosx") in found:
+        found.append(("ri_approximation", _NONE))
+    return _resolve(found, overriding)
 
 
 # ------------------------------------------------------------------------------------------------ Gaussian
@@ -288,14 +309,21 @@ _GAUSSIAN_CORE_METHOD_PREFIXES = (
     "mp2", "mp3", "mp4", "mp5", "ccsd", "ccd", "cid", "cisd", "qcisd", "bd", "eomccsd", "ci",
     "ump2", "ump3", "ump4", "rmp2", "ccsdt",
 )
-_GAUSSIAN_IOP = re.compile(r"IOp\(([^)]+)\)", re.IGNORECASE)
+_GAUSSIAN_IOP = re.compile(r"IOp\(([^)]+)\)")
 _GAUSSIAN_KEYWORD = re.compile(r"^([A-Za-z][A-Za-z0-9]*)(?:=(.*)|(\(.*\)))?$", re.DOTALL)
 _LINK1 = re.compile(r"^--link1--$", re.IGNORECASE)
 
 
 def _gaussian_tokens(route: str) -> list[str]:
-    """Route tokens: whitespace separates them outside parentheses, around ``=`` and before ``(`` it does not."""
-    route = _GAUSSIAN_IOP.sub("", route)
+    """Route tokens, split as TCKDB splits them: on a space at parenthesis depth 0 and nowhere else.
+
+    The ``#P`` prefix and ``IOp(...)`` are removed first, and space around ``=`` and before ``(`` does not
+    separate tokens. A tab, or a space after an unbalanced ``)``, does not separate tokens either.
+    """
+    route = route.strip()
+    prefix = re.match(r"#([PNTpnt])?\s*", route)
+    route = route[prefix.end():] if prefix else route
+    route = _GAUSSIAN_IOP.sub("", route).strip()
     route = re.sub(r"\s*=\s*", "=", route)
     route = re.sub(r"(?<=[\w)])\s+\(", "(", route)
     tokens: list[str] = []
@@ -304,9 +332,11 @@ def _gaussian_tokens(route: str) -> list[str]:
     for char in route:
         if char == "(":
             depth += 1
+            current.append(char)
         elif char == ")":
             depth -= 1
-        if char.isspace() and depth <= 0:
+            current.append(char)
+        elif char == " " and depth == 0:
             if current:
                 tokens.append("".join(current))
                 current = []
@@ -338,7 +368,7 @@ def _gaussian_options(body: str) -> list[str]:
             depth += 1
         elif char == ")":
             depth -= 1
-        if depth == 0 and (char == "," or char.isspace()):
+        if depth == 0 and char in ", \t":
             if current:
                 pieces.append("".join(current))
                 current = []

@@ -166,10 +166,12 @@ contract defines the climbing-image flag for NEB.
       `conformer_energy_input_options[i]` for its single point. The deck is parsed as the
       program of the calculation (`software_release.name`). A record without a deck, or
       without the key, states none: a missing key means the same as null.
-    - A level no job stands behind states none, and no job's qualifiers are copied onto it:
-      the coarse stage of an optimization (its record holds only the fine opt's deck), rotor
-      scans, path searches, a frequency scale factor's level, a correction scheme's level and
-      the header levels. ARC's level `args` are never read.
+    - A calculation ARC records no deck for states none, and no job's qualifiers are copied
+      onto another level: the coarse stage of an optimization (the `opt` slot holds the fine
+      opt's deck, not the coarse stage's), rotor scans, path searches, and an opt that is a
+      placeholder for a job ARC did not run. A level that is no job's (a frequency scale
+      factor's level, a correction scheme's level, the header levels) states none either. ARC's
+      level `args` are never read.
     - An IRC calculation states a qualifier only when every IRC log has a recorded deck and
       all the decks state the same qualifiers; decks that differ state none
       (`level_qualifiers_conflicting`).
@@ -177,9 +179,14 @@ contract defines the climbing-image flag for NEB.
       ARC writes by default (`normalpno` for a DLPNO method) is read like any other. Absence is
       never a value, a program default is never inferred, and a method name (`RI-MP2`,
       `DLPNO-CCSD(T)`) states nothing. A field the deck states with two values is left out
-      (`level_qualifiers_conflicting`); the others are kept. An explicit negation (`NoRI`,
-      `NoDKH`, `NonRelativistic`) is never sent; it only makes a deck that also states a value
-      for that field state none.
+      (`level_qualifiers_conflicting`); the others are kept. A negation or a value the adapter
+      does not state counts as a value for this purpose only: `NoCOSX` beside `RIJCOSX`,
+      `NoRI` or bare `RI` beside another `ri_approximation` token, Gaussian `NoDKH` or
+      `NonRelativistic` beside a `DKH` option. None of them is ever sent.
+    - A key beginning with `TCut` (`TCutPNO`, `TCutPairs`, `TCutDOij`, `TCutPNOSingles`, ...)
+      in an ORCA `%mdci` or `%mp2` block is a numeric threshold that overrides the PNO preset,
+      so a stated `pno_truncation` is not sent; the finding is reported under
+      `level_qualifiers_conflicting` with the reason "a numeric threshold overrides the preset".
     - A deck is not read when it does not have the shape of its program (an ORCA deck starts
       with `!`, `%` or `$`, a Gaussian one with the `#` route), when it holds more than one job
       (`$new_job`, `--Link1--`) or when a Gaussian route has a `!` comment
@@ -187,46 +194,29 @@ contract defines the climbing-image flag for NEB.
       nothing is reported for them.
     - Every token below is also read by TCKDB's own ORCA and Gaussian parameter parsers, and a
       test compares the two on the same deck text, so the adapter never states more than TCKDB
-      reads from the same deck. The code is `tckdb_core/tckdb_core/deck_qualifiers.py`.
+      reads from the same deck. The Gaussian route is split into tokens the way TCKDB splits
+      it (on a space outside parentheses). The code is
+      `tckdb_core/tckdb_core/deck_qualifiers.py`.
 
     | Program | Token | Field = value | Source |
     |---|---|---|---|
-    | ORCA | `TightPNO`, `NormalPNO`, `LoosePNO` | `pno_truncation` = `tight`, `normal`, `loose` | orca 6.1 manual, "Local correlation (DLPNO)": "specifying TightPNO, NormalPNO or LoosePNO keywords" (knowledge-base chunks 16230, 16217); curated `orca-essentials.md` coupled-cluster gotcha (chunk 274) |
-    | ORCA | `RIJCOSX`, `RIJK`, `RIJONX` | `ri_approximation` = the same, lower case | curated gotcha "DFT defaults that changed" (chunk 273: RIJCOSX, RI-J); lesson "ORCA 6: RIJK gradients are unavailable ... use RIJONX def2/J" (chunks 13057, 13058) |
-    | ORCA | `DKH2`, `DKH` | `relativistic_hamiltonian` = `dkh2` | orca 6.1 manual Table 2.54, "DKH2, DKH: Activate the second-order DKH Hamiltonian" (chunk 15777) |
-    | ORCA | `ZORA`, `IORA`, `X2C` | `relativistic_hamiltonian` = `zora`, `iora`, `x2c` | same table (chunk 15777); lesson "ORCA ZORA/DKH Hessians are analytic" (chunk 24105) |
-    | ORCA | `%rel Method DKH`, `ZORA`, `IORA`, `X2C` | `relativistic_hamiltonian` as above | TCKDB's ORCA parser (`%rel` block); `DKH` counts as `dkh2` only when every `Order` of the block is 2 or none is given |
-    | ORCA | `FrozenCore`, `NoFrozenCore` | `core_treatment` = `frozen_core`, `all_electron` | TCKDB's ORCA parser (keyword line) |
-    | ORCA | `%method FrozenCore FC_EWIN`, `FC_ELECTRONS`, `FC_NONE` | `core_treatment` = `window`, `frozen_core`, `all_electron` | orca 6 manual "Frozen Core Options" (chunk 15951), orca 5.0.4 manual (chunks 13310, 14157); TCKDB's ORCA parser |
-    | Gaussian | `Int(egral)=DKH`, `=DKH2`, `=DouglasKrollHess` (also `=(DKH2,...)`, `Int(DKH2)`) | `relativistic_hamiltonian` = `dkh2` | G09 manual, Integral, "RELATIVISTIC CALCULATIONS": "DKH: second order ... DKH2 and DouglasKrollHess are synonyms" (chunk 10725); Foresman and Frisch, `Integral=DKH` (chunk 19362) |
-    | Gaussian | `Int(egral)=DKH0`, `DKHSO`, `RESC` (same option-list forms) | `relativistic_hamiltonian` = `dkh0`, `dkhso`, `resc` | same G09 chunk (10725). The knowledge base indexes the G09 manual for this keyword; G16 is not separately indexed |
-    | Gaussian | `Full`, `FC` (or `FrozenCore`), `Window` as an option of a correlated method, as in `CCSD(T,Full)/cc-pVTZ`, `MP2(FC)` | `core_treatment` = `all_electron`, `frozen_core`, `window` | TCKDB's Gaussian parser (its list of correlated-method prefixes); not `Pop=(Full)` |
+    | ORCA | `TightPNO`, `NormalPNO`, `LoosePNO` | `pno_truncation` = `tight`, `normal`, `loose` | ORCA 6.1 manual, "Local correlation (DLPNO)": "specifying TightPNO, NormalPNO or LoosePNO keywords" |
+    | ORCA | `RIJCOSX`, `RIJK`, `RIJONX` | `ri_approximation` = the same, lower case | ORCA 6 manual, the RIJCOSX ("Basic Usage"), RIJK and RIJONX keywords |
+    | ORCA | `DKH2`, `DKH` | `relativistic_hamiltonian` = `dkh2` | ORCA 6.1 manual, Table 2.54: "DKH2, DKH: Activate the second-order DKH Hamiltonian". The Order condition below applies to both |
+    | ORCA | `ZORA`, `IORA`, `X2C` | `relativistic_hamiltonian` = `zora`, `iora`, `x2c` | ORCA 6.1 manual, Table 2.54 |
+    | ORCA | `%rel Method DKH`, `ZORA`, `IORA`, `X2C` | `relativistic_hamiltonian` as above | ORCA 6 manual, the `%rel` block (`Method`, `Order`) |
+    | ORCA | `FrozenCore`, `NoFrozenCore` | `core_treatment` = `frozen_core`, `all_electron` | ORCA 6 manual, "Frozen Core Options" |
+    | ORCA | `%method FrozenCore FC_EWIN`, `FC_ELECTRONS`, `FC_NONE` | `core_treatment` = `window`, `frozen_core`, `all_electron` | ORCA 6 manual, "Frozen Core Options"; ORCA 5.0.4 manual, the same section |
+    | Gaussian | `Int(egral)=DKH`, `=DKH2`, `=DouglasKrollHess` (also `=(DKH2,...)`, `Int(DKH2)`) | `relativistic_hamiltonian` = `dkh2` | Gaussian 09 manual, Integral keyword, "Relativistic calculations": "DKH: second order ... DKH2 and DouglasKrollHess are synonyms"; Foresman and Frisch, *Exploring Chemistry with Electronic Structure Methods*, `Integral=DKH` |
+    | Gaussian | `Int(egral)=DKH0`, `DKHSO`, `RESC` (same option-list forms) | `relativistic_hamiltonian` = `dkh0`, `dkhso`, `resc` | Gaussian 09 manual, Integral keyword, "Relativistic calculations" (the manual of Gaussian 16 is not separately cited) |
+    | Gaussian | `Full`, `FC` (or `FrozenCore`), `Window` as an option of a correlated method, as in `CCSD(T,Full)/cc-pVTZ`, `MP2(FC)` | `core_treatment` = `all_electron`, `frozen_core`, `window` | Gaussian manual, the MP2 and coupled-cluster keywords (frozen-core options); not `Pop=(Full)` |
 
-    Not sent: bare ORCA `RI` (TCKDB reads it as `rij`), `NoCOSX`, `DKH1`, `DLU-X2C`, numeric PNO
-    thresholds (a `TCut*` key in `%mdci` also leaves a stated `pno_truncation` out), explicit
-    negations (`none`), Gaussian density fitting, and every spelling outside the table.
-- A method containing `//` names two levels. It is never sent, and a calculation at such a
-  level is not built (`level_method_is_compound`).
-- An Arkane level that is the name of a correction table (`cbs-qb3-paraskevas`) is sent as
-  its method stem, with the table name as the correction scheme's `name`
-  (`correction_table_method_split`).
-- The IRC calculation uses the stated IRC level. For output that states none it keeps the
-  opt level and reports `irc_level_assumed_opt_level`.
-- Thermo, statmech and kinetics blocks declare `energy_level_of_theory` only when it is the
-  level of the linked energy calculation. For kinetics the linked energies must agree on
-  every identity field. Spin is judged per participant, as TCKDB does: closed-shell links
-  never constrain it, and the open-shell links must share one reference
-  (`kinetics_energy_level_spin_mixed` otherwise). A one-electron species computed at
-  Hartree-Fock under a correlated level is accepted (`one_electron_hf_substitution`).
-- A declared `energy_level_of_theory` is the linked calculation's level as sent, qualifiers
-  included, because TCKDB requires it to be that level's row. The comparison with ARC's
-  stated (requested) energy level treats a qualifier stated on one side only as agreeing, and
-  two different stated values as two levels. The linked energies of a kinetics block are
-  compared with one another strictly, as TCKDB does, so links that differ only in a qualifier
-  (a one-electron Hartree-Fock atom whose deck has no `normalpno`, beside DLPNO participants
-  whose decks do) declare nothing and say so (`kinetics_energy_level_qualifiers_differ`).
-  The adapter reports nothing about a qualifier stated on a calculation and not on a level that
-  has no job.
+    `DKH` and `DKH2` state `dkh2` only when every `Order` of the deck's `%rel` block is 2 or
+    none is given; with another order the field is not sent.
+
+    Not sent: bare ORCA `RI` alone (TCKDB reads it as `rij`; it only contradicts another
+    `ri_approximation` token), `NoCOSX` alone, `DKH1`, `DLU-X2C`, numeric PNO thresholds,
+    explicit negations (`none`), Gaussian density fitting, and every spelling outside the table.
 
 ## Thermo
 
@@ -442,7 +432,7 @@ key built from the calculation ref, the kind and the file's SHA-256.
 | Dipole moment and polarizability | The routes this adapter uses have no field for them. |
 | TS `statmech` on the reaction bundle | ARC's TS statmech record has not been mapped. |
 | `tunneling_application`, `interpretation_assignments`, `network_kinetics_ref` | Each cites a record deposited earlier, and a bundle cannot cite what it is creating. |
-| Typed level-of-theory qualifiers outside the table under "Levels of theory" | An unmapped token, an explicit negation, a program other than ORCA and Gaussian, a deck that cannot be read, or a level with no job behind it (scans, path searches, the coarse opt stage, scale-factor and correction-scheme levels, header levels). |
+| Typed level-of-theory qualifiers outside the table under "Levels of theory" | An unmapped token, an explicit negation, a program other than ORCA and Gaussian, a deck that cannot be read, a calculation ARC records no deck for (scans, path searches, the coarse opt stage, a placeholder opt) or a level that is no job's (scale-factor and correction-scheme levels, header levels). |
 | Literature on correction schemes | ARC records no citation. |
 | `scale_kind`, `electronic_state_kind` | ARC does not state them. |
 | GSM `converged` and `is_climbing_image`; the geometries of NEB images other than the climbing image; the NEB-TS saddle point's energy and forces | The files ARC keeps do not hold them, or the contract has no field. See "Path-search points". |

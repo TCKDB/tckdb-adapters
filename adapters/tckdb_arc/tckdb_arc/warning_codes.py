@@ -43,7 +43,7 @@ class ArcWarning(CodedEnum):
     )
     LEVEL_QUALIFIERS_CONFLICTING = (
         "level_qualifiers_conflicting",
-        "A typed level qualifier is left out of a calculation's level because the job's deck states two values for it, the log's echo of the job states another value, or the decks of an IRC pair disagree.",
+        "A typed level qualifier is left out of a calculation's level because the job's deck states two values for it or a negation contradicts it, the log's echo of the job states another value, a numeric threshold overrides the PNO preset, or the decks of an IRC pair disagree.",
     )
     LEVEL_QUALIFIERS_DECK_NOT_READ = (
         "level_qualifiers_deck_not_read",

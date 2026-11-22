@@ -4,9 +4,10 @@ A TCKDB level of theory carries four optional typed fields (``pno_truncation``, 
 ``relativistic_hamiltonian``, ``core_treatment``). They are stated only from the input-deck text ARC records
 per job in output.yml 1.3 (``ess_input_options``, ``irc_log_input_options``, ``conformer_input_options`` and
 ``conformer_energy_input_options``), parsed by :mod:`tckdb_core.deck_qualifiers` as the program of the job.
-They are never read from a requested level or from its ``args``, so a level no job stands behind (a
-frequency-scale-factor level, a correction-scheme level, a header level) carries none, and no job's
-qualifiers are copied onto another level.
+They are never read from a requested level or from its ``args``, so a calculation ARC records no deck for
+(a rotor scan, a path search, the coarse stage of an optimization, a placeholder opt for a job ARC did not run)
+and a level that is no job's (a frequency-scale-factor level, a correction-scheme level, a header level) carry
+none, and no job's qualifiers are copied onto another level.
 
 When the record also has the log's echo of the job (``*_route`` and ``*_blocks``), the echo can only veto: a
 field the deck states and the echo states differently is left out. A field only the echo states is not sent.
@@ -14,8 +15,8 @@ field the deck states and the echo states differently is left out. A field only 
 What the deck cannot be read for is returned as notes (a registered warning code and one line of detail), which
 the adapter reports once the build is done:
 
-* ``level_qualifiers_conflicting``: a field is left out because the deck states two values, the log echo states
-  another value, or the decks of an IRC pair disagree;
+* ``level_qualifiers_conflicting``: a field is left out because the deck states two values, a negation or the
+  log echo contradicts it, a numeric threshold overrides the PNO preset, or the decks of an IRC pair disagree;
 * ``level_qualifiers_deck_not_read``: the deck's shape does not match the program, it holds several jobs, or it
   is a Gaussian route with a ``!`` comment.
 
@@ -112,6 +113,9 @@ def read_job_qualifiers(
     name = str(program or "").strip().lower()
     if not name or not arc13.has_levels(record):
         return NO_QUALIFIERS
+    if (job_input_options is AUTO_JOB_OPTIONS and calc_type == "opt"
+            and arc13.primary_opt_placeholder(record) == "no_opt_job"):
+        return NO_QUALIFIERS    # no opt job ran: the opt slot of ``ess_input_options`` is not a deck of this opt
     echoes: list[tuple[str | None, str | None]]
     if job_input_options is AUTO_JOB_OPTIONS:
         if calc_type == "irc":
@@ -134,13 +138,19 @@ def read_job_qualifiers(
     notes: list[QualifierNote] = []
     within = [field for deck_read, _ in reads for field in deck_read.conflicting]
     vetoed = [field for deck_read, after in reads for field in after.conflicting if field not in deck_read.conflicting]
+    thresholds = [field for _, after in reads for field in after.overridden]
     if within:
         notes.append(_conflict_detail(tuple(dict.fromkeys(within)), "the deck states two values"))
     if vetoed:
         notes.append(_conflict_detail(tuple(dict.fromkeys(vetoed)), "the log echo states another value"))
+    if thresholds:
+        notes.append(_conflict_detail(
+            tuple(dict.fromkeys(thresholds)), "a numeric threshold overrides the preset"))
     stated = [dict(after.values) for _, after in reads]
     if any(values != stated[0] for values in stated):
         differing = sorted({k for values in stated for k, v in values.items() if any(o.get(k) != v for o in stated)})
-        notes.append(_conflict_detail(differing, "the decks of the job's logs differ"))
+        notes.append(QualifierNote(
+            _CODE_CONFLICTING,
+            f"the IRC decks disagree on {', '.join(differing)}, so no qualifier is stated for the IRC level"))
         return JobQualifiers({}, tuple(notes))
     return JobQualifiers(stated[0], tuple(notes))

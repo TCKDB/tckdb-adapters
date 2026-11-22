@@ -89,7 +89,7 @@ ORCA_NOTHING = [
     ("NoCOSX", "!b3lyp def2-svp nocosx"),
     ("DKH1", "!b3lyp def2-svp dkh1"),
     ("DLU-X2C", "!b3lyp def2-svp dlu-x2c"),
-    ("a numeric PNO threshold", "!dlpno-ccsd(t) def2-tzvp\n%mdci\nTCutPNO 1e-8\nend"),
+    ("a numeric PNO threshold alone", "!dlpno-ccsd(t) def2-tzvp\n%mdci\nTCutPNO 1e-8\nend"),
     ("the Gaussian spelling", "!b3lyp def2-svp int=dkh2"),
     ("a keyword inside a comment", "!b3lyp def2-svp # tightpno # tightscf"),
     ("the SCF block", "!b3lyp def2-svp\n%scf\nMaxIter 999\nend"),
@@ -167,11 +167,50 @@ def test_a_negation_is_never_stated_and_it_contradicts_a_stated_value():
     assert _q("gaussian", "#P opt wb97xd/def2tzvp int=(dkh2,nodkh)") == ({}, ("relativistic_hamiltonian",), None)
 
 
-def test_a_numeric_pno_cutoff_overrides_the_preset():
-    text = "!dlpno-ccsd(t) def2-tzvp tightpno\n%mdci\nTCutPNO 1e-8\nend"
-    assert _q("orca", text) == ({}, ("pno_truncation",), None)
-    text = "!dlpno-ccsd(t) def2-tzvp normalpno rijk\n%mdci\nTCutPairs 1e-5\nend"
-    assert _q("orca", text) == ({"ri_approximation": "rijk"}, ("pno_truncation",), None)
+@pytest.mark.parametrize("block, key", [
+    ("mdci", "TCutPNO 1e-8"), ("mdci", "TCutPairs 1e-5"), ("mdci", "TCutMKN 1e-3"), ("mdci", "TCutDO 1e-2"),
+    ("mdci", "TCutPNOSingles 1e-9"), ("mdci", "TCutDOij 1e-7"), ("mdci", "TCutPre 1e-6"),
+    ("mdci", "tcutpno 1e-8"), ("mp2", "TCutPNO 1e-9"),
+])
+def test_a_numeric_threshold_overrides_the_pno_preset(block, key):
+    text = f"!dlpno-ccsd(t) def2-tzvp tightpno rijk\n%{block}\n{key}\nend"
+    result = qualifiers_from_deck("orca", text)
+    assert dict(result.values) == {"ri_approximation": "rijk"}
+    assert result.overridden == ("pno_truncation",) and result.conflicting == ()
+    one_line = qualifiers_from_deck("orca", f"!dlpno-ccsd(t) def2-tzvp tightpno\n%{block} {key} end")
+    assert dict(one_line.values) == {} and one_line.overridden == ("pno_truncation",)
+
+
+def test_a_threshold_with_no_preset_overrides_nothing_and_another_block_does_not_count():
+    assert qualifiers_from_deck("orca", "!dlpno-ccsd(t) def2-tzvp\n%mdci\nTCutPNO 1e-8\nend") == DeckQualifiers()
+    text = "!dlpno-ccsd(t) def2-tzvp tightpno\n%scf\nTCutFoo 1\nend"
+    assert _q("orca", text) == ({"pno_truncation": "tight"}, (), None)
+
+
+def test_nocosx_cancels_rijcosx_and_bare_ri_contradicts_a_stated_value():
+    assert _q("orca", "!b3lyp def2-svp RIJCOSX NoCOSX") == ({}, ("ri_approximation",), None)
+    assert _q("orca", "!b3lyp def2-svp NoCOSX") == ({}, (), None)
+    assert _q("orca", "!b3lyp def2-svp RIJK NoCOSX") == ({"ri_approximation": "rijk"}, (), None)
+    assert _q("orca", "!b3lyp def2-svp RI RIJCOSX") == ({}, ("ri_approximation",), None)
+    assert _q("orca", "!b3lyp def2-svp RI") == ({}, (), None)
+    assert _q("orca", "!b3lyp def2-svp RI RIJK RIJONX tightpno")[1] == ("ri_approximation",)
+
+
+def test_dkh2_is_dkh2_only_at_order_two_like_dkh():
+    assert _q("orca", "!b3lyp def2-svp dkh2\n%rel Order 3 end") == ({}, (), None)
+    assert _q("orca", "!b3lyp def2-svp dkh2\n%rel Order 2 end")[0] == {"relativistic_hamiltonian": "dkh2"}
+    assert _q("orca", "!b3lyp def2-svp zora\n%rel Order 3 end")[0] == {"relativistic_hamiltonian": "zora"}
+
+
+def test_the_gaussian_route_is_split_as_tckdb_splits_it():
+    # A tab is no separator: the second keyword is an option of the first.
+    assert _q("gaussian", "#P int=dkh\tccsd(full)/cc-pvtz") == ({"relativistic_hamiltonian": "dkh2"}, (), None)
+    assert _q("gaussian", "#P int=dkh  ccsd(full)/cc-pvtz") == (
+        {"relativistic_hamiltonian": "dkh2", "core_treatment": "all_electron"}, (), None)
+    # After an unbalanced ")" no space separates tokens any more.
+    assert _q("gaussian", "# opt) int=dkh2 ccsd(full)/x") == ({}, (), None)
+    assert _q("gaussian", "#P opt int=dkh2 ccsd(full)/x")[0] == {
+        "relativistic_hamiltonian": "dkh2", "core_treatment": "all_electron"}
 
 
 @pytest.mark.parametrize("order, expected", [("2", {"relativistic_hamiltonian": "dkh2"}), ("3", {})])
@@ -264,6 +303,26 @@ _PARITY_DECKS = (
     + [("gaussian", text) for _, text in GAUSSIAN_NOTHING]
     + [
         ("orca", "!b3lyp def2-svp\n%rel\nMethod DKH\nOrder 3\nend"),
+        ("orca", "!b3lyp def2-svp dkh2\n%rel Order 3 end"),
+        ("orca", "!b3lyp def2-svp RIJCOSX NoCOSX"),
+        ("orca", "!b3lyp def2-svp RI RIJCOSX"),
+        ("orca", "!b3lyp def2-svp RI"),
+        ("orca", "!dlpno-ccsd(t) def2-tzvp tightpno\n%mdci\nTCutPNOSingles 1e-9\nend"),
+        ("orca", "!dlpno-ccsd(t) def2-tzvp tightpno\n%mp2\nTCutPNO 1e-9\nend"),
+        ("orca", "!b3lyp  def2-svp   zora\n%rel\n  Method   X2C\nend"),
+        ("orca", "!b3lyp def2-svp\ttightpno rijk"),
+        ("orca", "!b3lyp def2-svp tightpno\n%rel method zora"),
+        ("orca", "!b3lyp def2-svp tightpno\n%rel\n method zora\n%mdci\n  TCutPairs 1e-5"),
+        ("gaussian", "#P int=dkh\tccsd(full)/cc-pvtz"),
+        ("gaussian", "#P int=dkh  ccsd(full)/cc-pvtz"),
+        ("gaussian", "#P   opt   int=dkh2     ccsd(t,fc)/cc-pvtz"),
+        ("gaussian", "# opt) int=dkh2 ccsd(full)/x"),
+        ("gaussian", "#P opt) int=dkh2 ccsd(full)/x"),
+        ("gaussian", "#P opt int=(dkh2 ccsd(full)/x"),
+        ("gaussian", "#P opt (int=dkh2) ccsd(full)/x"),
+        ("gaussian", "#P opt int = dkh2 ccsd ( full ) /x"),
+        ("gaussian", "#P int(dkh2,\tdkh0) mp2(full)"),
+        ("gaussian", "#P iop(3/32=2) int=dkh2"),
         ("orca", "!b3lyp def2-svp zora dkh2"),
         ("orca", "!dlpno-ccsd(t) def2-tzvp tightpno\n%mdci\nTCutPNO 1e-8\nend"),
         ("orca", "!b3lyp def2-svp RIJCOSX NoRI"),

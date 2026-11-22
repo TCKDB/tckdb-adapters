@@ -333,14 +333,15 @@ def echo_for(record: Any, kind: str) -> tuple[str | None, str | None]:
 
 
 def irc_input_options(record: Any) -> list[str | None] | None:
-    """The deck text of each IRC log of a TS record (``irc_log_input_options``), in lockstep with ``irc_logs``.
+    """The deck text of each IRC log of a TS record (``irc_log_input_options``), aligned with ``irc_logs``.
 
-    ``None`` when the record has no ``levels`` or no such list; an entry is ``None`` where ARC recorded no deck.
+    One entry per log: ``None`` where ARC recorded no deck, including a log beyond the end of the deck list (a
+    deck beyond the last log is dropped). ``None`` when the record has no ``levels`` or no IRC logs.
     """
-    options = record.get("irc_log_input_options") if has_levels(record) else None
-    if not isinstance(options, Sequence) or isinstance(options, str) or not options:
+    logs = record.get("irc_logs") if has_levels(record) else None
+    if not isinstance(logs, Sequence) or isinstance(logs, str) or not logs:
         return None
-    return [_text(entry) for entry in options]
+    return [_item(record.get("irc_log_input_options"), index) for index in range(len(logs))]
 
 
 def irc_echoes(record: Any, count: int) -> list[tuple[str | None, str | None]]:

@@ -23,7 +23,7 @@ and the sidecar carries the server's own warnings beside these.
 | `level_contradicted_by_route` | The observed route line names another method or basis than the stated level, so the calculation is omitted. |
 | `composite_geometry_level_not_stated` | The geometry came from a composite job whose level is not stated, so the placeholder optimisation is not filed. |
 | `primary_opt_placeholder_no_opt_job` | An sp or freq log is exported but no optimisation job, so the primary optimisation is a placeholder at the header level. |
-| `level_qualifiers_conflicting` | A typed level qualifier is left out of a calculation's level because the job's deck states two values for it, the log's echo of the job states another value, or the decks of an IRC pair disagree. |
+| `level_qualifiers_conflicting` | A typed level qualifier is left out of a calculation's level because the job's deck states two values for it or a negation contradicts it, the log's echo of the job states another value, a numeric threshold overrides the PNO preset, or the decks of an IRC pair disagree. |
 | `level_qualifiers_deck_not_read` | A job's recorded deck was not read for typed level qualifiers because its shape does not match the job's program, it holds several jobs, or it is a Gaussian route with a ! comment; the calculation's level states none. |
 | `level_method_is_compound` | A level's method contains '//' (two levels of theory), so the level is not sent and the calculation is not built. |
 | `opt_level_adaptive_not_attributable` | Under adaptive levels the optimisation level cannot be attributed to this record, so the calculation is omitted. |

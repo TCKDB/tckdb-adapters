@@ -85,18 +85,20 @@ _QUALIFIER_NOTES_KEY = "_tckdb_level_qualifier_notes"
 
 
 def _note_level_qualifiers(
-    output_doc: Mapping[str, Any], record: Mapping[str, Any], calc_type: str, notes: Any,
+    output_doc: Mapping[str, Any], record: Mapping[str, Any], calc_type: str, notes: Any, ref: str = "",
 ) -> None:
     """Record what the read of a calculation's deck could not state, for ``_report_adaptive_omissions``.
 
     ``_calculation_payload`` has no warnings sink, so the findings wait in a list on the document the
-    build carries (present on output.yml 1.3 and later); a document without it records nothing.
+    build carries (present on output.yml 1.3 and later); a document without it records nothing. ``ref``
+    names the calculation when its record has several of one type (``"screened conformer 1"``), so their
+    findings stay apart; the record's own calculation has none.
     """
     noted = output_doc.get(_QUALIFIER_NOTES_KEY)
     if not isinstance(noted, list):
         return
     for note in notes:
-        entry = (str(record.get("label")), calc_type, note.code, note.detail)
+        entry = (str(record.get("label")), calc_type, note.code, note.detail, ref)
         if entry not in noted:
             noted.append(entry)
 
