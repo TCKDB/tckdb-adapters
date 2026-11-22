@@ -82,6 +82,48 @@ def real_backend_level_hash():
     return (lambda level: _level_of_theory_hash(LevelOfTheoryRef(**level))), None
 
 
+#: The backend's canonical keys for the four typed level qualifiers, and the level field each one is.
+_QUALIFIER_CANONICAL_KEYS = {
+    "pno.truncation": "pno_truncation",
+    "ri.approximation": "ri_approximation",
+    "relativistic.hamiltonian": "relativistic_hamiltonian",
+    "core.frozen": "core_treatment",
+}
+
+
+def backend_deck_qualifier_parsers():
+    """The backend's ORCA and Gaussian deck readers as ``{program: text -> {field: {values}}}``, or ``None`` and a reason.
+
+    Each function runs the backend's ``parse_qualifier_jobs`` on a deck and returns, per typed level qualifier
+    field, the set of canonical values the backend reads across the deck's jobs. Returns ``(parsers, None)``
+    when ``app.services.orca_parameter_parser`` and ``gaussian_parameter_parser`` import from
+    ``TCKDB_BACKEND_PATH``; else ``(None, reason)``.
+    """
+    backend = os.environ.get("TCKDB_BACKEND_PATH")
+    if not backend:
+        return None, "TCKDB_BACKEND_PATH is not set"
+    sys.path.insert(0, backend)
+    try:
+        from app.services import gaussian_parameter_parser, orca_parameter_parser
+    except ImportError as exc:
+        return None, f"the backend deck parsers are not importable from {backend} ({exc})"
+    finally:
+        sys.path.remove(backend)
+
+    def reader(module):
+        def read(text: str) -> dict[str, set[str]]:
+            found: dict[str, set[str]] = {}
+            for job in module.parse_qualifier_jobs(text):
+                for key, value in job["pairs"]:
+                    if key in _QUALIFIER_CANONICAL_KEYS:
+                        found.setdefault(_QUALIFIER_CANONICAL_KEYS[key], set()).add(value)
+            return found
+
+        return read
+
+    return {"orca": reader(orca_parameter_parser), "gaussian": reader(gaussian_parameter_parser)}, None
+
+
 def backend_level_hash(level: dict) -> str:
     """The backend's hash of ``level``: the real function when importable, else the
     same payload built from the backend's own identity keys (a replica of the payload

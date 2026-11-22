@@ -3,6 +3,17 @@
 Releases are listed newest first. Each `tckdb-arc` release names the core version it needs in its
 own changelog.
 
+## 0.5.22
+
+New module `tckdb_core.deck_qualifiers`: `qualifiers_from_deck(program, text)` reads the four typed
+level-of-theory qualifiers (`pno_truncation`, `ri_approximation`, `relativistic_hamiltonian`,
+`core_treatment`) from the text of an ORCA or Gaussian input deck, and `agree_with_echo` lets the text
+of a log echo veto a field the deck states. A value comes only from a token the deck states, a field
+stated with two values is left out and listed, and a compound deck, a deck of the wrong shape and a
+Gaussian route with a `!` comment are not read. Every mapped token is one TCKDB's own parsers read.
+`tckdb_core.testing.backend_import.backend_deck_qualifier_parsers` loads those parsers for the
+comparison test. Nothing else calls the module, so no payload, idempotency key or sidecar changes.
+
 ## 0.5.21
 
 Tracks TCKDB 67a812c (tckdb-schemas 0.177.3, tckdb-client 0.211.0). Requires
