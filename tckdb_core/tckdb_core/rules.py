@@ -198,7 +198,7 @@ class KineticsLevelAssessment:
     keys of those calculations, so the caller can say why nothing was declared.
     ``one_electron_hf_calculations`` is non-empty only when a level was declared and the
     one-electron Hartree-Fock exemption was used: the keys of the links that differ from the declared
-    level in ``method`` alone (see :func:`kinetics_energy_level_assessment`).
+    level in ``method`` and the correlation-only qualifiers ``pno_truncation`` / ``core_treatment`` alone (see :func:`kinetics_energy_level_assessment`).
     ``qualifier_differing_calculations`` is non-empty only when nothing was declared and every other
     condition held: the keys of the links that are the others' level, or the one-electron
     Hartree-Fock exemption's, except that a typed level qualifier is stated on one of them and not on
@@ -337,7 +337,7 @@ def kinetics_energy_level_assessment(
         # Two levels that both come from jobs are one row on the server only when every field they state
         # is equal, so a qualifier stated on one link and not on another is a difference here.
         if not _same(level, reference, tolerant=False):
-            # The exemption: method is the only identity field that differs.
+            # The exemption: only method and the correlation-only qualifiers differ.
             count = electron_counts.get(key)
             if not (_exempt(count, level) and _same(level, reference, tolerant=False, ignore=_HF_IGNORED)):
                 if (_same(level, reference, tolerant=True)

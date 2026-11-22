@@ -1,9 +1,10 @@
 """A one-electron participant's Hartree-Fock energy under a correlated kinetics level.
 
 Mirror of TCKDB's one-electron HF exemption in ``kinetics_energy_level_violation``: a link (and its
-participant's stated level) may differ from the others in ``method`` alone when the participant has
-exactly one electron, its method identifies as Hartree-Fock (``method_identity_key`` is ``hf``) and
-every other identity field except ``spin_treatment``, ``pno_truncation`` and ``core_treatment`` equals the declared level's. Shape:
+participant's stated level) may differ from the others in ``method`` and the correlation-only qualifiers
+when the participant has exactly one electron, its method identifies as Hartree-Fock
+(``method_identity_key`` is ``hf``) and every other identity field except ``spin_treatment``,
+``pno_truncation`` and ``core_treatment`` equals the declared level's. Shape:
 ``rotor_scan_rxn_210``, ``CC + [H] <=> C[CH2] + [H][H]``, ORCA DLPNO-CCSD(T)-F12 for all but the H atom,
 which ORCA can only run at HF.
 """
@@ -240,6 +241,29 @@ def test_two_different_ri_values_still_decline():
     levels["r1_sp"] = {**H_U, "ri_approximation": "rijcosx"}
     assessment = _assess(levels)
     assert assessment.level is None and assessment.qualifier_differing_calculations == ()
+
+
+PLAIN = {"method": "dlpno-ccsd(t)", "basis": "cc-pvtz", "aux_basis": "cc-pvtz/c"}
+
+
+def _plain(atom_extra=None, **declared_extra):
+    levels = {k: {**PLAIN, **declared_extra, "spin_treatment": v["spin_treatment"]} for k, v in _levels().items()}
+    levels["r1_sp"] = {**PLAIN, "method": "hf", "spin_treatment": "unrestricted", **(atom_extra or {})}
+    stated = [{**PLAIN, **declared_extra}, {**PLAIN, "method": "hf"}] + [{**PLAIN, **declared_extra}] * 3
+    return _assess(levels, stated=stated)
+
+
+@pytest.mark.parametrize("declared_extra", [PNO, {**PNO, **CORE}])
+def test_a_plain_dlpno_level_with_pno_accepts_the_hf_atom(declared_extra):
+    assessment = _plain(**declared_extra)
+    assert assessment.level == {**PLAIN, **declared_extra, "spin_treatment": "unrestricted"}
+    assert assessment.one_electron_hf_calculations == ("r1_sp",)
+    assert assessment.qualifier_differing_calculations == ()
+
+
+def test_a_plain_dlpno_level_still_declines_an_ri_difference_on_the_hf_atom():
+    assessment = _plain({"ri_approximation": "rijcosx"}, **PNO)
+    assert assessment.level is None and assessment.one_electron_hf_calculations == ()
 
 
 def test_a_two_electron_participant_differing_only_in_pno_still_declines():
