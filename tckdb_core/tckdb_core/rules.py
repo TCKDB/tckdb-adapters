@@ -198,7 +198,8 @@ class KineticsLevelAssessment:
     keys of those calculations, so the caller can say why nothing was declared.
     ``one_electron_hf_calculations`` is non-empty only when a level was declared and the
     one-electron Hartree-Fock exemption was used: the keys of the links that differ from the declared
-    level in ``method`` and the correlation-only qualifiers ``pno_truncation`` / ``core_treatment`` alone (see :func:`kinetics_energy_level_assessment`).
+    level only in ``method`` and the correlation-only qualifiers ``pno_truncation`` / ``core_treatment``
+    (see :func:`kinetics_energy_level_assessment`).
     ``qualifier_differing_calculations`` is non-empty only when nothing was declared and every other
     condition held: the keys of the links that are the others' level, or the one-electron
     Hartree-Fock exemption's, except that a typed level qualifier is stated on one of them and not on
