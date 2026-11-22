@@ -3,7 +3,7 @@
 Mirror of TCKDB's one-electron HF exemption in ``kinetics_energy_level_violation``: a link (and its
 participant's stated level) may differ from the others in ``method`` alone when the participant has
 exactly one electron, its method identifies as Hartree-Fock (``method_identity_key`` is ``hf``) and
-every other identity field except ``spin_treatment`` equals the declared level's. Shape:
+every other identity field except ``spin_treatment``, ``pno_truncation`` and ``core_treatment`` equals the declared level's. Shape:
 ``rotor_scan_rxn_210``, ``CC + [H] <=> C[CH2] + [H][H]``, ORCA DLPNO-CCSD(T)-F12 for all but the H atom,
 which ORCA can only run at HF.
 """
@@ -82,7 +82,7 @@ def test_the_h_atom_at_hf_in_another_basis_declares_nothing():
 
 @pytest.mark.parametrize("field,value", [("aux_basis", "def2/c"), ("cabs_basis", "other-cabs"),
                                          ("dispersion", "d3bj"), ("solvent", "water"),
-                                         ("core_treatment", "frozen_core")])
+                                         ("ri_approximation", "rijcosx"), ("relativistic_hamiltonian", "dkh2")])
 def test_any_other_identity_field_differing_declares_nothing(field, value):
     assert _assess(_levels(r1={**H_U, field: value})).level is None
 
@@ -190,15 +190,6 @@ def test_any_other_declared_family_grants_no_exemption(method):
 PNO = {"pno_truncation": "normal"}
 
 
-def test_the_h_atom_without_the_qualifier_the_others_state_declares_nothing_and_says_why():
-    """ORCA runs the H atom at HF, whose deck carries no PNO keyword; the others' decks do."""
-    levels = {k: {**v, **PNO} for k, v in _levels().items() if k != "r1_sp"}
-    assessment = _assess(_levels(**levels))
-    assert assessment.level is None
-    assert assessment.qualifier_differing_calculations == ("r1_sp",)
-    assert assessment.one_electron_hf_calculations == ()
-
-
 def test_the_exemption_still_holds_when_every_link_states_the_same_qualifier():
     assessment = _assess({k: {**v, **PNO} for k, v in _levels().items()})
     assert assessment.level == {**U, **PNO}
@@ -206,10 +197,63 @@ def test_the_exemption_still_holds_when_every_link_states_the_same_qualifier():
     assert assessment.qualifier_differing_calculations == ()
 
 
-def test_a_qualifier_on_the_h_atom_alone_is_the_same_difference():
-    assessment = _assess(_levels(r1={**H_U, **PNO}))
+CORE = {"core_treatment": "frozen_core"}
+
+
+def _with(declared_extra, atom_extra=None, atom_stated_extra=None):
+    """Every non-H link states ``declared_extra``; the H atom's link states ``atom_extra``."""
+    levels = {k: {**v, **declared_extra} for k, v in _levels().items()}
+    levels["r1_sp"] = {**H_U, **(atom_extra or {})}
+    stated = [{**F12, **declared_extra}, {**HF, **(atom_stated_extra or {})}] + [{**F12, **declared_extra}] * 3
+    return _assess(levels, stated=stated)
+
+
+@pytest.mark.parametrize("declared_extra,atom_extra", [
+    (PNO, {}), (CORE, {}), ({**PNO, **CORE}, {}),
+    (PNO, {"pno_truncation": "tight"}), ({}, PNO),
+    (CORE, {"core_treatment": "all_electron"}),
+])
+def test_a_one_electron_hf_link_ignores_correlation_only_qualifiers(declared_extra, atom_extra):
+    assessment = _with(declared_extra, atom_extra)
+    assert assessment.level == {**U, **declared_extra}
+    assert assessment.one_electron_hf_calculations == ("r1_sp",)
+    assert assessment.qualifier_differing_calculations == ()
+
+
+@pytest.mark.parametrize("atom_stated_extra", [{"pno_truncation": "tight"}, {"core_treatment": "all_electron"}])
+def test_the_h_atoms_stated_level_may_state_another_correlation_only_value(atom_stated_extra):
+    assessment = _with({**PNO, **CORE}, atom_stated_extra=atom_stated_extra)
+    assert assessment.level == {**U, **PNO, **CORE}
+    assert assessment.one_electron_hf_calculations == ("r1_sp",)
+
+
+@pytest.mark.parametrize("atom_extra", [{"ri_approximation": "rijcosx"}, {"relativistic_hamiltonian": "dkh2"}])
+def test_ri_or_relativistic_difference_on_the_hf_atom_still_declines(atom_extra):
+    assessment = _with(PNO, atom_extra)
     assert assessment.level is None
+    assert assessment.one_electron_hf_calculations == ()
     assert assessment.qualifier_differing_calculations == ("r1_sp",)
+
+
+def test_two_different_ri_values_still_decline():
+    levels = {k: {**v, "ri_approximation": "rij"} for k, v in _levels().items()}
+    levels["r1_sp"] = {**H_U, "ri_approximation": "rijcosx"}
+    assessment = _assess(levels)
+    assert assessment.level is None and assessment.qualifier_differing_calculations == ()
+
+
+def test_a_two_electron_participant_differing_only_in_pno_still_declines():
+    levels = {k: {**v, **PNO} for k, v in _levels().items() if k not in ("p1_sp", "r1_sp")}
+    assessment = _assess({**levels, "p1_sp": R, "r1_sp": H_U})
+    assert assessment.level is None
+    assert assessment.qualifier_differing_calculations == ("p1_sp",)
+
+
+def test_a_two_electron_participant_at_hf_without_pno_still_declines():
+    levels = {k: {**v, **PNO} for k, v in _levels().items()}
+    levels["p1_sp"] = {**HF, "spin_treatment": "restricted"}
+    assessment = _assess(levels)
+    assert assessment.level is None and assessment.one_electron_hf_calculations == ()
 
 
 def test_a_composite_scheme_reference_level_without_a_method_grants_no_exemption():

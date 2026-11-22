@@ -16,7 +16,7 @@ from typing import Any
 from tckdb_schemas.stationary_point import TAU_PROTOCOL_NOT_RECORDED_CM1
 
 from tckdb_core._logging import resolve_log
-from tckdb_core.level_rules import levels_agree, method_identity_key
+from tckdb_core.level_rules import CORRELATION_ONLY_QUALIFIERS, levels_agree, method_identity_key
 from tckdb_core.method_families import ONE_ELECTRON_EXEMPT_FAMILIES, method_family
 
 # ---------------------------------------------------------------------------
@@ -275,12 +275,14 @@ def kinetics_energy_level_assessment(
     ``spin_diagnostic``: an unrestricted singlet without one counts as open-shell, as it does in TCKDB.
 
     One exemption to rule 1 (one-electron Hartree-Fock, mirroring TCKDB): a link, and its
-    participant's stated level, may differ from the others in ``method`` alone when the
+    participant's stated level, may differ from the others in ``method`` and in ``pno_truncation`` and
+    ``core_treatment`` (any value, on either side: neither changes a Hartree-Fock energy) when the
     participant has exactly one electron (``electron_counts`` maps a calculation key, and
     ``stated_electron_counts`` is parallel to ``stated_levels``: atomic numbers minus net charge,
     ``None`` when not known, which grants no exemption), its method identifies as Hartree-Fock
-    (:func:`_is_hartree_fock`) and every other identity field except ``spin_treatment`` equals the
-    declared level's. Every correlation term vanishes for one electron, so the HF energy is the
+    (:func:`_is_hartree_fock`) and every other identity field except ``spin_treatment``, ``pno_truncation`` and
+    ``core_treatment`` equals the declared level's. ``ri_approximation``, ``relativistic_hamiltonian``, the bases,
+    dispersion and solvent are still compared. Every correlation term vanishes for one electron, so the HF energy is the
     correlated one in the same basis (an F12 level's CABS singles term aside). The declared level
     is the correlated one the other links share, never HF; when every link is a one-electron HF
     link there is nothing to exempt and the rule runs as before. The exemption also needs the
@@ -320,12 +322,14 @@ def kinetics_energy_level_assessment(
     def _exempt(count: int | None, level: Mapping[str, Any]) -> bool:
         return exempt_allowed and _is_one_electron_hf(count, level)
 
+    _HF_IGNORED = ("method", *CORRELATION_ONLY_QUALIFIERS)
+
     def _same(a: Mapping[str, Any], b: Mapping[str, Any], *, tolerant: bool, ignore: tuple[str, ...] = ()) -> bool:
         """``a`` is ``b`` apart from ``spin_treatment`` and ``ignore``; ``tolerant`` lets a qualifier be one-sided."""
-        if tolerant:
-            return levels_agree(a, b, ignore=("spin_treatment", *ignore))
-        return ({k: v for k, v in a.items() if k not in ("spin_treatment", *ignore)}
-                == {k: v for k, v in b.items() if k not in ("spin_treatment", *ignore)})
+        skip = ("spin_treatment", *ignore)
+        a = {k: v for k, v in a.items() if k not in skip}
+        b = {k: v for k, v in b.items() if k not in skip}
+        return levels_agree(a, b, ignore=()) if tolerant else a == b
 
     substituted: list[str] = []
     qualifier_differing: list[str] = []
@@ -335,9 +339,9 @@ def kinetics_energy_level_assessment(
         if not _same(level, reference, tolerant=False):
             # The exemption: method is the only identity field that differs.
             count = electron_counts.get(key)
-            if not (_exempt(count, level) and _same(level, reference, tolerant=False, ignore=("method",))):
+            if not (_exempt(count, level) and _same(level, reference, tolerant=False, ignore=_HF_IGNORED)):
                 if (_same(level, reference, tolerant=True)
-                        or (_exempt(count, level) and _same(level, reference, tolerant=True, ignore=("method",)))):
+                        or (_exempt(count, level) and _same(level, reference, tolerant=True, ignore=_HF_IGNORED))):
                     qualifier_differing.append(key)
                     continue
                 return KineticsLevelAssessment(None)
@@ -356,7 +360,7 @@ def kinetics_energy_level_assessment(
         if _same(stated, bare, tolerant=True):
             continue
         count = stated_counts[index] if index < len(stated_counts) else None
-        if not (_exempt(count, stated) and _same(stated, bare, tolerant=True, ignore=("method",))):
+        if not (_exempt(count, stated) and _same(stated, bare, tolerant=True, ignore=_HF_IGNORED)):
             return KineticsLevelAssessment(None)
 
     open_shell: dict[str, list[str]] = {}
