@@ -169,7 +169,7 @@ without `pytest`. (`jsonschema` is a runtime dependency since 0.5.11, for `stand
 | `contract_hook` | `contract_checks_fixture(adapter_cls=..., payload_builders={"_build_x": "<schema name>", ...})`: the autouse fixture that checks every request the adapter builds. `register_markers(config)` registers `payload_refused_by_contract`. An adapter's `conftest.py` names its own builders. |
 | `contract_pin` | The four assertions of a package's `test_contract_pin.py`: installed tckdb-schemas line, `pyproject.toml` bound, contract document stamp, a shipped schema for every route. |
 | `stubs` | `StubClient`, `StubResponse`, `SequencedReadyzClient` and `upload_calls`: stand-ins for `TCKDBClient`, handed to an adapter through `client_factory`. |
-| `backend_import` | `backend_modules()` / `backend_level_hash()`: import TCKDB's backend identity rules from `TCKDB_BACKEND_PATH`. `TCKDB_REQUIRE_BACKEND=1` turns "unavailable" into a failure. |
+| `backend_import` | `backend_modules()` / `backend_level_hash()` / `backend_deck_qualifier_parsers()`: import TCKDB's backend identity rules and its ORCA and Gaussian deck parsers from `TCKDB_BACKEND_PATH`. `TCKDB_REQUIRE_BACKEND=1` turns "unavailable" into a failure. |
 | `live` | The opt-in live gate: loopback and isolated-backend guards, retrying reads, settled row counts, the commit probe, and `live_tckdb_fixture()` for an integration `conftest.py` to register. |
 
 ## Public API

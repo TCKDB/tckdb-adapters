@@ -149,16 +149,29 @@ def run_git(cwd, *args) -> str:
     return subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True, text=True, env=env).stdout.strip()
 
 
+#: The backend files (relative to ``backend/``) besides ``app/chemistry`` that the fetch script requires.
+PARSER_FILES = (
+    "app/__init__.py", "app/parser_registry.py", "app/versioning.py", "app/services/__init__.py",
+    "app/services/parameter_closed_values.py", "app/services/orca_parameter_parser.py",
+    "app/services/gaussian_parameter_parser.py",
+)
+
+
 def make_tckdb(tmp: Path) -> tuple[str, str, str]:
     """A local stand-in for the TCKDB repository with two commits: ``(url, old sha, new sha)``.
 
-    ``backend/app/chemistry/marker.txt`` says which commit a checkout is at (OLD, then NEW), and a
-    file outside ``backend/app/chemistry`` is there to show the checkout is sparse. The repository
-    is ``<tmp>/tckdb-src``.
+    ``backend/app/chemistry/marker.txt`` says which commit a checkout is at (OLD, then NEW). The deck
+    parser modules ``tools/fetch_tckdb_backend.sh`` needs are stand-in files, and a file outside what it
+    fetches (``schemas/elsewhere.txt``, ``backend/app/services/other_service.py``) is there to show the
+    checkout is sparse. The repository is ``<tmp>/tckdb-src``.
     """
     src = tmp / "tckdb-src"
     (src / "backend" / "app" / "chemistry").mkdir(parents=True)
+    (src / "backend" / "app" / "services").mkdir()
     (src / "schemas").mkdir()
+    for name in PARSER_FILES:
+        (src / "backend" / name).write_text("")
+    (src / "backend" / "app" / "services" / "other_service.py").write_text("# not fetched\n")
     run_git(src, "init", "-q", "-b", "main")
     run_git(src, "config", "uploadpack.allowFilter", "true")
     (src / "schemas" / "elsewhere.txt").write_text("not part of the backend\n")

@@ -201,6 +201,9 @@ def test_every_suite_gets_tckdbs_backend_at_the_new_commit_and_requires_it(run):
     backend = (run.runner_temp / "tckdb" / "backend").as_posix()
     assert run.log("backend.log").splitlines() == [f"{backend}|1|NEW"] * len(DIRECTORIES)  # the new commit, not OLD
     assert not (run.runner_temp / "tckdb" / "schemas" / "elsewhere.txt").exists()  # sparse, as in ci.yml
+    backend_dir = run.runner_temp / "tckdb" / "backend"
+    assert all((backend_dir / name).is_file() for name in fx.PARSER_FILES)  # the deck parsers are fetched
+    assert not (backend_dir / "app" / "services" / "other_service.py").exists()  # and no more of services
 
 
 def test_the_step_bumps_the_pins_itself_before_it_installs_and_tests(run):
@@ -212,10 +215,15 @@ def test_the_step_bumps_the_pins_itself_before_it_installs_and_tests(run):
     assert "pip install tckdb-client @ git+" in install and run.new_sha in install  # the specs name the new commit
 
 
-@pytest.mark.parametrize("breakage", ["unreachable repository", "commit without the backend directory"])
+@pytest.mark.parametrize("breakage", [
+    "unreachable repository", "commit without the backend directory", "commit without a deck parser"])
 def test_a_failed_backend_fetch_is_a_failed_run_that_runs_no_suite(run, breakage):
     if breakage == "unreachable repository":
         run.set_pin(f"file://{run.runner_temp}/no-such-repository", run.old_sha)
+    elif breakage == "commit without a deck parser":  # TCKDB moved or renamed a parser module
+        _git(run.tckdb_src, "rm", "-q", "backend/app/services/orca_parameter_parser.py")
+        _git(run.tckdb_src, "commit", "-q", "-m", "move the parser")
+        run.bump["sha"] = _git(run.tckdb_src, "rev-parse", "HEAD")
     else:  # a TCKDB commit that has no backend/app/chemistry (the directory moved)
         _git(run.tckdb_src, "rm", "-q", "-r", "backend")
         _git(run.tckdb_src, "commit", "-q", "-m", "restructure")
@@ -223,7 +231,7 @@ def test_a_failed_backend_fetch_is_a_failed_run_that_runs_no_suite(run, breakage
     assert run.run() == {"result": "setup-failed"}  # never "pass": nothing was tested against the new backend
     assert run.log("pytest.log") == ""
     summary = run.summary()
-    assert "stopped before it ran any suite" in summary and "Fetching TCKDB's backend/app/chemistry" in summary
+    assert "stopped before it ran any suite" in summary and "Fetching TCKDB's backend modules" in summary
     assert not re.search(r"^(FAILED|ERROR) ", summary, re.M)
 
 
@@ -300,6 +308,8 @@ def test_the_fetch_script_prints_only_the_two_variables_and_fails_loudly(tmp_pat
     assert proc.returncode == 0, proc.stderr
     assert proc.stdout.splitlines() == [f"TCKDB_BACKEND_PATH={dest}/backend", "TCKDB_REQUIRE_BACKEND=1"]
     assert (dest / "backend" / "app" / "chemistry" / "marker.txt").read_text() == "NEW"
+    assert all((dest / "backend" / name).is_file() for name in fx.PARSER_FILES)
+    assert not (dest / "backend" / "app" / "services" / "other_service.py").exists()  # sparse: a few files only
     for bad in ("not a spec", f"tckdb-schemas @ git+{url}@{'0' * 40}#x"):
         failed = subprocess.run(["bash", str(FETCH_SCRIPT), bad, str(tmp_path / "again")], capture_output=True, text=True)
         assert failed.returncode != 0 and failed.stdout == "", bad
@@ -320,7 +330,7 @@ def test_the_ci_step_still_writes_the_same_two_variables_to_github_env(tmp_path)
     TCKDB: the job-wide environment gets the backend path and the require flag, as before."""
     url, _, new_sha = make_tckdb(tmp_path)
     steps = yaml.safe_load(CI_WORKFLOW.read_text())["jobs"]["tckdb-arc"]["steps"]
-    (step,) = [s for s in steps if "identity rules" in s.get("name", "")]
+    (step,) = [s for s in steps if "Fetch TCKDB's backend modules" in s.get("name", "")]
     runner_temp, github_env = tmp_path / "runner", tmp_path / "github_env"
     runner_temp.mkdir()
     env = {**os.environ, "RUNNER_TEMP": str(runner_temp), "GITHUB_ENV": str(github_env),

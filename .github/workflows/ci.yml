@@ -37,10 +37,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install "$TCKDB_CLIENT_SPEC" "$TCKDB_SCHEMAS_SPEC"
 
-      - name: Fetch TCKDB's identity rules (backend/app/chemistry) at the pinned revision
+      - name: Fetch TCKDB's backend modules (backend/app/chemistry and the deck parsers) at the pinned revision
         # tests/test_level_rules.py and test_energy_level_declaration.py compare the
         # adapter's replica of TCKDB's level-of-theory identity with the backend's own
-        # pure modules. Same repo and sha as the install above (read from the spec, so
+        # pure modules, and test_deck_qualifiers.py compares the typed level qualifiers it
+        # reads from a deck with TCKDB's ORCA and Gaussian deck parsers
+        # (backend/app/services/*_parameter_parser.py, which need no web dependencies). Same repo and sha as the install above (read from the spec, so
         # a --bump moves both). TCKDB_REQUIRE_BACKEND=1 makes the comparison fail, not
         # skip, if this step is ever removed. Locally: export TCKDB_BACKEND_PATH to a
         # TCKDB checkout's backend/ (the comparison skips without it). The fetch is

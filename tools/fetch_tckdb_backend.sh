@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
-# Fetch TCKDB's identity rules (backend/app/chemistry) at the commit of a pip install spec.
+# Fetch the TCKDB backend modules the comparison tests import, at the commit of a pip install spec:
+# the identity rules (backend/app/chemistry) and the ORCA and Gaussian deck parsers
+# (backend/app/services/{orca,gaussian}_parameter_parser.py with what they import at module level:
+# parameter_closed_values.py, app/parser_registry.py, app/versioning.py and the empty package
+# __init__.py files). None of them needs sqlalchemy or fastapi; the heavier services modules
+# (calculation_resolution, ...) are not fetched, and the tests that need them skip or are told so.
 #
 #   fetch_tckdb_backend.sh <tckdb-schemas pip spec> <destination directory>
 #
@@ -29,11 +34,24 @@ if [ -z "$repo" ] || [ -z "$sha" ] || [ "$repo" = "$spec" ] || [ "$sha" = "$spec
 fi
 
 git clone --quiet --filter=blob:none --no-checkout "$repo" "$dest" >&2
-git -C "$dest" sparse-checkout set backend/app/chemistry >&2
+# Non-cone patterns name the few files wanted; cone mode would take all of backend/app/services.
+git -C "$dest" sparse-checkout set --no-cone \
+  /backend/app/chemistry/ \
+  /backend/app/__init__.py /backend/app/parser_registry.py /backend/app/versioning.py \
+  /backend/app/services/__init__.py /backend/app/services/parameter_closed_values.py \
+  /backend/app/services/orca_parameter_parser.py /backend/app/services/gaussian_parameter_parser.py >&2
 git -C "$dest" checkout --quiet "$sha" >&2
 if [ ! -d "$dest/backend/app/chemistry" ]; then
   echo "fetch_tckdb_backend.sh: $repo at $sha has no backend/app/chemistry" >&2
   exit 1
 fi
+for file in app/__init__.py app/parser_registry.py app/versioning.py app/services/__init__.py \
+    app/services/parameter_closed_values.py app/services/orca_parameter_parser.py \
+    app/services/gaussian_parameter_parser.py; do
+  if [ ! -f "$dest/backend/$file" ]; then
+    echo "fetch_tckdb_backend.sh: $repo at $sha has no backend/$file (the deck parsers the comparison tests import)" >&2
+    exit 1
+  fi
+done
 echo "TCKDB_BACKEND_PATH=$dest/backend"
 echo "TCKDB_REQUIRE_BACKEND=1"

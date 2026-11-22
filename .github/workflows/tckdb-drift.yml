@@ -2,8 +2,8 @@ name: tckdb-drift
 
 # Tracks tckdb-schemas / tckdb-client releases in TCKDB. When TCKDB's main
 # ships a newer minor line than the adapter pins, the `test` job bumps the pins in
-# its runner, installs the new packages, fetches TCKDB's backend identity rules at the new
-# commit and runs every package's suite with a read-only token; the `publish` job (the only one
+# its runner, installs the new packages, fetches TCKDB's backend modules (identity rules and
+# deck parsers) at the new commit and runs every package's suite with a read-only token; the `publish` job (the only one
 # with write access) opens a PR (tests pass) or an issue (tests fail, or could not be set up).
 # See docs/tckdb_pin.md.
 
@@ -128,9 +128,10 @@ jobs:
             } > "$RUNNER_TEMP/install.log" 2>&1 || result=install-failed
           fi
 
-          # TCKDB's identity rules at the NEW commit (the pin the bump step just moved), as ci.yml
-          # fetches them at the pinned one. The comparison tests need them: without TCKDB_BACKEND_PATH
-          # they skip, and a change to backend/app/chemistry would pass this job unseen.
+          # TCKDB's backend modules at the NEW commit (the pin the bump step just moved), as ci.yml
+          # fetches them at the pinned one: backend/app/chemistry and the deck parsers under
+          # backend/app/services. The comparison tests need them: without TCKDB_BACKEND_PATH
+          # they skip, and a change to those modules would pass this job unseen.
           if [ "$result" = pass ]; then
             if bash tools/fetch_tckdb_backend.sh \
                  "$(sed -n 's/^TCKDB_SCHEMAS_SPEC=//p' "$RUNNER_TEMP/specs")" "$RUNNER_TEMP/tckdb" \
@@ -140,7 +141,7 @@ jobs:
             else
               result=setup-failed
               {
-                echo "Fetching TCKDB's backend/app/chemistry at the new commit failed, so no suite was run."
+                echo "Fetching TCKDB's backend modules (backend/app/chemistry and the deck parsers) at the new commit failed, so no suite was run."
                 cat "$RUNNER_TEMP/backend.log"
               } > "$RUNNER_TEMP/setup.log"
             fi

@@ -59,7 +59,9 @@ branch of the TCKDB repository named in `tckdb-pin.toml`. On a newer line it:
 
 1. bumps the pins in the runner (a package behind the others is repaired; one ahead of the target makes the bump refuse, below);
 2. installs both TCKDB packages from the new commit and every package of this repository;
-3. fetches TCKDB's `backend/app/chemistry` at that new commit (`tools/fetch_tckdb_backend.sh`,
+3. fetches TCKDB's `backend/app/chemistry` and the ORCA and Gaussian deck parsers
+   (`backend/app/services/orca_parameter_parser.py`, `gaussian_parameter_parser.py` and the few modules
+   they import) at that new commit (`tools/fetch_tckdb_backend.sh`,
    the script `ci.yml` uses at the old one) and exports `TCKDB_BACKEND_PATH` and
    `TCKDB_REQUIRE_BACKEND=1` to the suites, so the comparisons with TCKDB's own code (the
    level-of-theory hash, the energy-level declaration, the method families) run, and fail rather
@@ -94,8 +96,9 @@ look at every one: the cause may be in this repository's pins, in the job, or in
   move up (`--bump --allow-downgrade` moves every package to the target). Any other failure of
   the bump is reported with the tool's error text alone.
 - `--list-packages` failed or printed nothing.
-- TCKDB's `backend/app/chemistry` could not be fetched at the new commit. If TCKDB moved or
-  removed that directory, the adapter's comparison with TCKDB's identity rules has to follow.
+- TCKDB's `backend/app/chemistry` or its deck parser modules (`tools/fetch_tckdb_backend.sh` names them)
+  could not be fetched at the new commit. If TCKDB moved or removed them, the adapter's comparisons with
+  TCKDB's identity rules and deck parsers have to follow.
 
 Its `publish` job is the only one with write access (`tools/tckdb_drift_publish.sh`):
 

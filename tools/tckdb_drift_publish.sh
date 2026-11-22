@@ -150,7 +150,7 @@ if [ "$RESULT" != pass ]; then
   esac
   if [ "$RESULT" = setup-failed ]; then
     steps=""
-    closing="This is not a failing test, but a person has to look: the cause named in the summary may be in this repository's pins, in the drift job, or in TCKDB itself (for example a moved or removed \`backend/app/chemistry\`, which the adapter's comparison with TCKDB's identity rules would then have to follow). The next scheduled run, or a manual dispatch, tries again."
+    closing="This is not a failing test, but a person has to look: the cause named in the summary may be in this repository's pins, in the drift job, or in TCKDB itself (for example a moved or removed \`backend/app/chemistry\` or deck parser module under \`backend/app/services\`, which the adapter's comparisons with TCKDB's own code would then have to follow). The next scheduled run, or a manual dispatch, tries again."
   else
     steps="$(reproduce)"
     closing="Read the contract diff above (AGENTS.md) and fix the adapter to conform before moving the pins."
