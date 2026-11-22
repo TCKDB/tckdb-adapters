@@ -42,6 +42,12 @@ of tracked releases.
 - Adapter 0.6.9: tracked TCKDB f22d3a8 (schemas 0.64.0, client 0.102.0).
 - Adapter 0.6.8: tracked TCKDB a515fb9 (schemas 0.58.0, client 0.98.0).
 
+## 0.15.24
+
+Payload change: a kinetics block now declares `energy_level_of_theory` when a one-electron
+Hartree-Fock atom's deck differs from the other links only in `pno_truncation` or `core_treatment`,
+and reports `one_electron_hf_substitution`. Requires `tckdb-adapters-core>=0.5.23,<0.6`.
+
 ## 0.15.23
 
 Payload change: a calculation's level of theory states `pno_truncation`, `ri_approximation`,

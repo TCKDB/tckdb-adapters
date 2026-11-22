@@ -234,9 +234,11 @@ contract defines the climbing-image flag for NEB.
   included, because TCKDB requires it to be that level's row. The comparison with ARC's
   stated (requested) energy level treats a qualifier stated on one side only as agreeing, and
   two different stated values as two levels. The linked energies of a kinetics block are
-  compared with one another strictly, as TCKDB does, so links that differ only in a qualifier
-  (a one-electron Hartree-Fock atom whose deck has no `normalpno`, beside DLPNO participants
-  whose decks do) declare nothing and say so (`kinetics_energy_level_qualifiers_differ`).
+  compared with one another strictly, as TCKDB does, except that a one-electron
+  Hartree-Fock link ignores the correlation-only qualifiers `pno_truncation` and
+  `core_treatment` (a one-electron HF atom whose deck has no `normalpno`, beside DLPNO
+  participants whose decks do, is accepted as `one_electron_hf_substitution`). Links that differ
+  in another qualifier declare nothing and say so (`kinetics_energy_level_qualifiers_differ`).
   The adapter reports nothing about a qualifier stated on a calculation and not on a requested
   (stated) level.
 

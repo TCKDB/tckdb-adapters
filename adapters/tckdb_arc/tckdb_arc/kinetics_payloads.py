@@ -395,7 +395,8 @@ def _kinetics_energy_level(
 
     A one-electron participant computed at Hartree-Fock in the same basis (ORCA cannot run a
     correlated method on one electron, and every correlation term vanishes) may differ from the
-    declared correlated level in ``method`` alone; ``electron_counts`` (calculation key to the
+    declared correlated level in ``method`` and the correlation-only qualifiers ``pno_truncation`` and
+    ``core_treatment`` alone; ``electron_counts`` (calculation key to the
     owner's electrons) and the stated levels' own counts gate it, and using it is reported
     (``one_electron_hf_substitution``).
     """

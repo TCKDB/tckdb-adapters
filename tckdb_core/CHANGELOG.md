@@ -3,6 +3,17 @@
 Releases are listed newest first. Each `tckdb-arc` release names the core version it needs in its
 own changelog.
 
+## 0.5.23
+
+The one-electron Hartree-Fock exemption in `kinetics_energy_level_assessment` now ignores
+`pno_truncation` and `core_treatment` on both sides, for any value, because neither changes a
+Hartree-Fock energy. `ri_approximation`, `relativistic_hamiltonian`, the bases, dispersion and solvent
+are still compared, and a participant with more than one electron is unchanged. Such a record now gets a
+declared level and `one_electron_hf_calculations` instead of `qualifier_differing_calculations`. The
+core builds no payload, but a producer's kinetics payload of this shape now carries
+`energy_level_of_theory`, which changes its idempotency key. A TCKDB server older than this rule refuses
+such a payload (`kinetics_energy_level_contradiction`). New `level_rules.CORRELATION_ONLY_QUALIFIERS`.
+
 ## 0.5.22
 
 New module `tckdb_core.deck_qualifiers`: `qualifiers_from_deck(program, text)` reads the four typed

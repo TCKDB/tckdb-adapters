@@ -219,6 +219,9 @@ def same_level(a: Mapping[str, Any], b: Mapping[str, Any]) -> bool:
 #: The four typed qualifiers of a level of theory, each identity only when stated.
 LEVEL_QUALIFIERS = (*METHOD_QUALIFIERS, "core_treatment")
 
+#: Qualifiers that act only on the correlation step; a Hartree-Fock energy does not depend on them.
+CORRELATION_ONLY_QUALIFIERS = ("pno_truncation", "core_treatment")
+
 
 def levels_agree(
     a: Mapping[str, Any],
