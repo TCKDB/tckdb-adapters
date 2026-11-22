@@ -437,16 +437,14 @@ def _h_doc(h_deck, others=ORCA_SP_NORMALPNO):
 def test_the_realistic_h_atom_hf_deck_has_no_pno_keyword_beside_participants_with_normalpno(tmp_path):
     """What ARC writes: ``normalpno`` is added only for a DLPNO method, so the H atom's HF deck has none.
 
-    TCKDB's one-electron exemption does not tolerate a qualifier stated on one link only, so nothing is
-    declared and the adapter says why.
+    A Hartree-Fock energy has no correlation step, so the PNO preset is ignored on the H atom: the level
+    is declared with the others' qualifier and the substitution is reported.
     """
     payload, warnings = _build_reaction(tmp_path, _h_doc(ORCA_SP_HF_NO_PNO))
     (block,) = payload["kinetics"]
-    assert "energy_level_of_theory" not in block
-    (finding,) = _finding(warnings, "kinetics_energy_level_qualifiers_differ")
-    assert finding["field"] == "kinetics[0].energy_level_of_theory"
-    assert len(finding["context"]["calculation_keys"]) == 1
-    assert not _finding(warnings, "one_electron_hf_substitution")
+    assert block["energy_level_of_theory"] == {**DLPNO, "spin_treatment": "unrestricted", "pno_truncation": "normal"}
+    assert len(_finding(warnings, "one_electron_hf_substitution")) == 1
+    assert not _finding(warnings, "kinetics_energy_level_qualifiers_differ")
     contract_validate(ComputedReactionUploadRequest, payload)
 
 
