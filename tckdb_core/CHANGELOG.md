@@ -3,6 +3,35 @@
 Releases are listed newest first. Each `tckdb-arc` release names the core version it needs in its
 own changelog.
 
+## 0.5.22
+
+New module `tckdb_core.deck_qualifiers`: `qualifiers_from_deck(program, text)` reads the four typed
+level-of-theory qualifiers (`pno_truncation`, `ri_approximation`, `relativistic_hamiltonian`,
+`core_treatment`) from the text of an ORCA or Gaussian input deck, and `agree_with_echo` lets the text
+of a log echo veto a field the deck states. A value comes only from a token the deck states, a field
+stated with two values is left out and listed, and a compound deck, a deck of the wrong shape and a
+Gaussian route with a `!` comment are not read. Every mapped token is one TCKDB's own parsers read.
+`DeckQualifiers` has a field, `overridden`, for a stated PNO preset that a numeric threshold overrides: any
+key beginning with `TCut` in an ORCA `%mdci` or `%mp2` block. The Gaussian route is split into tokens the
+way TCKDB splits it (a space outside parentheses only, after the `#P` prefix and `IOp(...)` are removed), so
+a tab or an unbalanced parenthesis no longer states more than TCKDB reads. `NoCOSX` beside `RIJCOSX`, and a
+bare `RI` beside another `ri_approximation` token, leave the field out and list it as conflicting; neither
+is ever stated on its own. `DKH` and `DKH2` state `dkh2` only when every `%rel` `Order` is 2 or none is
+given, and with another order they still contradict another relativistic token (`DKH2 ZORA`).
+`tckdb_core.testing.backend_import.backend_deck_qualifier_parsers` loads those parsers for the
+comparison test.
+
+New `level_rules.levels_agree(a, b, *, ignore=("spin_treatment",))`: two levels agree when every
+field outside the four typed qualifiers is equal and each qualifier is equal or stated on one side
+only. `rules.energy_level_declaration` and the stated-level checks of
+`rules.kinetics_energy_level_assessment` use it, so a calculation level that carries qualifiers is
+still declared against a requested level that states none. The comparison of the links with one
+another stays strict, as TCKDB resolves each link to a row. `KineticsLevelAssessment` has a new
+field, `qualifier_differing_calculations`: the keys of links that match the others' level (or the
+one-electron Hartree-Fock exemption's) except for a qualifier stated on some of them only; such a
+record declares nothing, as before. With no qualifier on any level the result is unchanged, and the
+core builds no payload of its own, so no payload, idempotency key or sidecar changes.
+
 ## 0.5.21
 
 Tracks TCKDB 67a812c (tckdb-schemas 0.177.3, tckdb-client 0.211.0). Requires

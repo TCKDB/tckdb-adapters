@@ -187,6 +187,31 @@ def test_any_other_declared_family_grants_no_exemption(method):
     assert assessment.level is None and assessment.one_electron_hf_calculations == ()
 
 
+PNO = {"pno_truncation": "normal"}
+
+
+def test_the_h_atom_without_the_qualifier_the_others_state_declares_nothing_and_says_why():
+    """ORCA runs the H atom at HF, whose deck carries no PNO keyword; the others' decks do."""
+    levels = {k: {**v, **PNO} for k, v in _levels().items() if k != "r1_sp"}
+    assessment = _assess(_levels(**levels))
+    assert assessment.level is None
+    assert assessment.qualifier_differing_calculations == ("r1_sp",)
+    assert assessment.one_electron_hf_calculations == ()
+
+
+def test_the_exemption_still_holds_when_every_link_states_the_same_qualifier():
+    assessment = _assess({k: {**v, **PNO} for k, v in _levels().items()})
+    assert assessment.level == {**U, **PNO}
+    assert assessment.one_electron_hf_calculations == ("r1_sp",)
+    assert assessment.qualifier_differing_calculations == ()
+
+
+def test_a_qualifier_on_the_h_atom_alone_is_the_same_difference():
+    assessment = _assess(_levels(r1={**H_U, **PNO}))
+    assert assessment.level is None
+    assert assessment.qualifier_differing_calculations == ("r1_sp",)
+
+
 def test_a_composite_scheme_reference_level_without_a_method_grants_no_exemption():
     """The reference (first non-HF link) is a user-declared scheme with no method: unclassified, so H at HF is refused."""
     ref = {"composite_scheme": {"name": "x"}, "basis": F12["basis"]}

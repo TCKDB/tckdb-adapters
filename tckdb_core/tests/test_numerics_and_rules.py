@@ -249,6 +249,27 @@ def test_energy_level_declaration_follows_assert_role_consistency():
         stated, energy_level_description="", calc_keys_by_role={}, calculations=calcs, producer_name="P") is None
 
 
+def test_energy_level_declaration_treats_a_one_sided_qualifier_as_the_same_level():
+    sp_level = {"method": "dlpno-ccsd(t)", "basis": "def2-tzvp", "pno_truncation": "normal", "spin_treatment": "restricted"}
+    calcs = {"c_sp": {"level_of_theory": sp_level}}
+    roles = {"sp": "c_sp"}
+
+    def declare(stated, calculations=calcs):
+        return rules.energy_level_declaration(
+            stated, energy_level_description="d", calc_keys_by_role=roles, calculations=calculations, producer_name="P")
+
+    # the calculation states what the requested level does not: declared, and the declaration is the calculation's level
+    declared = declare({"method": "dlpno-ccsd(t)", "basis": "def2-tzvp"})
+    assert declared == ("sp", sp_level) and declared[1]["pno_truncation"] == "normal"
+    # the same value on both sides, and a stated level that states what the calculation does not
+    assert declare({"method": "dlpno-ccsd(t)", "basis": "def2-tzvp", "pno_truncation": "normal"}) is not None
+    bare_calc = {"c_sp": {"level_of_theory": {"method": "dlpno-ccsd(t)", "basis": "def2-tzvp"}}}
+    assert declare({"method": "dlpno-ccsd(t)", "basis": "def2-tzvp", "pno_truncation": "tight"}, bare_calc) is not None
+    # two different stated values, or another field, are not the level
+    assert declare({"method": "dlpno-ccsd(t)", "basis": "def2-tzvp", "pno_truncation": "tight"}) is None
+    assert declare({"method": "dlpno-ccsd(t)", "basis": "def2-qzvp"}) is None
+
+
 def test_describe_level_and_calculations_by_key():
     assert rules.describe_level({"method": "b3lyp", "dispersion": "gd3bj", "basis": "6-31g"}) == "b3lyp + gd3bj/6-31g"
     assert rules.describe_level({}) == "an unrecorded level"

@@ -26,6 +26,7 @@ TCKDB contract, and **nothing that reads a producer's output format**.
 | `idempotency` | Idempotency-key composition. The key namespace is a required argument. |
 | `config` | Config fields and defaults, API-key resolution (env, key file, dotenv file), the artifact kinds read from tckdb-schemas. No parser. |
 | `level_rules` | Replica of TCKDB's level-of-theory identity (folded dispersion, hash), which tckdb-schemas does not ship. The method identity key is imported from `tckdb_schemas.method_names`. |
+| `deck_qualifiers` | `qualifiers_from_deck(program, text)`: the typed level qualifiers (`pno_truncation`, `ri_approximation`, `relativistic_hamiltonian`, `core_treatment`) an ORCA or Gaussian input deck states, with conflict detection and a shape check; `agree_with_echo` lets a log echo veto a field. `level_rules.levels_agree` compares a level that carries qualifiers with one that states none. |
 | `method_families` | `method_family` and `ONE_ELECTRON_EXEMPT_FAMILIES`, a thin surface over `tckdb_schemas.method_families`. |
 | `constraints` | Held-fixed coordinate constraints and their serializer. |
 | `keys` | Bundle-local key helpers (`safe_key_part`, `local_key_for_actor`, `calc_prefix_for_actor`). |
@@ -168,7 +169,7 @@ without `pytest`. (`jsonschema` is a runtime dependency since 0.5.11, for `stand
 | `contract_hook` | `contract_checks_fixture(adapter_cls=..., payload_builders={"_build_x": "<schema name>", ...})`: the autouse fixture that checks every request the adapter builds. `register_markers(config)` registers `payload_refused_by_contract`. An adapter's `conftest.py` names its own builders. |
 | `contract_pin` | The four assertions of a package's `test_contract_pin.py`: installed tckdb-schemas line, `pyproject.toml` bound, contract document stamp, a shipped schema for every route. |
 | `stubs` | `StubClient`, `StubResponse`, `SequencedReadyzClient` and `upload_calls`: stand-ins for `TCKDBClient`, handed to an adapter through `client_factory`. |
-| `backend_import` | `backend_modules()` / `backend_level_hash()`: import TCKDB's backend identity rules from `TCKDB_BACKEND_PATH`. `TCKDB_REQUIRE_BACKEND=1` turns "unavailable" into a failure. |
+| `backend_import` | `backend_modules()` / `backend_level_hash()` / `backend_deck_qualifier_parsers()`: import TCKDB's backend identity rules and its ORCA and Gaussian deck parsers from `TCKDB_BACKEND_PATH`. `TCKDB_REQUIRE_BACKEND=1` turns "unavailable" into a failure. |
 | `live` | The opt-in live gate: loopback and isolated-backend guards, retrying reads, settled row counts, the commit probe, and `live_tckdb_fixture()` for an integration `conftest.py` to register. |
 
 ## Public API
@@ -190,7 +191,8 @@ pip install -e ".[test]"
 TCKDB_BACKEND_PATH=/path/to/TCKDB/backend TCKDB_REQUIRE_BACKEND=1 python -m pytest -q
 ```
 
-Without `TCKDB_BACKEND_PATH` the backend comparison of `level_rules` skips.
+Without `TCKDB_BACKEND_PATH` the backend comparison of `level_rules` and of `deck_qualifiers` (against
+TCKDB's ORCA and Gaussian deck parsers) skips.
 
 ## Changes
 

@@ -46,6 +46,7 @@ from tckdb_schemas.fragments.refs import (
 from tckdb_schemas.utils import normalize_tunneling_model
 
 from tckdb_arc import arc13
+from tckdb_arc import level_qualifiers as _level_qualifiers
 from tckdb_arc._logging import LOGGER_NAME as _LOGGER_NAME
 from tckdb_arc._logging import get_logger
 from tckdb_arc.adaptive import (
@@ -208,9 +209,11 @@ from tckdb_arc.calculations import (  # noqa: F401
     _final_settings_for_calc,
     _hessian_parser_block,
     _merge_parameters_json,
+    _note_level_qualifiers,
     _note_route_contradiction,
     _opt_result_payload,
     _placeholder_origin,
+    _QUALIFIER_NOTES_KEY,
     _reused_origin,
     _ROLE_COMPOSITE,
     _route_observation,
@@ -668,11 +671,14 @@ class TCKDBAdapter(TCKDBUploaderBase):
                 sources=("output.yml adaptive_levels",) + (
                     detection.sources if detection is not None else ()),
             )
-        if detection is None and restart is None and not contradictions:
+        qualifier_notes = _is_output_schema_1_3_or_later(output_doc)
+        if detection is None and restart is None and not contradictions and not qualifier_notes:
             return output_doc
         marked = dict(output_doc)
         if contradictions:
             marked[_CONTRADICTIONS_KEY] = []
+        if qualifier_notes:
+            marked[_QUALIFIER_NOTES_KEY] = []
         if restart is not None:
             marked[_RESTART_KEY] = restart
         if detection is not None:
@@ -704,6 +710,26 @@ class TCKDBAdapter(TCKDBUploaderBase):
                 warnings.append(_self_check(
                     _W_LEVEL_CONTRADICTED_BY_ROUTE, message, f"{kind}.level_of_theory",
                     {"action": f"{kind}_calculation_omitted", "label": label}))
+        qualifier_notes = output_doc.get(_QUALIFIER_NOTES_KEY)
+        qualifier_messages = {
+            ArcWarning.LEVEL_QUALIFIERS_DECK_NOT_READ.value: (
+                "The recorded input deck of the {kind} calculation of {label!r}{where} was not read for "
+                "typed level qualifiers ({detail}); its level of theory states none."),
+            ArcWarning.LEVEL_QUALIFIERS_CONFLICTING.value: (
+                "A typed level qualifier is left out of the level of theory of the {kind} calculation "
+                "of {label!r}{where}: {detail}."),
+        }
+        for label, kind, code, detail, ref in (qualifier_notes if isinstance(qualifier_notes, list) else ()):
+            if code not in qualifier_messages:
+                continue
+            message = qualifier_messages[code].format(
+                kind=kind, label=label, detail=detail, where=f" ({ref})" if ref else "")
+            logger.warning("TCKDB %s: %s", code, message)
+            if warnings is not None:
+                context = {"action": "level_qualifier_not_sent", "label": label, "detail": detail}
+                if ref:
+                    context["calculation"] = ref
+                warnings.append(_self_check(code, message, f"{kind}.level_of_theory", context))
 
     def submit_from_output(
         self,
@@ -1433,6 +1459,11 @@ class TCKDBAdapter(TCKDBUploaderBase):
                         label, selected_key,
                     )
                     continue
+                conformer_index = candidate_index[normalized]
+                # The deck of the job that optimised this conformer's geometry, where ARC states the
+                # conformer's own level; a screen level taken from the header is a request.
+                opt_decks = (
+                    (arc13.conformer_input_options(species_record, conformer_index),) if stated_levels else ())
                 try:
                     opt_calc = self._calculation_payload(
                         output_doc, species_record,
@@ -1448,6 +1479,9 @@ class TCKDBAdapter(TCKDBUploaderBase):
                         # (``conformer_ess_software`` / ``conformer_ess_version``), when ARC states them.
                         observed_software=level["software"] if observed_programs else None,
                         observed_version=observed_version,
+                        job_input_options=opt_decks,
+                        # The findings are recorded below, once the conformer is kept.
+                        qualifier_note_ref=None,
                     )
                 except ValueError as exc:
                     logger.warning(
@@ -1468,6 +1502,7 @@ class TCKDBAdapter(TCKDBUploaderBase):
                     {"geometry": dict(alt_geometry), "role": "final"},
                 ]
                 alt_additional: list[dict[str, Any]] = []
+                sp_decks: tuple[str | None, ...] = ()
                 conformer_sp = (
                     _stated_conformer_sp(
                         output_doc, species_record, candidate_index[normalized],
@@ -1475,6 +1510,7 @@ class TCKDBAdapter(TCKDBUploaderBase):
                     if stated_levels else None)
                 if conformer_sp is not None:
                     sp_level, sp_energy = conformer_sp
+                    sp_decks = (arc13.conformer_input_options(species_record, conformer_index, energy=True),)
                     try:
                         sp_calc = self._calculation_payload(
                             output_doc, species_record,
@@ -1482,6 +1518,11 @@ class TCKDBAdapter(TCKDBUploaderBase):
                             result_field="sp_result",
                             result_payload={"electronic_energy_hartree": sp_energy},
                             tckdb_origin=_screened_conformer_origin("sp"),
+                            # The deck of the job whose energy this conformer entry holds. ARC states no
+                            # observed program for it, so the header conformer_sp_level's program is used
+                            # and a deck of another program's shape is not read.
+                            job_input_options=sp_decks,
+                            qualifier_note_ref=None,
                         )
                     except ValueError as exc:
                         logger.warning(
@@ -1502,6 +1543,16 @@ class TCKDBAdapter(TCKDBUploaderBase):
                 if label:
                     block["label"] = str(label)[:64]
                 blocks.append(block)
+                # What reading the decks could not state is reported for the calculations that are kept.
+                for calc, calc_type, job_key, decks in (
+                        (opt_calc, "opt", "conf_opt", opt_decks),
+                        *(((alt_additional[0], "sp", "conf_sp", sp_decks),) if alt_additional else ())):
+                    _note_level_qualifiers(
+                        output_doc, species_record, calc_type,
+                        _level_qualifiers.read_job_qualifiers(
+                            species_record, program=calc["software_release"]["name"], calc_type=calc_type,
+                            ess_job_key=job_key, job_input_options=decks).notes,
+                        f"screened conformer {conformer_index}")
         omitted = len(candidates) - len(blocks)
         if no_isotopes:
             _warn_isotopes_not_stated(
@@ -1542,8 +1593,12 @@ class TCKDBAdapter(TCKDBUploaderBase):
         observed_software: str | None = None,
         observed_version: str | None = None,
         warnings: list[dict[str, Any]] | None = None,
+        job_input_options: Any = _level_qualifiers.AUTO_JOB_OPTIONS,
     ) -> dict[str, Any]:
         """Build one CalculationInBundle dict.
+
+        ``job_input_options`` is passed to :meth:`_calculation_payload`: the deck text the level's typed
+        qualifiers are read from (the default is the recorded deck of the calculation's own job).
 
         ``warnings``, when given, receives the sidecar findings of the optional pieces left out
         while building (an isotope-unlabellable Hessian).
@@ -1604,6 +1659,7 @@ class TCKDBAdapter(TCKDBUploaderBase):
             scf_stability_target=(role == _CALC_KEY_OPT),
             observed_software=observed_software,
             observed_version=observed_version,
+            job_input_options=job_input_options,
         )
         calc["key"] = calc_key
         if depends_on:
@@ -1828,6 +1884,8 @@ class TCKDBAdapter(TCKDBUploaderBase):
                 depends_on=None,
                 tckdb_origin=None,
                 conformer_xyz_text=None,  # opt_coarse's input is its own xyz, not the conformer
+                # ``ess_input_options.opt`` is the fine opt's deck, not the coarse stage's.
+                job_input_options=(),
             )
             # ``opt_route`` is the keyword line of the fine opt, not of the coarse stage.
             coarse.pop("parameters", None)
@@ -3959,7 +4017,18 @@ class TCKDBAdapter(TCKDBUploaderBase):
         scf_stability_target: bool = False,
         observed_software: str | None = None,
         observed_version: str | None = None,
+        job_input_options: Any = _level_qualifiers.AUTO_JOB_OPTIONS,
+        qualifier_note_ref: str | None = "",
     ) -> dict[str, Any]:
+        """One ``CalculationInBundle`` dict for the job behind ``calc_type`` and ``ess_job_key``.
+
+        ``job_input_options`` names the input-deck text the level's typed qualifiers are read from (see
+        :func:`tckdb_arc.level_qualifiers.read_job_qualifiers`): by default the deck ARC recorded for the
+        job of this calculation's kind, ``()`` for a calculation whose job has no deck of its own, or the
+        decks of the job(s) a caller names (a screened conformer's). The findings of reading them are
+        recorded under ``qualifier_note_ref`` (``None`` records none, for a caller that records them
+        itself once it keeps the calculation).
+        """
         if not isinstance(level, Mapping):
             adaptive = (
                 f" ARC ran with adaptive_levels naming {calc_type}, and the level "
@@ -4045,6 +4114,15 @@ class TCKDBAdapter(TCKDBUploaderBase):
                 f"could not project level of theory for {calc_type} onto "
                 "TCKDB LevelOfTheoryRef shape."
             )
+
+        # The typed qualifiers come from the deck of this calculation's own job and are stated on this
+        # calculation's level alone; the requested level they are compared with states none.
+        job_qualifiers = _level_qualifiers.read_job_qualifiers(
+            record, program=str(software_name), calc_type=calc_type, ess_job_key=ess_job_key,
+            job_input_options=job_input_options)
+        level_of_theory.update(job_qualifiers.values)
+        if job_qualifiers.notes and qualifier_note_ref is not None:
+            _note_level_qualifiers(output_doc, record, calc_type, job_qualifiers.notes, qualifier_note_ref)
 
         # These are the references recorded from the actual freq/SP inputs.
         # ARC's stability verdict describes the opt job's wavefunction, so it

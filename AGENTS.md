@@ -85,7 +85,7 @@ almost fits:
 | Config fields, API-key resolution | `config` |
 | Endpoints, payload kinds | `constants` |
 | Warnings | `adapter_warnings.WarningSink`, `warning_codes.CodedEnum` |
-| Level-of-theory identity | `level_rules`, `method_families` |
+| Level-of-theory identity; typed level qualifiers from a deck | `level_rules`, `method_families`, `deck_qualifiers` |
 | Numerics and units | `thermo_numerics`, `rmg_units`, `composition`, `xyz`, `isotopes`, `reaction_flatten` |
 | TCKDB rule pre-checks | `rules`, `ts_evidence`, `ts_evidence_rules`, `route_level` |
 | Tests | `tckdb_core.testing`: `contract`, `contract_hook`, `contract_pin`, `stubs`, `backend_import`, `live` |
@@ -223,6 +223,16 @@ version bump changes its request body (not its idempotency keys).
 - **`reference_pressure_bar` is omitted, never defaulted,** when ARC does not record
   `thermo.standard_state_pressure_pa` (or records an unusable value). The adapter reports
   `thermo_reference_pressure_not_stated` instead of filling 1.01325 bar.
-- **Typed level-of-theory qualifiers are not sent** (`relativistic_hamiltonian`,
-  `pno_truncation`, `ri_approximation`, `core_treatment: window`). ARC's `args` do not
-  reliably describe the deck a job ran with.
+- **Typed level-of-theory qualifiers come from a job's deck, never from ARC's `args`.** A
+  calculation's level states `pno_truncation`, `ri_approximation`, `relativistic_hamiltonian` or
+  `core_treatment` only when the input-deck text ARC recorded for that calculation's job
+  (`ess_input_options`, `irc_log_input_options`, `conformer_input_options`,
+  `conformer_energy_input_options`, output.yml 1.3) carries the token, read by
+  `tckdb_core/tckdb_core/deck_qualifiers.py`. A calculation ARC records no deck for (rotor scans, path
+  searches, the coarse opt, a placeholder opt) and a level that is no job's (scale-factor and
+  correction-scheme levels, header levels) state none, and no job's qualifiers are copied onto
+  them. Explicit negations (`NoRI`, `NoDKH`) are not sent, and the
+  comparison of a calculation's level with a requested level treats a qualifier stated on one side
+  only as agreeing (`level_rules.levels_agree`). The token table is in
+  `docs/contract/ARC_MAPPING.md`, "Levels of theory"; it must not state more than TCKDB's own
+  parsers read.

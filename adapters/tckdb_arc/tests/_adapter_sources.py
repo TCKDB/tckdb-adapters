@@ -15,7 +15,7 @@ PACKAGE_DIR = Path(_adapter.__file__).resolve().parent
 #: ``adapter.py`` imports for their own sake, and the rest of the package.
 NOT_ADAPTER_HELPERS = (
     "__init__", "_arc_optional", "_compat", "_logging", "_vendor", "adaptive", "adapter", "arc13",
-    "cli", "config", "constraints", "evidence", "idempotency", "level_rules", "orca_neb",
+    "cli", "config", "constraints", "evidence", "idempotency", "level_qualifiers", "level_rules", "orca_neb",
     "payload_writer", "sweep", "warning_codes",
 )
 

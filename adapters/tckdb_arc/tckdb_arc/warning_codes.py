@@ -41,6 +41,14 @@ class ArcWarning(CodedEnum):
         "primary_opt_placeholder_no_opt_job",
         "An sp or freq log is exported but no optimisation job, so the primary optimisation is a placeholder at the header level.",
     )
+    LEVEL_QUALIFIERS_CONFLICTING = (
+        "level_qualifiers_conflicting",
+        "A typed level qualifier is left out of a calculation's level because the job's deck states two values for it or a negation contradicts it, the log's echo of the job states another value, a numeric threshold overrides the PNO preset, or the decks of an IRC pair disagree.",
+    )
+    LEVEL_QUALIFIERS_DECK_NOT_READ = (
+        "level_qualifiers_deck_not_read",
+        "A job's recorded deck was not read for typed level qualifiers because its shape does not match the job's program, it holds several jobs, or it is a Gaussian route with a ! comment; the calculation's level states none.",
+    )
     LEVEL_METHOD_IS_COMPOUND = (
         "level_method_is_compound",
         "A level's method contains '//' (two levels of theory), so the level is not sent and the calculation is not built.",
@@ -127,6 +135,11 @@ class ArcWarning(CodedEnum):
     KINETICS_ENERGY_LEVEL_SPIN_MIXED = (
         "kinetics_energy_level_spin_mixed",
         "The open-shell participants' energies were computed with different spin treatments (unrestricted and restricted-open), which TCKDB refuses for a declared kinetics level, so none is declared.",
+    )
+
+    KINETICS_ENERGY_LEVEL_QUALIFIERS_DIFFER = (
+        "kinetics_energy_level_qualifiers_differ",
+        "The participants' energy levels differ only in a typed level qualifier (pno_truncation, ri_approximation, relativistic_hamiltonian or core_treatment) that their job decks state on some and not on others, which TCKDB resolves as different levels, so none is declared.",
     )
 
     KINETICS_DECLARATIONS_INTERPRETED = (

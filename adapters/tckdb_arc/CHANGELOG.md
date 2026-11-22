@@ -42,6 +42,33 @@ of tracked releases.
 - Adapter 0.6.9: tracked TCKDB f22d3a8 (schemas 0.64.0, client 0.102.0).
 - Adapter 0.6.8: tracked TCKDB a515fb9 (schemas 0.58.0, client 0.98.0).
 
+## 0.15.23
+
+Payload change: a calculation's level of theory states `pno_truncation`, `ri_approximation`,
+`relativistic_hamiltonian` or `core_treatment` when the job's recorded deck carries the token, so such
+levels have a new identity and a re-upload is a new deposit. Requires `tckdb-adapters-core>=0.5.22,<0.6`.
+
+- The decks are the ones output.yml 1.3 records per job: `ess_input_options` for an opt, freq, sp or
+  composite calculation (at the job key its program is read from), `irc_log_input_options` for an IRC
+  calculation, `conformer_input_options` and `conformer_energy_input_options` for a screened conformer's
+  opt and single point. They are parsed as the program of the calculation (ORCA and Gaussian only) by
+  `tckdb_core.deck_qualifiers`, and the log echo (`*_route`, `*_blocks`) can only veto a field the deck
+  states. A missing key is the same as null: no qualifier.
+- A calculation ARC records no deck for states none and nothing is copied onto it: the coarse stage of an
+  optimization, rotor scans, path searches and a placeholder opt. A level that is no job's (a frequency
+  scale factor's, a correction scheme's, the header levels) states none either. ARC's level `args` are not
+  read.
+- A declared `energy_level_of_theory` is the linked calculation's level as sent, qualifiers included; the
+  comparison with ARC's stated energy level treats a qualifier stated on one side only as agreeing. A
+  kinetics block whose links differ only in a qualifier (a one-electron Hartree-Fock atom whose deck has
+  no PNO keyword beside DLPNO participants whose decks do) declares no energy level, where it declared
+  one before, and reports `kinetics_energy_level_qualifiers_differ`.
+- New warning codes: `level_qualifiers_conflicting` (a field left out because the deck states two values or
+  a negation contradicts it, the log echo states another, a numeric `TCut*` threshold overrides the PNO
+  preset, or the decks of an IRC pair disagree), `level_qualifiers_deck_not_read`
+  (a deck whose shape does not match the program, that holds several jobs or is a Gaussian route with a
+  `!` comment) and `kinetics_energy_level_qualifiers_differ`.
+
 ## 0.15.22
 
 No payload change. Tracks TCKDB 67a812c (tckdb-schemas 0.177.3, tckdb-client 0.211.0): requires
