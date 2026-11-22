@@ -19,7 +19,7 @@ from _input_options import (
     ORCA_SP_NORMALPNO, ORCA_SP_TIGHTPNO, ORCA_SP_TIGHTPNO_RIJCOSX, overlay_decks, without_decks)
 from _backend_level_rules import calculations_by_key, energy_level_verdict
 from test_arc_schema_1_3_levels import (
-    LVL, SP_LVL, _adapter, _calcs, _codes, _doc13, _project, _reaction_payload, _record, _sample,
+    LVL, SP_LVL, _adapter, _calcs, _codes, _doc13, _project, _record, _sample,
     _species_payload, _ts_calcs)
 from test_kinetics_one_electron_hf_adapter import DLPNO, _doc as _h_atom_doc
 from tckdb_arc.adapter import _arc_level_to_tckdb_lot

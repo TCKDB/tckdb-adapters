@@ -26,6 +26,7 @@ TCKDB contract, and **nothing that reads a producer's output format**.
 | `idempotency` | Idempotency-key composition. The key namespace is a required argument. |
 | `config` | Config fields and defaults, API-key resolution (env, key file, dotenv file), the artifact kinds read from tckdb-schemas. No parser. |
 | `level_rules` | Replica of TCKDB's level-of-theory identity (folded dispersion, hash), which tckdb-schemas does not ship. The method identity key is imported from `tckdb_schemas.method_names`. |
+| `deck_qualifiers` | `qualifiers_from_deck(program, text)`: the typed level qualifiers (`pno_truncation`, `ri_approximation`, `relativistic_hamiltonian`, `core_treatment`) an ORCA or Gaussian input deck states, with conflict detection and a shape check; `agree_with_echo` lets a log echo veto a field. `level_rules.levels_agree` compares a level that carries qualifiers with one that states none. |
 | `method_families` | `method_family` and `ONE_ELECTRON_EXEMPT_FAMILIES`, a thin surface over `tckdb_schemas.method_families`. |
 | `constraints` | Held-fixed coordinate constraints and their serializer. |
 | `keys` | Bundle-local key helpers (`safe_key_part`, `local_key_for_actor`, `calc_prefix_for_actor`). |
@@ -190,7 +191,8 @@ pip install -e ".[test]"
 TCKDB_BACKEND_PATH=/path/to/TCKDB/backend TCKDB_REQUIRE_BACKEND=1 python -m pytest -q
 ```
 
-Without `TCKDB_BACKEND_PATH` the backend comparison of `level_rules` skips.
+Without `TCKDB_BACKEND_PATH` the backend comparison of `level_rules` and of `deck_qualifiers` (against
+TCKDB's ORCA and Gaussian deck parsers) skips.
 
 ## Changes
 

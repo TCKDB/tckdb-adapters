@@ -51,6 +51,7 @@ Three rules shape every adapter here.
 | Outcome objects | `tckdb_core.outcomes` (`UploadOutcome`, `ArtifactUploadOutcome`) |
 | Warnings in the sidecar's shape | `tckdb_core.adapter_warnings` (`AdapterWarning`, `WarningSink`) and `tckdb_core.warning_codes` (`CodedEnum`) |
 | Level-of-theory identity, as TCKDB hashes it | `tckdb_core.level_rules` |
+| The typed level qualifiers an ORCA or Gaussian input deck states | `tckdb_core.deck_qualifiers` |
 | NASA polynomials and thermo point tables | `tckdb_core.thermo_numerics` |
 | RMG and Arkane unit strings | `tckdb_core.rmg_units` |
 | Elements, formulas, xyz text, isotopes | `tckdb_core.composition`, `xyz`, `isotopes` |
