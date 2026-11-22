@@ -81,6 +81,26 @@ def _note_route_contradiction(
             noted.append(entry)
 
 
+_QUALIFIER_NOTES_KEY = "_tckdb_level_qualifier_notes"
+
+
+def _note_level_qualifiers(
+    output_doc: Mapping[str, Any], record: Mapping[str, Any], calc_type: str, notes: Any,
+) -> None:
+    """Record what the read of a calculation's deck could not state, for ``_report_adaptive_omissions``.
+
+    ``_calculation_payload`` has no warnings sink, so the findings wait in a list on the document the
+    build carries (present on output.yml 1.3 and later); a document without it records nothing.
+    """
+    noted = output_doc.get(_QUALIFIER_NOTES_KEY)
+    if not isinstance(noted, list):
+        return
+    for note in notes:
+        entry = (str(record.get("label")), calc_type, note.code, note.detail)
+        if entry not in noted:
+            noted.append(entry)
+
+
 def _placeholder_origin(kind: str) -> dict[str, Any]:
     """``tckdb_origin`` marking a primary ``opt`` that stands in for a job ARC did not run as an opt."""
     reason = (

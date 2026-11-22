@@ -23,6 +23,8 @@ and the sidecar carries the server's own warnings beside these.
 | `level_contradicted_by_route` | The observed route line names another method or basis than the stated level, so the calculation is omitted. |
 | `composite_geometry_level_not_stated` | The geometry came from a composite job whose level is not stated, so the placeholder optimisation is not filed. |
 | `primary_opt_placeholder_no_opt_job` | An sp or freq log is exported but no optimisation job, so the primary optimisation is a placeholder at the header level. |
+| `level_qualifiers_conflicting` | A typed level qualifier is left out of a calculation's level because the job's deck states two values for it, the log's echo of the job states another value, or the decks of an IRC pair disagree. |
+| `level_qualifiers_deck_not_read` | A job's recorded deck was not read for typed level qualifiers because its shape does not match the job's program, it holds several jobs, or it is a Gaussian route with a ! comment; the calculation's level states none. |
 | `level_method_is_compound` | A level's method contains '//' (two levels of theory), so the level is not sent and the calculation is not built. |
 | `opt_level_adaptive_not_attributable` | Under adaptive levels the optimisation level cannot be attributed to this record, so the calculation is omitted. |
 | `freq_level_adaptive_not_attributable` | Under adaptive levels the frequency level cannot be attributed to this record, so the calculation is omitted. |
@@ -43,6 +45,7 @@ and the sidecar carries the server's own warnings beside these.
 | `enthalpy_adaptive_levels_unverifiable` | Under adaptive levels the energy level behind the enthalpies cannot be verified, so they are stripped. |
 | `thermo_reference_pressure_not_stated` | The standard-state pressure of the entropies is not recorded or unusable, so reference_pressure_bar is omitted, never defaulted. |
 | `kinetics_energy_level_spin_mixed` | The open-shell participants' energies were computed with different spin treatments (unrestricted and restricted-open), which TCKDB refuses for a declared kinetics level, so none is declared. |
+| `kinetics_energy_level_qualifiers_differ` | The participants' energy levels differ only in a typed level qualifier (pno_truncation, ri_approximation, relativistic_hamiltonian or core_treatment) that their job decks state on some and not on others, which TCKDB resolves as different levels, so none is declared. |
 | `kinetics_declarations_interpreted` | The kinetics direction (forward), pressure dependence (high-pressure limit) and, when sent, phase (gas) and the determination (one complete determination of the whole reaction) are the adapter's interpretation of ARC's Arkane kinetics run and are not fields of output.yml. |
 | `one_electron_hf_substitution` | A one-electron species' energy was computed at Hartree-Fock in the same basis and is accepted under the correlated level (the kinetics energy level, or the thermo atom-corrections level), because every correlation term vanishes for one electron; for an F12 level the HF energy omits the CABS singles correction (about 0.05 to 0.1 mEh for H). |
 | `correction_table_method_split` | An Arkane level string names a correction table, not a method; the scheme is sent with the table's stem as method. |

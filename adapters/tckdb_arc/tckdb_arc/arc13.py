@@ -271,5 +271,89 @@ def primary_opt_placeholder(record: Any) -> str | None:
 
 
 # ---------------------------------------------------------------------------
-# Route vs level
+# Input-deck options and the log echo of a job
 # ---------------------------------------------------------------------------
+
+#: The ``ess_input_options`` keys, which are the job keys of ``levels`` without ``irc``.
+INPUT_OPTIONS_KEYS = ("opt", "freq", "sp", "composite")
+
+#: Echo fields (route, blocks) per job key: what the log of the job printed about its input.
+ECHO_FIELDS = {
+    "opt": ("opt_route", "opt_blocks"),
+    "freq": ("freq_route", "freq_blocks"),
+    "sp": ("sp_route", "sp_blocks"),
+    "composite": ("composite_route", "composite_blocks"),
+}
+
+
+def _text(value: Any) -> str | None:
+    return value if isinstance(value, str) and value.strip() else None
+
+
+def _item(values: Any, index: int) -> str | None:
+    """Entry ``index`` of a list ARC exports in lockstep with another, as text; ``None`` when absent or null."""
+    if isinstance(values, Sequence) and not isinstance(values, str) and 0 <= index < len(values):
+        return _text(values[index])
+    return None
+
+
+def input_options_of_job(record: Any, job_key: str) -> str | None:
+    """The deck text ARC recorded for the job ``job_key`` (``opt``/``freq``/``sp``/``composite``), or ``None``.
+
+    ``None`` for a record without ``levels`` (before 1.3), a missing ``ess_input_options`` key and a null value:
+    in each case ARC states the options of no job.
+    """
+    if not has_levels(record) or job_key not in INPUT_OPTIONS_KEYS:
+        return None
+    options = record.get("ess_input_options")
+    return _text(options.get(job_key)) if isinstance(options, Mapping) else None
+
+
+def input_options_for(record: Any, kind: str) -> str | None:
+    """The deck text of the job behind calculation ``kind`` (``opt``/``freq``/``sp``), or ``None``.
+
+    The job is the one :func:`software_job_key` names, the same job whose program the calculation carries: a
+    composite run's calculations read the composite job's deck, and an sp taken from the opt log reads the opt
+    job's.
+    """
+    return input_options_of_job(record, software_job_key(record, kind))
+
+
+def echo_of_job(record: Any, job_key: str) -> tuple[str | None, str | None]:
+    """``(route, blocks)`` the log of job ``job_key`` echoed, each ``None`` when ARC states none."""
+    fields = ECHO_FIELDS.get(job_key)
+    if fields is None or not has_levels(record):
+        return None, None
+    return _text(record.get(fields[0])), _text(record.get(fields[1]))
+
+
+def echo_for(record: Any, kind: str) -> tuple[str | None, str | None]:
+    """``(route, blocks)`` of the log behind calculation ``kind``, by the job key of :func:`input_options_for`."""
+    return echo_of_job(record, software_job_key(record, kind))
+
+
+def irc_input_options(record: Any) -> list[str | None] | None:
+    """The deck text of each IRC log of a TS record (``irc_log_input_options``), in lockstep with ``irc_logs``.
+
+    ``None`` when the record has no ``levels`` or no such list; an entry is ``None`` where ARC recorded no deck.
+    """
+    options = record.get("irc_log_input_options") if has_levels(record) else None
+    if not isinstance(options, Sequence) or isinstance(options, str) or not options:
+        return None
+    return [_text(entry) for entry in options]
+
+
+def irc_echoes(record: Any, count: int) -> list[tuple[str | None, str | None]]:
+    """``(route, blocks)`` of each of ``count`` IRC logs, ``(None, None)`` where ARC states none."""
+    routes, blocks = record.get("irc_log_routes"), record.get("irc_log_blocks")
+    return [(_item(routes, index), _item(blocks, index)) for index in range(count)]
+
+
+def conformer_input_options(record: Any, index: int, *, energy: bool = False) -> str | None:
+    """The deck text of the job behind conformer ``index``'s optimization, or of its energy with ``energy=True``.
+
+    ``None`` for a record without ``levels``, a missing key, a short list and a null entry.
+    """
+    if not has_levels(record):
+        return None
+    return _item(record.get("conformer_energy_input_options" if energy else "conformer_input_options"), index)

@@ -435,6 +435,19 @@ def _kinetics_energy_level(
         warnings.append(_self_check(
             ArcWarning.ONE_ELECTRON_HF_SUBSTITUTION.value, message,
             "kinetics[0].energy_level_of_theory", context))
+    if assessment.qualifier_differing_calculations and warnings is not None:
+        warnings.append(_self_check(
+            ArcWarning.KINETICS_ENERGY_LEVEL_QUALIFIERS_DIFFER.value,
+            "No energy level of theory was declared on the kinetics block: the energy levels of "
+            f"its links (calculations {', '.join(assessment.qualifier_differing_calculations)}) "
+            "differ from the others' only in a typed level qualifier (pno_truncation, "
+            "ri_approximation, relativistic_hamiltonian or core_treatment) that the deck of one "
+            "job states and the other's does not. TCKDB resolves them as different levels and "
+            "refuses a declared kinetics level that is not every link's "
+            "(kinetics_energy_level_contradiction).",
+            "kinetics[0].energy_level_of_theory",
+            {"action": "energy_level_not_declared",
+             "calculation_keys": list(assessment.qualifier_differing_calculations)}))
     if assessment.mixed_spin_calculations and warnings is not None:
         warnings.append(_self_check(
             ArcWarning.KINETICS_ENERGY_LEVEL_SPIN_MIXED.value,
