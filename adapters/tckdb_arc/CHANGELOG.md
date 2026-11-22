@@ -55,8 +55,9 @@ levels have a new identity and a re-upload is a new deposit. Requires `tckdb-ada
   `tckdb_core.deck_qualifiers`, and the log echo (`*_route`, `*_blocks`) can only veto a field the deck
   states. A missing key is the same as null: no qualifier.
 - A calculation ARC records no deck for states none and nothing is copied onto it: the coarse stage of an
-  optimization, rotor scans, path searches, a frequency scale factor's and a correction scheme's levels
-  and the header levels. ARC's level `args` are not read.
+  optimization, rotor scans, path searches and a placeholder opt. A level that is no job's (a frequency
+  scale factor's, a correction scheme's, the header levels) states none either. ARC's level `args` are not
+  read.
 - A declared `energy_level_of_theory` is the linked calculation's level as sent, qualifiers included; the
   comparison with ARC's stated energy level treats a qualifier stated on one side only as agreeing. A
   kinetics block whose links differ only in a qualifier (a one-electron Hartree-Fock atom whose deck has

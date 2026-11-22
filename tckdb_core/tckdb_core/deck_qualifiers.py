@@ -36,7 +36,7 @@ ORCA (``!`` keyword lines and ``%`` blocks):
   with ``FC_EWIN`` / ``FC_ELECTRONS`` / ``FC_NONE`` -> window / frozen_core / all_electron.
 
 ``DKH`` and ``DKH2`` state ``dkh2`` only when every ``Order`` of the ``%rel`` block is 2 or none is given;
-otherwise the field is not read. Any key beginning with ``TCut`` (``TCutPNO``, ``TCutPairs``, ``TCutDOij``,
+otherwise the field is not sent (and it still contradicts another relativistic token, as in ``DKH2 ZORA``). Any key beginning with ``TCut`` (``TCutPNO``, ``TCutPairs``, ``TCutDOij``,
 ``TCutPNOSingles``, ...) in ``%mdci`` or ``%mp2`` is a numeric threshold that overrides the PNO preset, so a stated
 ``pno_truncation`` is left out and listed in ``overridden``. ``RIJCOSX`` with ``NoCOSX`` (which turns the
 chain of spheres off) and any two different ``ri_approximation`` tokens, bare ``RI`` included, leave the field out
@@ -76,7 +76,9 @@ _NONE = "none"
 #: Values recognised only to contradict another value of their field: a negation, and ORCA's bare ``RI`` (TCKDB
 #: reads it as ``rij``, which is not stated here).
 _RIJ = "rij"
-_NOT_STATED = frozenset({_NONE, _RIJ})
+#: ``DKH`` of an order other than 2: not ``dkh2``, and not a value this module states either.
+_DKH_OTHER_ORDER = "dkh_other_order"
+_NOT_STATED = frozenset({_NONE, _RIJ, _DKH_OTHER_ORDER})
 
 
 @dataclass(frozen=True)
@@ -284,7 +286,9 @@ def _read_orca(lines: list[str]) -> DeckQualifiers:
         elif name in _ORCA_TCUT_BLOCKS and any(key.startswith("tcut") for key, _ in pairs):
             overriding.append("pno_truncation")
     if dkh_written and any(order != "2" for order in orders):
-        found = [entry for entry in found if entry != ("relativistic_hamiltonian", "dkh2")]
+        found = [
+            ("relativistic_hamiltonian", _DKH_OTHER_ORDER) if entry == ("relativistic_hamiltonian", "dkh2") else entry
+            for entry in found]
     if no_cosx and ("ri_approximation", "rijcosx") in found:
         found.append(("ri_approximation", _NONE))
     return _resolve(found, overriding)

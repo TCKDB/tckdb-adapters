@@ -202,12 +202,12 @@ contract defines the climbing-image flag for NEB.
     |---|---|---|---|
     | ORCA | `TightPNO`, `NormalPNO`, `LoosePNO` | `pno_truncation` = `tight`, `normal`, `loose` | ORCA 6.1 manual, "Local correlation (DLPNO)": "specifying TightPNO, NormalPNO or LoosePNO keywords" |
     | ORCA | `RIJCOSX`, `RIJK`, `RIJONX` | `ri_approximation` = the same, lower case | ORCA 6 manual, the RIJCOSX ("Basic Usage"), RIJK and RIJONX keywords |
-    | ORCA | `DKH2`, `DKH` | `relativistic_hamiltonian` = `dkh2` | ORCA 6.1 manual, Table 2.54: "DKH2, DKH: Activate the second-order DKH Hamiltonian". The Order condition below applies to both |
-    | ORCA | `ZORA`, `IORA`, `X2C` | `relativistic_hamiltonian` = `zora`, `iora`, `x2c` | ORCA 6.1 manual, Table 2.54 |
+    | ORCA | `DKH2`, `DKH` | `relativistic_hamiltonian` = `dkh2` | ORCA 6.1 manual, relativistic options: "DKH2, DKH: Activate the second-order DKH Hamiltonian". The Order condition below applies to both |
+    | ORCA | `ZORA`, `IORA`, `X2C` | `relativistic_hamiltonian` = `zora`, `iora`, `x2c` | ORCA 6.1 manual, relativistic options (the `ZORA`, `IORA` and `X2C` keywords) |
     | ORCA | `%rel Method DKH`, `ZORA`, `IORA`, `X2C` | `relativistic_hamiltonian` as above | ORCA 6 manual, the `%rel` block (`Method`, `Order`) |
     | ORCA | `FrozenCore`, `NoFrozenCore` | `core_treatment` = `frozen_core`, `all_electron` | ORCA 6 manual, "Frozen Core Options" |
     | ORCA | `%method FrozenCore FC_EWIN`, `FC_ELECTRONS`, `FC_NONE` | `core_treatment` = `window`, `frozen_core`, `all_electron` | ORCA 6 manual, "Frozen Core Options"; ORCA 5.0.4 manual, the same section |
-    | Gaussian | `Int(egral)=DKH`, `=DKH2`, `=DouglasKrollHess` (also `=(DKH2,...)`, `Int(DKH2)`) | `relativistic_hamiltonian` = `dkh2` | Gaussian 09 manual, Integral keyword, "Relativistic calculations": "DKH: second order ... DKH2 and DouglasKrollHess are synonyms"; Foresman and Frisch, *Exploring Chemistry with Electronic Structure Methods*, `Integral=DKH` |
+    | Gaussian | `Int(egral)=DKH`, `=DKH2`, `=DouglasKrollHess` (also `=(DKH2,...)`, `Int(DKH2)`) | `relativistic_hamiltonian` = `dkh2` | Gaussian 09 manual, Integral keyword, "Relativistic calculations": "DKH: second order ... DKH2 and DouglasKrollHess are synonyms" |
     | Gaussian | `Int(egral)=DKH0`, `DKHSO`, `RESC` (same option-list forms) | `relativistic_hamiltonian` = `dkh0`, `dkhso`, `resc` | Gaussian 09 manual, Integral keyword, "Relativistic calculations" (the manual of Gaussian 16 is not separately cited) |
     | Gaussian | `Full`, `FC` (or `FrozenCore`), `Window` as an option of a correlated method, as in `CCSD(T,Full)/cc-pVTZ`, `MP2(FC)` | `core_treatment` = `all_electron`, `frozen_core`, `window` | Gaussian manual, the MP2 and coupled-cluster keywords (frozen-core options); not `Pop=(Full)` |
 
@@ -217,6 +217,28 @@ contract defines the climbing-image flag for NEB.
     Not sent: bare ORCA `RI` alone (TCKDB reads it as `rij`; it only contradicts another
     `ri_approximation` token), `NoCOSX` alone, `DKH1`, `DLU-X2C`, numeric PNO thresholds,
     explicit negations (`none`), Gaussian density fitting, and every spelling outside the table.
+- A method containing `//` names two levels. It is never sent, and a calculation at such a
+  level is not built (`level_method_is_compound`).
+- An Arkane level that is the name of a correction table (`cbs-qb3-paraskevas`) is sent as
+  its method stem, with the table name as the correction scheme's `name`
+  (`correction_table_method_split`).
+- The IRC calculation uses the stated IRC level. For output that states none it keeps the
+  opt level and reports `irc_level_assumed_opt_level`.
+- Thermo, statmech and kinetics blocks declare `energy_level_of_theory` only when it is the
+  level of the linked energy calculation. For kinetics the linked energies must agree on
+  every identity field. Spin is judged per participant, as TCKDB does: closed-shell links
+  never constrain it, and the open-shell links must share one reference
+  (`kinetics_energy_level_spin_mixed` otherwise). A one-electron species computed at
+  Hartree-Fock under a correlated level is accepted (`one_electron_hf_substitution`).
+- A declared `energy_level_of_theory` is the linked calculation's level as sent, qualifiers
+  included, because TCKDB requires it to be that level's row. The comparison with ARC's
+  stated (requested) energy level treats a qualifier stated on one side only as agreeing, and
+  two different stated values as two levels. The linked energies of a kinetics block are
+  compared with one another strictly, as TCKDB does, so links that differ only in a qualifier
+  (a one-electron Hartree-Fock atom whose deck has no `normalpno`, beside DLPNO participants
+  whose decks do) declare nothing and say so (`kinetics_energy_level_qualifiers_differ`).
+  The adapter reports nothing about a qualifier stated on a calculation and not on a requested
+  (stated) level.
 
 ## Thermo
 

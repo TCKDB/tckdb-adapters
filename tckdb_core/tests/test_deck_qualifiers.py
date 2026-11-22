@@ -196,6 +196,14 @@ def test_nocosx_cancels_rijcosx_and_bare_ri_contradicts_a_stated_value():
     assert _q("orca", "!b3lyp def2-svp RI RIJK RIJONX tightpno")[1] == ("ri_approximation",)
 
 
+@pytest.mark.parametrize("keyword", ["DKH", "DKH2"])
+def test_a_dkh_of_another_order_still_contradicts_another_relativistic_token(keyword):
+    text = f"!b3lyp def2-svp {keyword} ZORA\n%rel Order 4 end"
+    assert _q("orca", text) == ({}, ("relativistic_hamiltonian",), None)
+    assert _q("orca", f"!b3lyp def2-svp {keyword} ZORA\n%rel Order 2 end") == (
+        {}, ("relativistic_hamiltonian",), None)
+
+
 def test_dkh2_is_dkh2_only_at_order_two_like_dkh():
     assert _q("orca", "!b3lyp def2-svp dkh2\n%rel Order 3 end") == ({}, (), None)
     assert _q("orca", "!b3lyp def2-svp dkh2\n%rel Order 2 end")[0] == {"relativistic_hamiltonian": "dkh2"}
@@ -304,6 +312,9 @@ _PARITY_DECKS = (
     + [
         ("orca", "!b3lyp def2-svp\n%rel\nMethod DKH\nOrder 3\nend"),
         ("orca", "!b3lyp def2-svp dkh2\n%rel Order 3 end"),
+        ("orca", "!b3lyp def2-svp DKH2 ZORA\n%rel Order 4 end"),
+        ("orca", "!b3lyp def2-svp DKH ZORA\n%rel Order 4 end"),
+        ("orca", "!b3lyp def2-svp DKH ZORA\n%rel Order 2 end"),
         ("orca", "!b3lyp def2-svp RIJCOSX NoCOSX"),
         ("orca", "!b3lyp def2-svp RI RIJCOSX"),
         ("orca", "!b3lyp def2-svp RI"),

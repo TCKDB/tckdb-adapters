@@ -11,6 +11,13 @@ level-of-theory qualifiers (`pno_truncation`, `ri_approximation`, `relativistic_
 of a log echo veto a field the deck states. A value comes only from a token the deck states, a field
 stated with two values is left out and listed, and a compound deck, a deck of the wrong shape and a
 Gaussian route with a `!` comment are not read. Every mapped token is one TCKDB's own parsers read.
+`DeckQualifiers` has a field, `overridden`, for a stated PNO preset that a numeric threshold overrides: any
+key beginning with `TCut` in an ORCA `%mdci` or `%mp2` block. The Gaussian route is split into tokens the
+way TCKDB splits it (a space outside parentheses only, after the `#P` prefix and `IOp(...)` are removed), so
+a tab or an unbalanced parenthesis no longer states more than TCKDB reads. `NoCOSX` beside `RIJCOSX`, and a
+bare `RI` beside another `ri_approximation` token, leave the field out and list it as conflicting; neither
+is ever stated on its own. `DKH` and `DKH2` state `dkh2` only when every `%rel` `Order` is 2 or none is
+given, and with another order they still contradict another relativistic token (`DKH2 ZORA`).
 `tckdb_core.testing.backend_import.backend_deck_qualifier_parsers` loads those parsers for the
 comparison test.
 
