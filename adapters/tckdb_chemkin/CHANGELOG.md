@@ -3,6 +3,11 @@
 Releases are listed newest first. Releases up to 0.7.5 were made from the TCKDB repository, and
 their entries are in [TCKDB's changelog](https://github.com/TCKDB/TCKDB/blob/main/CHANGELOG.md).
 
+## 0.7.10
+
+Tracks TCKDB 67a812c (tckdb-schemas 0.177.3, tckdb-client 0.211.0). Requires
+`tckdb-client>=0.211,<0.212` (was `>=0.210,<0.211`). Package code is unchanged.
+
 ## 0.7.9
 
 The package moved from `tckdb_chemkin/` to `adapters/tckdb_chemkin/` in the repository. The project

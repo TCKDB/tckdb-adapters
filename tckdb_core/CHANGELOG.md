@@ -3,6 +3,12 @@
 Releases are listed newest first. Each `tckdb-arc` release names the core version it needs in its
 own changelog.
 
+## 0.5.21
+
+Tracks TCKDB 67a812c (tckdb-schemas 0.177.3, tckdb-client 0.211.0). Requires
+`tckdb-client>=0.211,<0.212` (was `>=0.210,<0.211`). The contract kit's `TARGET_SCHEMAS_LINE` is
+0.177. Package code is unchanged.
+
 ## 0.5.20
 
 No code, payload, idempotency key or sidecar change. The adapters moved from the repository root

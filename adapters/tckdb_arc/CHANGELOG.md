@@ -12,6 +12,7 @@ of tracked releases.
 `tools/tckdb_drift.py --bump` adds a line below the marker each time it moves the pin.
 
 <!-- tckdb-drift:changelog -->
+- Adapter 0.15.22: tracked TCKDB 67a812c (schemas 0.177.3, client 0.211.0); requires tckdb-adapters-core>=0.5.21.
 - Adapter 0.15.21: the package moved to `adapters/tckdb_arc/`; no payload change; same pin as 0.15.20 (TCKDB 292e647).
 - Adapter 0.15.20: tracked TCKDB 292e647 (schemas 0.177.1, client 0.210.1); thermo and kinetics payloads change for a one-electron species under an `mrci+davidson` level (see 0.15.20 below).
 - Adapter 0.15.19: ASCII refusal and log messages; same pin as 0.15.18 (TCKDB b129c88).
@@ -40,6 +41,13 @@ of tracked releases.
 - Adapter 0.10.0: tracked TCKDB 96b71b0 (schemas 0.73.0, client 0.111.0).
 - Adapter 0.6.9: tracked TCKDB f22d3a8 (schemas 0.64.0, client 0.102.0).
 - Adapter 0.6.8: tracked TCKDB a515fb9 (schemas 0.58.0, client 0.98.0).
+
+## 0.15.22
+
+No payload change. Tracks TCKDB 67a812c (tckdb-schemas 0.177.3, tckdb-client 0.211.0): requires
+`tckdb-client>=0.211,<0.212` (was `>=0.210,<0.211`) and `tckdb-adapters-core>=0.5.21,<0.6`. The
+client release adds `delete_record` and the admin record-deletion rejection codes, which the
+adapter does not use. No mapping or builder changed.
 
 ## 0.15.21
 
