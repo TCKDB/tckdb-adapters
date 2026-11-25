@@ -3,6 +3,6 @@
 # out of the workflow files so an automated bump never edits .github/workflows/).
 [tckdb]
 repo = "https://github.com/TCKDB/TCKDB.git"
-sha = "67a812c7dec5cf2a10fc48955fa92bf71895d4f4"
+sha = "edb15a28a4b4133da552808e755e80095c7e776e"
 schemas_subdir = "schemas/python/tckdb-schemas"
 client_subdir = "clients/python"

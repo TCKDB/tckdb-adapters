@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tckdb-chemkin"
-version = "0.7.10"
+version = "0.7.11"
 description = "CHEMKIN mechanism importer adapter for TCKDB (parser + identity + payload builder + uploader)."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -37,7 +37,7 @@ dependencies = [
     # tckdb-client is 0.x and a minor may break, so the window holds the
     # client line this release was tested with. Move it, and bump this
     # package, before releasing against a newer client.
-    "tckdb-client>=0.211,<0.212",
+    "tckdb-client>=0.213,<0.214",
     # Every import resolves species identity, and identity needs RDKit.
     "rdkit>=2024.3",
 ]
