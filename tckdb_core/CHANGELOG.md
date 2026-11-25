@@ -3,6 +3,12 @@
 Releases are listed newest first. Each `tckdb-arc` release names the core version it needs in its
 own changelog.
 
+## 0.5.24
+
+Tracks TCKDB edb15a2 (tckdb-schemas 0.177.5, tckdb-client 0.213.0). Requires
+`tckdb-client>=0.213,<0.214` (was `>=0.211,<0.212`). The contract kit's `TARGET_SCHEMAS_LINE` is
+0.177. Package code is unchanged.
+
 ## 0.5.23
 
 The one-electron Hartree-Fock exemption in `kinetics_energy_level_assessment` now ignores
