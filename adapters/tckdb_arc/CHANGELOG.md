@@ -12,6 +12,7 @@ of tracked releases.
 `tools/tckdb_drift.py --bump` adds a line below the marker each time it moves the pin.
 
 <!-- tckdb-drift:changelog -->
+- Adapter 0.15.25: tracked TCKDB ad21d93 (schemas 0.177.6, client 0.214.0); requires tckdb-adapters-core>=0.5.24.
 - Adapter 0.15.22: tracked TCKDB 67a812c (schemas 0.177.3, client 0.211.0); requires tckdb-adapters-core>=0.5.21.
 - Adapter 0.15.21: the package moved to `adapters/tckdb_arc/`; no payload change; same pin as 0.15.20 (TCKDB 292e647).
 - Adapter 0.15.20: tracked TCKDB 292e647 (schemas 0.177.1, client 0.210.1); thermo and kinetics payloads change for a one-electron species under an `mrci+davidson` level (see 0.15.20 below).
