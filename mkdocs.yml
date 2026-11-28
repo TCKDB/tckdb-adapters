@@ -4,8 +4,8 @@
 # in tools/mkdocs_hooks.py.
 site_name: tckdb-adapters
 site_description: Producer adapters that turn a tool's output into TCKDB upload payloads.
-site_url: https://calvinp0.github.io/tckdb-adapters/
-repo_url: https://github.com/calvinp0/tckdb-adapters
+site_url: https://tckdb.github.io/tckdb-adapters/
+repo_url: https://github.com/TCKDB/tckdb-adapters
 edit_uri: ""
 docs_dir: docs
 
