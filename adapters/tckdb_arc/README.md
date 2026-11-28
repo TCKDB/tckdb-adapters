@@ -1,6 +1,6 @@
 # tckdb-arc
 
-[![tckdb-arc](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fcalvinp0%2Ftckdb-adapters%2Fmain%2Fadapters%2Ftckdb_arc%2Fpyproject.toml&query=%24.project.version&label=tckdb-arc)](https://github.com/TCKDB/tckdb-adapters/blob/main/adapters/tckdb_arc/CHANGELOG.md)
+[![tckdb-arc](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2FTCKDB%2Ftckdb-adapters%2Fmain%2Fadapters%2Ftckdb_arc%2Fpyproject.toml&query=%24.project.version&label=tckdb-arc)](https://github.com/TCKDB/tckdb-adapters/blob/main/adapters/tckdb_arc/CHANGELOG.md)
 
 The ARC adapter for TCKDB. It reads an ARC project's `output/output.yml`, with ARC's
 parser evidence file when there is one, and builds TCKDB species, reaction and

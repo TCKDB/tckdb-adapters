@@ -1,11 +1,11 @@
 # tckdb-adapters
 
-[![ci](https://github.com/calvinp0/tckdb-adapters/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/calvinp0/tckdb-adapters/actions/workflows/ci.yml)
-[![tckdb-adapters-core](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fcalvinp0%2Ftckdb-adapters%2Fmain%2Ftckdb_core%2Fpyproject.toml&query=%24.project.version&label=tckdb-adapters-core)](tckdb_core/CHANGELOG.md)
-[![tckdb-arc](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fcalvinp0%2Ftckdb-adapters%2Fmain%2Fadapters%2Ftckdb_arc%2Fpyproject.toml&query=%24.project.version&label=tckdb-arc)](adapters/tckdb_arc/CHANGELOG.md)
+[![ci](https://github.com/TCKDB/tckdb-adapters/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TCKDB/tckdb-adapters/actions/workflows/ci.yml)
+[![tckdb-adapters-core](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2FTCKDB%2Ftckdb-adapters%2Fmain%2Ftckdb_core%2Fpyproject.toml&query=%24.project.version&label=tckdb-adapters-core)](tckdb_core/CHANGELOG.md)
+[![tckdb-arc](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2FTCKDB%2Ftckdb-adapters%2Fmain%2Fadapters%2Ftckdb_arc%2Fpyproject.toml&query=%24.project.version&label=tckdb-arc)](adapters/tckdb_arc/CHANGELOG.md)
 [![python](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue)](.github/workflows/ci.yml)
 [![licence](https://img.shields.io/badge/licence-MIT-green)](LICENSE)
-[![docs](https://img.shields.io/badge/docs-mkdocs-blue)](https://calvinp0.github.io/tckdb-adapters/)
+[![docs](https://img.shields.io/badge/docs-mkdocs-blue)](https://tckdb.github.io/tckdb-adapters/)
 
 Producer adapters for [TCKDB](https://github.com/TCKDB/TCKDB), a database of computed
 thermochemistry and kinetics. An adapter reads the output of one tool and turns it into
@@ -23,7 +23,7 @@ TCKDB publishes its upload contract in two packages, and this repository depends
 TCKDB decides what it accepts. An adapter conforms to the contract and sends only what its
 source states.
 
-The documentation website is at <https://calvinp0.github.io/tckdb-adapters/>.
+The documentation website is at <https://tckdb.github.io/tckdb-adapters/>.
 
 ## Packages
 
